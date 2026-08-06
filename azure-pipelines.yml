@@ -1,0 +1,86 @@
+trigger:
+  branches:
+    include:
+      - master
+  tags:
+    include:
+      - 'live-*'
+
+pr: none
+
+resources:
+- repo: self
+
+variables:
+  dockerRegistryServiceConnection: '5c05a53e-93bf-4ded-a9c2-559644f88bfa'
+  imageRepository: 'illigkitools'
+  containerRegistry: 'illigaipweucr.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Illig-AI-Platform/Dockerfile'
+  tag: '$(Build.BuildId)'
+  vmImageName: 'ubuntu-latest'
+  webAppName: 'illig-aiplatform'
+  devSlotName: 'dev'
+  resourceGroup: 'illig-aiplatform-weu-rg'
+  ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/live-') }}:
+    extraTag: 'latest'
+  ${{ else }}:
+    extraTag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build and push
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build and push image to ACR
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        buildContext: $(Build.SourcesDirectory)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+          $(extraTag)
+
+- stage: Deploy_Prod
+  displayName: Deploy to Prod
+  dependsOn: Build
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/live-'))
+  jobs:
+  - job: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: AzureWebAppContainer@1
+      displayName: Deploy container to Prod (production slot)
+      inputs:
+        azureSubscription: 'Azure-Connection'
+        appName: '$(webAppName)'
+        containers: '$(containerRegistry)/$(imageRepository):$(tag)'
+
+
+- stage: Deploy_Dev
+  displayName: Deploy to Dev
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  jobs:
+  - job: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: AzureWebAppContainer@1
+      displayName: Deploy container to Dev slot
+      inputs:
+        azureSubscription: 'Azure-Connection'
+        appName: '$(webAppName)'
+        deployToSlotOrASE: true
+        resourceGroupName: '$(resourceGroup)'
+        slotName: '$(devSlotName)'
+        containers: '$(containerRegistry)/$(imageRepository):$(tag)'

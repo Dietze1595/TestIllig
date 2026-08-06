@@ -1,0 +1,106 @@
+<div class="aa-sap-bestaetigungen">
+    <div class="aa-sap-punkt">
+        <label class="aa-sap-bestaetigung @(Sparte ? "aa-sap-bestaetigung--aktiv" : "") @(Pflichtfelder && !SparteErfuellt ? "aa-sap-bestaetigung--pflicht" : "") @(Disabled ? "aa-sap-bestaetigung--gesperrt" : "")"
+               for="@($"{_id}-sparte")">
+            <input type="checkbox" class="aa-sap-bestaetigung__input" disabled="@Disabled"
+                   id="@($"{_id}-sparte")" checked="@Sparte" @onchange="SparteGeaendert"
+                   aria-required="@Pflichtfelder" />
+            <span class="aa-sap-bestaetigung__check" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M5 12.5 9.2 17 19 7" />
+                </svg>
+            </span>
+            <span class="aa-sap-bestaetigung__text">
+                <strong>
+                    Überprüfe, ob das Angebot auf der richtigen Sparte angelegt wurde
+                    @if (Pflichtfelder)
+                    {
+                        <span class="aa-sap-bestaetigung__stern" title="Pflichtfeld: Haken setzen oder einen Kommentar hinterlegen.">*</span>
+                    }
+                </strong>
+                <span>Die in SAP hinterlegte Sparte stimmt mit dem Angebot überein.</span>
+            </span>
+        </label>
+        @if (!Disabled)
+        {
+            <input type="text"
+                   class="aa-sap-kommentar__input @(Pflichtfelder && !SparteErfuellt ? "aa-sap-kommentar__input--pflicht" : "")"
+                   value="@SparteKommentar" @oninput="OnSparteKommentar"
+                   placeholder="Optional: Begründung statt Haken"
+                   aria-label="Kommentar zur SAP-Sparte" />
+        }
+        else if (!string.IsNullOrWhiteSpace(SparteKommentar))
+        {
+            <div class="aa-sap-kommentar-anzeige">@SparteKommentar</div>
+        }
+    </div>
+
+    <div class="aa-sap-punkt">
+        <label class="aa-sap-bestaetigung @(Fuehrend ? "aa-sap-bestaetigung--aktiv" : "") @(Pflichtfelder && !FuehrendErfuellt ? "aa-sap-bestaetigung--pflicht" : "") @(Disabled ? "aa-sap-bestaetigung--gesperrt" : "")"
+               for="@($"{_id}-fuehrend")">
+            <input type="checkbox" class="aa-sap-bestaetigung__input" disabled="@Disabled"
+                   id="@($"{_id}-fuehrend")" checked="@Fuehrend" @onchange="FuehrendGeaendert"
+                   aria-required="@Pflichtfelder" />
+            <span class="aa-sap-bestaetigung__check" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <path d="M5 12.5 9.2 17 19 7" />
+                </svg>
+            </span>
+            <span class="aa-sap-bestaetigung__text">
+                <strong>
+                    In SAP als führendes Angebot hinterlegt
+                    @if (Pflichtfelder)
+                    {
+                        <span class="aa-sap-bestaetigung__stern" title="Pflichtfeld: Haken setzen oder einen Kommentar hinterlegen.">*</span>
+                    }
+                </strong>
+                <span>Der vorgesehene Zahlungsplan wurde in SAP geprüft.</span>
+            </span>
+        </label>
+        @if (!Disabled)
+        {
+            <input type="text"
+                   class="aa-sap-kommentar__input @(Pflichtfelder && !FuehrendErfuellt ? "aa-sap-kommentar__input--pflicht" : "")"
+                   value="@FuehrendKommentar" @oninput="OnFuehrendKommentar"
+                   placeholder="Optional: Begründung statt Haken"
+                   aria-label="Kommentar zum führenden Angebot" />
+        }
+        else if (!string.IsNullOrWhiteSpace(FuehrendKommentar))
+        {
+            <div class="aa-sap-kommentar-anzeige">@FuehrendKommentar</div>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly string _id = $"sap-{Guid.NewGuid():N}";
+
+    [Parameter] public bool Sparte { get; set; }
+    [Parameter] public EventCallback<bool> SparteChanged { get; set; }
+    [Parameter] public bool Fuehrend { get; set; }
+    [Parameter] public EventCallback<bool> FuehrendChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Pflichtfelder { get; set; }
+
+    // Begründung je SAP-Punkt: ersetzt den Haken (Haken ODER Kommentar erfüllt den Punkt).
+    // Im gesperrten Modus (Historie/Innendienst) als reine Anzeige dargestellt.
+    [Parameter] public string? SparteKommentar { get; set; }
+    [Parameter] public EventCallback<string> SparteKommentarChanged { get; set; }
+    [Parameter] public string? FuehrendKommentar { get; set; }
+    [Parameter] public EventCallback<string> FuehrendKommentarChanged { get; set; }
+
+    private bool SparteErfuellt => Sparte || !string.IsNullOrWhiteSpace(SparteKommentar);
+    private bool FuehrendErfuellt => Fuehrend || !string.IsNullOrWhiteSpace(FuehrendKommentar);
+
+    private Task SparteGeaendert(ChangeEventArgs args) =>
+        SparteChanged.InvokeAsync(args.Value is true);
+
+    private Task FuehrendGeaendert(ChangeEventArgs args) =>
+        FuehrendChanged.InvokeAsync(args.Value is true);
+
+    private Task OnSparteKommentar(ChangeEventArgs args) =>
+        SparteKommentarChanged.InvokeAsync(args.Value?.ToString() ?? "");
+
+    private Task OnFuehrendKommentar(ChangeEventArgs args) =>
+        FuehrendKommentarChanged.InvokeAsync(args.Value?.ToString() ?? "");
+}

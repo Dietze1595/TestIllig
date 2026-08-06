@@ -1,0 +1,401 @@
+@page "/sondermerkmale"
+@using System.Globalization
+@using Illig_AI_Platform.Client.Models
+@inject SondermerkmalClient Client
+@inject NavigationManager Nav
+
+<PageTitle>Sondermerkmale</PageTitle>
+
+<div class="sm-page sm-sondermerkmale-page">
+    <SeitenKopf Titel="Sondermerkmale"
+                Lead="Erkannte Sondermerkmale prüfen, ergänzen und passende Referenzaufträge finden." />
+
+    <SondermerkmalsucheStepper />
+
+    <div class="sm-wizard-content">
+    <RoleGuard Roles="@(new[] { AppClientRoles.PlausibilityCheck, AppClientRoles.Admin })">
+        @if (_apiError is not null)
+    {
+        <ApiFehlerHinweis Message="@_apiError.Message" OnRetry="LoadAsync" />
+    }
+    else if (_loading)
+    {
+        <section class="sm-card"><p>PDF wird ausgelesen…</p></section>
+    }
+    else if (_notFound || _analyse is null)
+    {
+        <section class="sm-card">
+            <div class="alert alert-warning">Kein Auftrag '@Auftragsnummer' gefunden.</div>
+            <a class="btn btn-outline-secondary" href="@AppRoutes.Plausibilitaetspruefung">← Neue Suche</a>
+        </section>
+    }
+    else
+    {
+        <section class="su-order-overview sm-card"
+                 aria-labelledby="su-order-overview-title">
+            <header class="su-order-overview__head">
+                <h2 id="su-order-overview-title">
+                    Auftragsinformation von
+                    @(!string.IsNullOrWhiteSpace(_analyse.Kundenname)
+                        ? _analyse.Kundenname
+                        : !string.IsNullOrWhiteSpace(_analyse.Kundennummer)
+                            ? $"Kunde {_analyse.Kundennummer}"
+                            : "unbekanntem Kunden")
+                </h2>
+            </header>
+
+            <dl class="su-order-overview__info">
+                <div>
+                    <dt>
+                        <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3.5" y="5" width="17" height="14" rx="2" />
+                            <circle cx="8.5" cy="10" r="2" />
+                            <path d="M5.5 15c.75-1.35 1.75-2 3-2s2.25.65 3 2M13.5 9h4M13.5 13h4" />
+                        </svg>
+                        Kundennummer
+                    </dt>
+                    <dd class="su-order-overview__numeric">@(!string.IsNullOrWhiteSpace(_analyse.Kundennummer) ? _analyse.Kundennummer : "—")</dd>
+                </div>
+                <div>
+                    <dt>
+                        <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3.75h7l3 3V20.25H7z" />
+                            <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" />
+                        </svg>
+                        Auftrag
+                    </dt>
+                    <dd class="su-order-overview__numeric">@_analyse.Auftragsnummer</dd>
+                </div>
+                <div>
+                    <dt>
+                        <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z" />
+                            <path d="M4 8.5 12 13l8-4.5M12 13v7" />
+                        </svg>
+                        Maschinentyp
+                    </dt>
+                    <dd>@_analyse.Maschinentyp</dd>
+                </div>
+                <div>
+                    <dt>
+                        <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="4" y="5.5" width="16" height="14" rx="2" />
+                            <path d="M8 3.5v4M16 3.5v4M4 9.5h16" />
+                        </svg>
+                        Datum
+                    </dt>
+                    <dd class="su-order-overview__numeric">@_analyse.Datum.ToString("dd.MM.yyyy")</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="sm-card sm-merkmale-card mt-4">
+            <div class="sm-merkmale-card__head">
+                <div>
+                    <p class="sm-merkmal-summary">
+                        @_merkmale.Count Sondermerkmale in @PositionCount Positionen gefunden
+                    </p>
+                    <p class="sm-add__hint">Reihenfolge per Drag &amp; Drop = Suchpriorität (oberste Position wird zuerst untersucht).</p>
+                </div>
+                <button class="btn btn-primary sm-merkmale-card__start"
+                        @onclick="StartSearch"
+                        disabled="@(_merkmale.Count == 0)">
+                    Referenzsuche starten →
+                </button>
+            </div>
+
+            <div class="sm-merkmale-card__scroll">
+                <div class="sm-merkmal-table-wrap sm-merkmal-table-wrap--grouped">
+                    <table class="sm-merkmal-table sm-merkmal-table--grouped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Merkmalsnummer</th>
+                                <th>Beschreibung</th>
+                                <th><span class="visually-hidden">Aktion</span></th>
+                            </tr>
+                        </thead>
+                        @foreach (var pos in _positionOrder)
+                        {
+                            var gruppe = _merkmale
+                                .Where(m => GruppenSchluessel(m.Position) == pos)
+                                .OrderBy(m => UnterpositionSortSchluessel(m.Position), NumerischeSortierung)
+                                .ToList();
+                            if (gruppe.Count == 0) { continue; }
+                            var prio = _positionOrder.IndexOf(pos) + 1;
+                            var gruppeIstEingeklappt = _eingeklapptePositionen.Contains(pos);
+
+                            <tbody class="sm-position-group @(_dragPos == pos ? "sm-position-group--dragging" : "")"
+                                   @ondragover:preventDefault="true"
+                                   @ondrop="() => OnDrop(pos)">
+                                <tr class="sm-position-group__row"
+                                    draggable="true"
+                                    @ondragstart="() => OnDragStart(pos)">
+                                    <th colspan="4" scope="rowgroup">
+                                        <span class="sm-position-group__handle" aria-hidden="true">⠿</span>
+                                        <span class="sm-position-group__prio" title="Suchpriorität">@prio</span>
+                                        <span class="sm-position-group__title">@(pos == "" ? "Manuell ergänzt" : $"Position {pos}")</span>
+                                        <span class="sm-position-group__count">@gruppe.Count @(gruppe.Count == 1 ? "Merkmal" : "Merkmale")</span>
+                                        <button type="button"
+                                                class="sm-position-group__toggle @(gruppeIstEingeklappt ? "sm-position-group__toggle--collapsed" : null)"
+                                                aria-expanded="@(!gruppeIstEingeklappt)"
+                                                aria-label="@(gruppeIstEingeklappt ? $"Position {pos} aufklappen" : $"Position {pos} zuklappen")"
+                                                @onclick="() => PositionUmschalten(pos)">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                                <path d="m7 9 5 5 5-5" />
+                                            </svg>
+                                        </button>
+                                    </th>
+                                </tr>
+                                @if (!gruppeIstEingeklappt)
+                                {
+                                    @for (var i = 0; i < gruppe.Count; i++)
+                                    {
+                                        var m = gruppe[i];
+                                        <tr>
+                                            <td class="sm-merkmal-table__idx">@Unterposition(m.Position, i)</td>
+                                            <td class="sm-merkmal__nr">@m.Merkmalsnummer</td>
+                                            <td class="sm-merkmal__desc">
+                                                @{
+                                                    var beschreibungKey = BeschreibungKey(m);
+                                                    var istLang = m.Beschreibung.Length > MehrSchwellenwertZeichen;
+                                                    var istAusgeklappt = _ausgeklappteBeschreibungen.Contains(beschreibungKey);
+                                                }
+                                                <div class="sm-merkmal__desc-content @(istLang && !istAusgeklappt ? "sm-merkmal__desc-content--collapsed" : null)">
+                                                    <p class="@(istLang && !istAusgeklappt ? "sm-merkmal__desc-clamp" : null)">
+                                                        @m.Beschreibung
+                                                    </p>
+                                                    @if (istLang)
+                                                    {
+                                                        <button type="button"
+                                                                class="sm-merkmal__desc-mehr"
+                                                                aria-expanded="@istAusgeklappt"
+                                                                @onclick="() => BeschreibungUmschalten(beschreibungKey)">
+                                                            @(istAusgeklappt ? "Weniger" : "Mehr")
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td class="sm-merkmal__action">
+                                                <button type="button"
+                                                        class="sm-merkmal__remove"
+                                                        title="Merkmal entfernen"
+                                                        aria-label="Merkmal @m.Merkmalsnummer entfernen"
+                                                        @onclick="() => Remove(m)">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                                        <path d="M4 7h16" />
+                                                        <path d="M9 7V4h6v3" />
+                                                        <path d="M6.5 7l1 13h9l1-13" />
+                                                        <path d="M10 11v5M14 11v5" />
+                                                    </svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        }
+                    </table>
+                </div>
+
+                <div class="sm-add">
+                    <label class="form-label">Merkmal manuell hinzufügen</label>
+                    <div class="sm-add-row">
+                        <input class="form-control sm-add__pos" placeholder="Pos"
+                               aria-label="Position (leer = manuell)" @bind="_newPosition" />
+                        <input class="form-control sm-add__nr" placeholder="Merkmalsnummer" @bind="_newNummer" />
+                        <input class="form-control sm-add__desc" placeholder="Beschreibung"
+                               @bind="_newBeschreibung" @bind:event="oninput"
+                               @onkeydown="@(e => { if (e.Key == "Enter") AddManual(); })" />
+                        <button class="btn btn-outline-secondary" @onclick="AddManual" disabled="@(!CanAdd)">Hinzufügen</button>
+                    </div>
+                    <p class="sm-add__hint">Eine leere Position erscheint unter „Manuell ergänzt".</p>
+                </div>
+            </div>
+        </section>
+    }
+    </RoleGuard>
+    </div>
+</div>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public string? Auftragsnummer { get; set; }
+
+    private bool _loading = true;
+    private bool _notFound;
+
+    private StuecklisteAnalyse? _analyse;
+    private List<Sondermerkmal> _merkmale = [];
+
+    private readonly List<string> _positionOrder = [];
+    private string? _dragPos;
+
+    private string _newPosition = "";
+    private string _newNummer = "";
+    private string _newBeschreibung = "";
+
+    private bool CanAdd => !string.IsNullOrWhiteSpace(_newNummer) && !string.IsNullOrWhiteSpace(_newBeschreibung);
+
+    private int PositionCount => _merkmale.Select(m => GruppenSchluessel(m.Position)).Distinct().Count();
+
+    // Numerisch-bewusster String-Vergleich (.NETs CompareOptions.NumericOrdering) statt
+    // hand-geschriebener int-Parse-Logik — ein Mechanismus für Karten- UND Zeilen-Sortierung.
+    // Braucht volle ICU-Globalisierungsdaten — <InvariantGlobalization>true</InvariantGlobalization>
+    // würde NumericOrdering stillschweigend auf einen reinen Ordinal-Vergleich zurückfallen lassen.
+    private static readonly StringComparer NumerischeSortierung =
+        StringComparer.Create(CultureInfo.InvariantCulture, CompareOptions.NumericOrdering);
+
+    // Die zweite Zeile wird ab ihrer Mitte mit dem Mehr-Schalter überlagert. Der Grenzwert
+    // verhindert den Schalter bei Beschreibungen, die sicher vollständig in eine Zeile passen.
+    private const int MehrSchwellenwertZeichen = 110;
+
+    private readonly HashSet<string> _ausgeklappteBeschreibungen = new();
+    private readonly HashSet<string> _eingeklapptePositionen = new();
+
+    private static string BeschreibungKey(Sondermerkmal m) => $"{m.Position}|{m.Merkmalsnummer}";
+
+    private void BeschreibungUmschalten(string key)
+    {
+        if (!_ausgeklappteBeschreibungen.Remove(key))
+            _ausgeklappteBeschreibungen.Add(key);
+    }
+
+    private void PositionUmschalten(string position)
+    {
+        if (!_eingeklapptePositionen.Remove(position))
+            _eingeklapptePositionen.Add(position);
+    }
+
+    private static string GruppenSchluessel(string position)
+    {
+        var slashIndex = position.IndexOf('/');
+        return slashIndex < 0 ? position : position[..slashIndex];
+    }
+
+    private static string Unterposition(string position, int reihenfolge)
+    {
+        var slashIndex = position.IndexOf('/');
+        return slashIndex >= 0 ? position[(slashIndex + 1)..] : (reihenfolge + 1).ToString("D2");
+    }
+
+    // Für die Sortierung der Zeilen innerhalb einer Karte: die Unterposition als String
+    // (nach dem "/"), oder "" wenn keine Unterposition vorhanden ist — sortiert dann vor
+    // jeder nummerierten Unterposition, behält aber dank stabiler Sortierung die
+    // ursprüngliche relative Reihenfolge untereinander.
+    private static string UnterpositionSortSchluessel(string position)
+    {
+        var slashIndex = position.IndexOf('/');
+        return slashIndex < 0 ? "" : position[(slashIndex + 1)..];
+    }
+
+    private ApiRequestException? _apiError;
+
+    // RoleGuard gated die Ansicht; das Laden bleibt reaktiv an die Query-Parameter gebunden.
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _apiError = null;
+        _loading = true;
+        _notFound = false;
+
+        if (string.IsNullOrWhiteSpace(Auftragsnummer))
+        {
+            _notFound = true;
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            var result = await Client.AnalyzeAsync(Auftragsnummer.Trim());
+            if (result is null)
+            {
+                _notFound = true;
+            }
+            else
+            {
+                _analyse = result;
+                _merkmale = result.Sondermerkmale.ToList();
+                _eingeklapptePositionen.Clear();
+                _positionOrder.Clear();
+                _positionOrder.AddRange(_merkmale
+                    .Select(m => GruppenSchluessel(m.Position))
+                    .Distinct()
+                    .OrderBy(p => p == "" ? 1 : 0)
+                    .ThenBy(p => p, NumerischeSortierung));
+            }
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SyncPositionOrder()
+    {
+        var present = _merkmale.Select(m => GruppenSchluessel(m.Position)).Distinct().ToList();
+        _positionOrder.RemoveAll(p => !present.Contains(p));
+        _eingeklapptePositionen.RemoveWhere(p => !present.Contains(p));
+        foreach (var p in present.Where(p => !_positionOrder.Contains(p)))
+            _positionOrder.Add(p);
+    }
+
+    private void OnDragStart(string pos) => _dragPos = pos;
+
+    private void OnDrop(string targetPos)
+    {
+        if (_dragPos is not string from || from == targetPos)
+        {
+            _dragPos = null;
+            return;
+        }
+
+        var fromIdx = _positionOrder.IndexOf(from);
+        var toIdx = _positionOrder.IndexOf(targetPos);
+        if (fromIdx >= 0 && toIdx >= 0)
+        {
+            _positionOrder.RemoveAt(fromIdx);
+            _positionOrder.Insert(toIdx, from);
+        }
+        _dragPos = null;
+    }
+
+    private void Remove(Sondermerkmal m)
+    {
+        _merkmale.Remove(m);
+        SyncPositionOrder();
+    }
+
+    private void AddManual()
+    {
+        if (!CanAdd) return;
+        var nummer = _newNummer.Trim();
+        if (_merkmale.All(m => !string.Equals(m.Merkmalsnummer, nummer, StringComparison.OrdinalIgnoreCase)))
+            _merkmale.Add(new Sondermerkmal(_newPosition.Trim(), nummer, _newBeschreibung.Trim(), "Manuell"));
+
+        SyncPositionOrder();
+        _newPosition = "";
+        _newNummer = "";
+        _newBeschreibung = "";
+    }
+
+    private void StartSearch()
+    {
+        if (_merkmale.Count == 0) return;
+
+
+        var merkmalsnummern = _positionOrder
+            .SelectMany(pos => _merkmale.Where(m => GruppenSchluessel(m.Position) == pos))
+            .Select(m => m.Merkmalsnummer)
+            .Distinct();
+        var merkmaleParam = string.Join(",", merkmalsnummern);
+
+        Nav.NavigateTo(
+            $"/referenztreffer?auftragsnummer={Uri.EscapeDataString(Auftragsnummer?.Trim() ?? "")}&merkmale={Uri.EscapeDataString(merkmaleParam)}");
+    }
+}

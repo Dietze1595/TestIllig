@@ -1,0 +1,262 @@
+@page "/auftragsdetails"
+@using Illig_AI_Platform.Client.Models
+@using Illig_AI_Platform.Client.Components.Plausibilitaetspruefung.Stuecklistenpruefung
+@inject SondermerkmalClient Client
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Auftragsdetails</PageTitle>
+
+<div class="sm-page sm-auftragsdetails-page @(_detail is not null ? "sm-page--dokument-aktiv" : "")">
+    <div class="sm-detail-main @PdfPanelKlasse">
+        <SeitenKopf Titel="Auftragsdetails"
+                    Lead="Sondermerkmale des Referenzauftrags im Detail vergleichen." />
+        <SondermerkmalsucheStepper />
+
+        <div class="sm-wizard-content">
+        <RoleGuard Roles="@(new[] { AppClientRoles.PlausibilityCheck, AppClientRoles.Admin })">
+            @if (_apiError is not null)
+            {
+                <ApiFehlerHinweis Message="@_apiError.Message" OnRetry="LoadAsync" />
+            }
+            else if (_loading)
+            {
+                <section class="sm-card"><p>Lädt…</p></section>
+            }
+            else if (_detail is null)
+            {
+                <section class="sm-card">
+                    <div class="alert alert-warning">Kein Auftrag '@Auftragsnummer' gefunden.</div>
+                    <a class="btn btn-outline-secondary" href="@BackHref">← Zurück</a>
+                </section>
+            }
+            else
+            {
+                <section class="sm-card sm-reference-result-card">
+                    <div class="sm-detail__head">
+                        <h2>
+                            Prüfergebnis für
+                            @(!string.IsNullOrWhiteSpace(_detail.Kundenname) ? _detail.Kundenname : $"Auftrag {_detail.Auftragsnummer}")
+                        </h2>
+                        <p class="sm-detail__sub">Vergleich des ausgewählten Referenzauftrags mit Ihrer Auftragsinformation</p>
+                    </div>
+
+                    <dl class="sm-reference-info">
+                        <div>
+                            <dt>
+                                <svg class="sm-reference-info__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M7 3.75h7l3 3V20.25H7z" />
+                                    <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" />
+                                </svg>
+                                Referenzauftrag
+                            </dt>
+                            <dd>@_detail.Auftragsnummer</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <svg class="sm-reference-info__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z" />
+                                    <path d="M4 8.5 12 13l8-4.5M12 13v7" />
+                                </svg>
+                                Maschinentyp
+                            </dt>
+                            <dd>@_detail.Maschinentyp</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <svg class="sm-reference-info__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="4" y="5.5" width="16" height="14" rx="2" />
+                                    <path d="M8 3.5v4M16 3.5v4M4 9.5h16" />
+                                </svg>
+                                Abschlussdatum
+                            </dt>
+                            <dd>@_detail.Abschlussdatum.ToString("dd.MM.yyyy")</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <svg class="sm-reference-info__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="8.25" />
+                                    <path d="m8.5 12.25 2.25 2.25 4.75-5" />
+                                </svg>
+                                Übereinstimmungen
+                            </dt>
+                            <dd class="sm-reference-info__match">
+                                @MerkmalsZusammenfassung
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="sm-card sm-reference-comparison-card">
+                    <div class="sm-reference-section-head">
+                        <div>
+                            <h2>Sondermerkmale des Referenzauftrags</h2>
+                            <p class="sm-detail__sub">Übereinstimmungen und zusätzliche Merkmale im direkten Vergleich</p>
+                        </div>
+                    </div>
+
+                    @if (_aktuellsteMerkmalsnummern.Count > 0)
+                    {
+                        <div class="sm-results-legend" role="note">
+                            <span class="sm-results-legend__marker" aria-hidden="true"></span>
+                            <span>
+                                <strong>Grüne Merkmalsnummer:</strong>
+                                Dies ist die aktuellste Stückliste, in der das jeweilige Merkmal zuletzt vorkam.
+                            </span>
+                        </div>
+                    }
+
+                    @if (_vergleichsMerkmalsnummern.Count > 0)
+                    {
+                        <div class="sm-comparison" aria-label="Vergleich der Sondermerkmale">
+                            <MerkmalsGruppe Titel="In beiden Aufträgen"
+                                             Beschreibung="Diese Sondermerkmale sind in Ihrer Auftragsinformation und im Referenzauftrag enthalten."
+                                             CssModifier="match"
+                                             AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
+                                             Merkmale="GemeinsameMerkmale" />
+
+                            <MerkmalsGruppe Titel="Nur im Referenzauftrag"
+                                             Beschreibung="Diese zusätzlichen Sondermerkmale enthält der Referenzauftrag, Ihre Auswahl jedoch nicht."
+                                             CssModifier="additional"
+                                             AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
+                                             Merkmale="ZusaetzlicheMerkmale" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="sm-comparison" aria-label="Sondermerkmale des Referenzauftrags">
+                            <MerkmalsGruppe Titel="Merkmale im Referenzauftrag"
+                                             Beschreibung="Alle Sondermerkmale der ausgewählten Referenzstückliste."
+                                             CssModifier="additional"
+                                             AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
+                                             Merkmale="_detail.Merkmale" />
+                        </div>
+                    }
+                </section>
+            }
+        </RoleGuard>
+        </div>
+    </div>
+
+    @if (_detail is not null)
+    {
+        <PdfViewerPanel Eingeklappt="_pdfEingeklappt" OnToggle="TogglePdfEingeklappt"
+                        DokumentName="@_dokumentName" DataUrl="@_pdfDataUrl" />
+    }
+</div>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public string? Auftragsnummer { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Quelle { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Merkmale { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Aktuellste { get; set; }
+
+    private bool _loading = true;
+    private StuecklisteDetail? _detail;
+    private List<string> _vergleichsMerkmalsnummern = [];
+    private HashSet<string> _aktuellsteMerkmalsnummern = new(StringComparer.OrdinalIgnoreCase);
+    private string? _pdfDataUrl;
+    private string? _dokumentName;
+    private bool _pdfEingeklappt;
+
+    private string PdfPanelKlasse =>
+        _detail is null ? "" : _pdfEingeklappt ? "sm-detail-main--pdf-eingeklappt" : "sm-detail-main--pdf-offen";
+
+    private IReadOnlyList<StuecklisteDetailMerkmal> GemeinsameMerkmale =>
+        SortiereNachSuchreihenfolge(_detail?.Merkmale
+            .Where(m => _vergleichsMerkmalsnummern.Contains(m.Merkmalsnummer, StringComparer.OrdinalIgnoreCase))
+            ?? []);
+
+    private IReadOnlyList<StuecklisteDetailMerkmal> ZusaetzlicheMerkmale =>
+        (_detail?.Merkmale
+            .Where(m => !_vergleichsMerkmalsnummern.Contains(m.Merkmalsnummer, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(m => m.Merkmalsnummer, StringComparer.OrdinalIgnoreCase)
+            .ToList())
+        ?? [];
+
+    private string MerkmalsZusammenfassung =>
+        _vergleichsMerkmalsnummern.Count > 0
+            ? $"{GemeinsameMerkmale.Count} von {_vergleichsMerkmalsnummern.Count} Merkmalen"
+            : $"{_detail?.Merkmale.Count ?? 0} Merkmale gesamt";
+
+    private string BackHref => string.IsNullOrWhiteSpace(Quelle)
+        ? AppRoutes.Plausibilitaetspruefung
+        : string.IsNullOrWhiteSpace(Merkmale)
+            ? $"{AppRoutes.Sondermerkmale}?auftragsnummer={Uri.EscapeDataString(Quelle)}"
+            : $"{AppRoutes.Referenztreffer}?auftragsnummer={Uri.EscapeDataString(Quelle)}&merkmale={Uri.EscapeDataString(Merkmale)}";
+
+    private ApiRequestException? _apiError;
+
+    // RoleGuard gated die Ansicht; das Laden bleibt reaktiv an die Query-Parameter gebunden.
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_detail is not null && !_pdfEingeklappt)
+            await JSRuntime.InvokeVoidAsync(
+                "suPdfResize.init",
+                ".su-review__pdf-resizer",
+                ".su-review__pdf",
+                ".sm-detail-main");
+    }
+
+    private async Task TogglePdfEingeklappt()
+    {
+        _pdfEingeklappt = !_pdfEingeklappt;
+        if (_pdfEingeklappt)
+            await JSRuntime.InvokeVoidAsync(
+                "suPdfResize.reset",
+                ".su-review__pdf",
+                ".sm-detail-main");
+    }
+
+    private async Task LoadAsync()
+    {
+        _apiError = null;
+        _loading = true;
+        _detail = null;
+        _pdfDataUrl = null;
+        _dokumentName = null;
+        _pdfEingeklappt = true;
+        _vergleichsMerkmalsnummern = (Merkmale ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _aktuellsteMerkmalsnummern = (Aktuellste ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(Auftragsnummer))
+            {
+                _detail = await Client.GetDetailAsync(Auftragsnummer.Trim());
+                if (_detail is not null)
+                {
+                    var dokument = await Client.GetDokumentAsync(Auftragsnummer.Trim());
+                    if (dokument is not null)
+                    {
+                        _dokumentName = dokument.Dateiname;
+                        _pdfDataUrl = $"data:application/pdf;base64,{Convert.ToBase64String(dokument.Inhalt)}";
+                    }
+                }
+            }
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private IReadOnlyList<StuecklisteDetailMerkmal> SortiereNachSuchreihenfolge(
+        IEnumerable<StuecklisteDetailMerkmal> merkmale)
+    {
+        var reihenfolge = _vergleichsMerkmalsnummern
+            .Select((nummer, index) => (nummer, index))
+            .ToDictionary(x => x.nummer, x => x.index, StringComparer.OrdinalIgnoreCase);
+
+        return merkmale.OrderBy(m => reihenfolge[m.Merkmalsnummer]).ToList();
+    }
+}

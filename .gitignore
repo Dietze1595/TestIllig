@@ -1,0 +1,31 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+## Logs
+*.log
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Local artifacts
+.artifacts/
+
+## Secrets (nie committen!)
+appsettings.*.local.json
+secrets.json
+Illig-AI-Platform.Shared/appsettings*.json
+Illig-AI-Platform.Client/wwwroot/appsettings*.json
+# Die Blazor-WASM-Laufzeitkonfiguration wird an jeden Browser ausgeliefert und enthält daher
+# ausschließlich öffentliche Werte. Sie muss versionsgeführt sein, damit lokal und im Deployment
+# dieselbe B2C-Authority verwendet wird.
+!Illig-AI-Platform.Client/wwwroot/appsettings.json
+/Illig-AI-Platform/appsettings.json
+/docs/superpowers/plans
+/docs/superpowers/specs
+/Illig-AI-Platform.Tests/Auftragsanlage

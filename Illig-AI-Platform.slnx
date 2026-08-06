@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Illig-AI-Platform.Client/Illig-AI-Platform.Client.csproj" />
+  <Project Path="Illig-AI-Platform.Shared/Illig-AI-Platform.Shared.csproj" Id="56ab52e2-d2ff-4d6a-8346-ab0e5d27911b" />
+  <Project Path="Illig-AI-Platform.Tests/Illig-AI-Platform.Tests.csproj" />
+  <Project Path="Illig-AI-Platform/Illig-AI-Platform.csproj" />
+</Solution>

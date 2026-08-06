@@ -1,0 +1,727 @@
+:root {
+    color-scheme: dark;
+    --color-bg: #050b16;
+    --color-bg-elevated: #0d1527;
+    --color-bg-panel: #101a31;
+    --color-border: rgba(136, 157, 194, 0.16);
+    --color-text: #f5f8ff;
+    --color-text-soft: #c5d1e8;
+    --color-text-muted: #ebedf0;
+    --bs-body-color: var(--color-text);
+    --bs-body-color-rgb: 245, 248, 255;
+    --bs-body-bg: var(--color-bg);
+    --bs-body-bg-rgb: 5, 11, 22;
+    --bs-emphasis-color: #ffffff;
+    --bs-emphasis-color-rgb: 255, 255, 255;
+    --bs-secondary: #c8d3d9;
+    --bs-secondary-rgb: 200, 211, 217;
+    --bs-secondary-color: var(--color-text-soft);
+    --bs-secondary-color-rgb: 197, 209, 232;
+    --bs-secondary-bg: var(--color-bg-elevated);
+    --bs-secondary-bg-rgb: 13, 21, 39;
+    --bs-tertiary-color: #a8b5c9;
+    --bs-tertiary-color-rgb: 168, 181, 201;
+    --bs-tertiary-bg: var(--color-bg-panel);
+    --bs-tertiary-bg-rgb: 16, 26, 49;
+    --bs-border-color: rgba(136, 157, 194, 0.22);
+    --bs-border-color-translucent: rgba(136, 157, 194, 0.16);
+    --color-accent: #2f67ff;
+    --color-accent-strong: #5b8fff;
+    --color-page-gradient-start: #07101f;
+    --color-header-bg: rgba(7, 13, 25, 0.82);
+    --color-header-border: rgba(130, 152, 190, 0.12);
+    --color-profile-bg: rgba(12, 21, 39, 0.9);
+    --color-profile-hover-bg: rgba(16, 28, 52, 0.96);
+    --color-menu-bg: rgba(8, 14, 28, 0.96);
+    --color-surface-hover: rgba(47, 103, 255, 0.12);
+    --color-control-bg: #1b2944;
+    --color-control-hover-bg: #243654;
+    --color-control-border: rgba(200, 211, 217, 0.48);
+    --color-control-focus: #83c9f0;
+    --color-shadow: rgba(0, 0, 0, 0.32);
+    --color-marker-start: rgba(70, 120, 255, 0.88);
+    --color-marker-end: rgba(100, 164, 255, 0.92);
+    --color-marker-shadow: rgba(53, 110, 255, 0.24);
+    /* Semantische Statusfarben (Ampel/Checkliste/Hinweise) — eine Quelle für alle Use Cases,
+       damit Status-Grün/-Gelb/-Rot überall gleich aussieht und dark-theme-tauglich bleibt. */
+    --color-success: #4caf50;
+    --color-success-bg: rgba(76, 175, 80, 0.16);
+    --color-success-border: rgba(76, 175, 80, 0.4);
+    --color-warning: #f9a825;
+    --color-warning-bg: rgba(249, 168, 37, 0.16);
+    --color-warning-border: rgba(249, 168, 37, 0.4);
+    --color-danger: #e5484d;
+    --color-danger-bg: rgba(229, 72, 77, 0.16);
+    --color-danger-border: rgba(229, 72, 77, 0.4);
+}
+
+:root[data-bs-theme="light"] {
+    color-scheme: light;
+    --color-bg: #e3e9ec;
+    --color-bg-elevated: #f7f9fa;
+    --color-bg-panel: #ffffff;
+    --color-border: rgba(0, 69, 123, 0.18);
+    --color-text: #24343c;
+    --color-text-soft: #57666d;
+    --color-text-muted: #71808a;
+    --color-accent: #00457b;
+    --color-accent-strong: #0074b2;
+    --color-page-gradient-start: #f7fafb;
+    --color-header-bg: rgba(255, 255, 255, 0.9);
+    --color-header-border: rgba(0, 69, 123, 0.14);
+    --color-profile-bg: rgba(247, 249, 250, 0.96);
+    --color-profile-hover-bg: #ffffff;
+    --color-menu-bg: rgba(255, 255, 255, 0.98);
+    --color-surface-hover: rgba(0, 69, 123, 0.08);
+    --color-control-bg: #ffffff;
+    --color-control-hover-bg: #f3f8fb;
+    --color-control-border: rgba(0, 69, 123, 0.28);
+    --color-control-focus: #00457b;
+    --color-shadow: rgba(0, 69, 123, 0.16);
+    --color-marker-start: rgba(131, 201, 240, 0.68);
+    --color-marker-end: rgba(200, 232, 251, 0.94);
+    --color-marker-shadow: rgba(0, 116, 178, 0.12);
+    --color-success: #397f18;
+    --color-success-bg: rgba(57, 127, 24, 0.1);
+    --color-success-border: rgba(57, 127, 24, 0.35);
+    --color-warning: #9a6500;
+    --color-warning-bg: rgba(247, 166, 0, 0.12);
+    --color-warning-border: rgba(154, 101, 0, 0.35);
+    --color-danger: #b42612;
+    --color-danger-bg: rgba(229, 49, 14, 0.1);
+    --color-danger-border: rgba(180, 38, 18, 0.32);
+    --bs-body-color: var(--color-text);
+    --bs-body-color-rgb: 36, 52, 60;
+    --bs-body-bg: var(--color-bg);
+    --bs-body-bg-rgb: 227, 233, 236;
+    --bs-emphasis-color: #102a3a;
+    --bs-emphasis-color-rgb: 16, 42, 58;
+    --bs-secondary: #71808a;
+    --bs-secondary-rgb: 113, 128, 138;
+    --bs-secondary-color: var(--color-text-soft);
+    --bs-secondary-color-rgb: 87, 102, 109;
+    --bs-secondary-bg: var(--color-bg-elevated);
+    --bs-secondary-bg-rgb: 247, 249, 250;
+    --bs-tertiary-color: var(--color-text-muted);
+    --bs-tertiary-color-rgb: 113, 128, 138;
+    --bs-tertiary-bg: var(--color-bg-panel);
+    --bs-tertiary-bg-rgb: 255, 255, 255;
+    --bs-border-color: rgba(0, 69, 123, 0.22);
+    --bs-border-color-translucent: rgba(0, 69, 123, 0.14);
+}
+
+.form-text,
+.text-muted,
+.text-body-secondary {
+    color: var(--color-text-soft) !important;
+}
+
+.text-secondary {
+    color: var(--color-text-muted) !important;
+}
+
+.form-control::placeholder,
+.form-select::placeholder,
+textarea::placeholder,
+input::placeholder {
+    color: var(--color-text-muted);
+    opacity: 1;
+}
+
+.form-control:disabled,
+.form-select:disabled,
+.form-check-input:disabled ~ .form-check-label {
+    color: var(--color-text-muted);
+    opacity: 0.82;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+html,
+body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: Bahnschrift, "Segoe UI Variable Display", "Segoe UI", sans-serif;
+}
+
+body {
+    min-height: 100vh;
+}
+
+/* In der Merkmals- und Referenzübersicht bleibt der Seitenrahmen fest;
+   nur der jeweilige Inhaltsbereich scrollt. */
+body:has(.sm-sondermerkmale-page),
+body:has(.sm-referenztreffer-page) {
+    height: 100dvh;
+    overflow: hidden;
+}
+
+body:has(.sm-sondermerkmale-page) .page,
+body:has(.sm-sondermerkmale-page) main,
+body:has(.sm-referenztreffer-page) .page,
+body:has(.sm-referenztreffer-page) main {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body:has(.sm-sondermerkmale-page) main,
+body:has(.sm-sondermerkmale-page) .content,
+body:has(.sm-referenztreffer-page) main,
+body:has(.sm-referenztreffer-page) .content {
+    display: flex;
+    flex-direction: column;
+}
+
+body:has(.sm-sondermerkmale-page) .top-row,
+body:has(.sm-referenztreffer-page) .top-row {
+    flex: 0 0 auto;
+}
+
+body:has(.sm-sondermerkmale-page) .content,
+body:has(.sm-referenztreffer-page) .content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Stücklistenprüfung, Schritte 2 und 4: Der Seitenrahmen bleibt stehen und nur
+   der jeweilige Tabelleninhalt scrollt. Auf kleineren Ansichten bleibt der
+   normale Seitenfluss erhalten, da dort das PDF unterhalb angezeigt wird. */
+@media (min-width: 901px) {
+    body:has(.sm-stuecklisten-merkmale-page),
+    body:has(.sm-stuecklisten-vergleich-page) {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    body:has(.sm-stuecklisten-merkmale-page) .page,
+    body:has(.sm-stuecklisten-merkmale-page) main,
+    body:has(.sm-stuecklisten-vergleich-page) .page,
+    body:has(.sm-stuecklisten-vergleich-page) main {
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body:has(.sm-stuecklisten-merkmale-page) main,
+    body:has(.sm-stuecklisten-merkmale-page) .content,
+    body:has(.sm-stuecklisten-vergleich-page) main,
+    body:has(.sm-stuecklisten-vergleich-page) .content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    body:has(.sm-stuecklisten-merkmale-page) .top-row,
+    body:has(.sm-stuecklisten-vergleich-page) .top-row {
+        flex: 0 0 auto;
+    }
+
+    body:has(.sm-stuecklisten-merkmale-page) .content,
+    body:has(.sm-stuecklisten-vergleich-page) .content {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+/* Sondermerkmalsuche, Schritt 4 (Auftragsdetails): Der Seitenrahmen bleibt stehen und nur
+   der Inhalt unterhalb von Titel und Stepper scrollt. Unterhalb von 901px erscheint das PDF
+   im normalen Fluss unter dem Inhalt, daher bleibt dort der normale Seitenfluss erhalten. */
+@media (min-width: 901px) {
+    body:has(.sm-auftragsdetails-page) {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    body:has(.sm-auftragsdetails-page) .page,
+    body:has(.sm-auftragsdetails-page) main {
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body:has(.sm-auftragsdetails-page) main,
+    body:has(.sm-auftragsdetails-page) .content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    body:has(.sm-auftragsdetails-page) .top-row {
+        flex: 0 0 auto;
+    }
+
+    body:has(.sm-auftragsdetails-page) .content {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+/* Angebotsprüfung: Im Ergebnis bleibt der Seitenrahmen stehen. Ausschließlich
+   die Prüfdatentabelle innerhalb der Seite übernimmt das vertikale Scrollen. */
+@media (min-width: 901px) {
+    body:has(.aa-vertrieb-prueflayout-aktiv),
+    body:has(.aa-innendienst-prueflayout-aktiv) {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    body:has(.aa-vertrieb-prueflayout-aktiv) .page,
+    body:has(.aa-vertrieb-prueflayout-aktiv) main,
+    body:has(.aa-innendienst-prueflayout-aktiv) .page,
+    body:has(.aa-innendienst-prueflayout-aktiv) main {
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body:has(.aa-vertrieb-prueflayout-aktiv) main,
+    body:has(.aa-vertrieb-prueflayout-aktiv) .content,
+    body:has(.aa-innendienst-prueflayout-aktiv) main,
+    body:has(.aa-innendienst-prueflayout-aktiv) .content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    body:has(.aa-vertrieb-prueflayout-aktiv) .top-row,
+    body:has(.aa-innendienst-prueflayout-aktiv) .top-row {
+        flex: 0 0 auto;
+    }
+
+    body:has(.aa-vertrieb-prueflayout-aktiv) .content,
+    body:has(.aa-innendienst-prueflayout-aktiv) .content {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+a,
+.btn-link {
+    color: #8db4ff;
+}
+
+a:hover,
+.btn-link:hover {
+    color: #dce9ff;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem rgba(3, 9, 20, 0.9), 0 0 0 0.25rem rgba(82, 135, 255, 0.55);
+}
+
+.content {
+    padding-top: 1.35rem;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #2fb367;
+}
+
+.invalid {
+    outline: 1px solid #ff6a6a;
+}
+
+.validation-message {
+    color: #ff7d7d;
+}
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #7d1f2d;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+}
+
+.darker-border-checkbox.form-check-input {
+    border-color: #7988a6;
+}
+
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
+    color: var(--bs-secondary-color);
+    text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+/* Global (nicht scoped), damit die Regel auch das #blazor-error-ui in index.html trifft.
+   Vom Blazor-Runtime nur bei einer unbehandelten Exception auf display:block gesetzt. */
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+/* ---------- Geteilte UI-Bausteine (mehrere Use Cases) ----------
+   Alles unterhalb wird von mehr als einer Seite/einem Use Case verwendet (Seitenrahmen, Karten,
+   Datentabellen, Choice-Grid, Checkliste). Blazors CSS-Isolation kann solche Klassen nicht scoped
+   teilen (kein Cross-Component-Import), deshalb bleiben sie hier statt dupliziert zu werden.
+   Use-Case-spezifische Styles liegen dagegen als *.razor.css neben ihrer Seite/Komponente —
+   siehe README.md für die vollständige Konvention. */
+.sm-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+@media (min-width: 641px) {
+  .sm-page {
+    padding-inline: 4rem;
+  }
+}
+
+/* Stücklistenprüfung: sobald ein Dokument angezeigt wird, sprengt die zentrierte 960px-Box
+   den verfügbaren Platz unnötig — der rechts für das PDF-Panel reservierte Platz (.su-main)
+   zwickt dann zusätzlich vom ohnehin schon schmalen Rest ab, wodurch z. B. der Stepper winzig
+   wirkt, obwohl links/rechts der Box noch viel Platz ungenutzt bleibt. Deshalb hier auf die
+   volle verfügbare Breite gehen, nur solange ein Dokument offen ist.
+*/
+.sm-page--dokument-aktiv {
+  max-width: none;
+  margin-inline: 0;
+}
+.sm-page__head { margin-bottom: 1.25rem; }
+.sm-page__head h1 { font-size: 1.4rem; margin: 0; }
+.sm-page__head .lead { font-size: 0.9rem; color: var(--color-text-muted); margin: 0.25rem 0 0; }
+
+.sm-wizard-content {
+    box-sizing: border-box;
+    min-width: 0;
+    padding-inline: 4rem;
+}
+
+@media (max-width: 900px) {
+    .sm-wizard-content {
+        padding-inline: 0;
+    }
+}
+
+/* Karten & Layout */
+.sm-card {
+    background: var(--color-bg-panel); border: 1px solid var(--color-border);
+    border-radius: .75rem; padding: 1.5rem;
+}
+/* Sondermerkmal-Tabelle (Kachel 2) */
+.sm-merkmal-summary { color: var(--color-text-soft); font-weight: 600; margin: 0 0 1rem; }
+.sm-merkmal-table { width: 100%; border-collapse: collapse; }
+.sm-merkmal-table th, .sm-merkmal-table td {
+    text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--color-border);
+}
+.sm-merkmal-table th { color: var(--color-text-muted); font-weight: 600; }
+.sm-merkmal-table__idx { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+.sm-add { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed var(--color-border); }
+.sm-add-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+.sm-add__pos { flex: 0 0 5rem; }
+.sm-add__nr { flex: 0 0 12rem; }
+.sm-add__desc { flex: 1 1 16rem; }
+.sm-add__hint { margin: .5rem 0 0; font-size: .8rem; color: var(--color-text-muted); }
+.sm-actions { display: flex; justify-content: space-between; gap: .75rem; margin-top: 1.5rem; }
+
+/* Sub-Use-Case-Auswahl: mittige Assistenten-Karten für Plausibilitätsprüfung
+   und Prüfung der Auftragsanlage. */
+@media (min-width: 641px) {
+    body:has(.sm-choice-page) {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    body:has(.sm-choice-page) .page,
+    body:has(.sm-choice-page) main {
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body:has(.sm-choice-page) main,
+    body:has(.sm-choice-page) .content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    body:has(.sm-choice-page) .top-row {
+        flex: 0 0 auto;
+    }
+
+    body:has(.sm-choice-page) .content {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+.sm-choice-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding-block: clamp(2rem, 5vh, 4rem);
+}
+
+@media (min-width: 1101px) {
+    .sm-choice-page {
+        /* Zusammen mit den 24 px des Seitenrahmens liegen die Inhalte
+           exakt 128 px vom Bildschirmrand entfernt. */
+        padding-inline: 6.5rem;
+    }
+}
+
+.sm-choice-page .sm-page__head {
+    margin-bottom: clamp(1.5rem, 3vh, 2.5rem);
+    text-align: center;
+}
+.sm-choice-page .sm-page__head .lead { margin-inline: auto; }
+.sm-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: center;
+    gap: 3rem;
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+}
+.sm-choice-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr auto;
+    align-items: start;
+    column-gap: clamp(1.5rem, 3vw, 3rem);
+    row-gap: 1rem;
+    min-height: 19rem;
+    padding: clamp(2.25rem, 3vw, 3rem);
+    text-align: left;
+    background: var(--color-bg-panel); border: 1px solid var(--color-border);
+    border-top: 4px solid var(--color-accent); border-radius: .75rem;
+    box-shadow: 0 12px 32px rgba(0, 69, 123, .08);
+    color: inherit; cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, transform .1s;
+}
+.sm-choice-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: 0 16px 36px rgba(0, 69, 123, .18);
+    transform: translateY(-3px);
+}
+.sm-choice-card h3 {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    margin: 0;
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+}
+.sm-choice-card p {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: 40rem; margin: 0; color: var(--color-text-muted);
+    font-size: .95rem; line-height: 1.6;
+}
+.sm-choice-card__icon {
+    display: grid;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    place-items: center;
+    width: 5.5rem;
+    height: 5.5rem;
+    color: #9bc832;
+    background: rgba(155, 200, 50, .14);
+    border: 1px solid rgba(155, 200, 50, .28);
+    border-radius: 1.35rem;
+}
+.sm-choice-card__icon svg {
+    width: 3rem;
+    height: 3rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.sm-choice-card__cta {
+    position: relative;
+    z-index: 0;
+    grid-column: 1;
+    grid-row: 3;
+    align-self: end;
+    width: fit-content;
+    margin-top: auto;
+    color: var(--color-accent-strong);
+    font-weight: 700;
+    transition: transform 0.25s ease;
+}
+
+.sm-choice-card__cta::before {
+    position: absolute;
+    z-index: -1;
+    right: -0.12em;
+    bottom: 0.02em;
+    left: -0.12em;
+    height: 0.42em;
+    border-radius: 12px 20px 14px 18px;
+    background: linear-gradient(90deg, var(--color-marker-start), var(--color-marker-end));
+    box-shadow: 0 8px 20px var(--color-marker-shadow);
+    content: "";
+    clip-path: polygon(0 18%, 100% 0, 100% 84%, 0 100%);
+    transform: rotate(-1.2deg) skewX(-14deg) scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.3s ease;
+}
+
+.sm-choice-card:hover .sm-choice-card__cta,
+.sm-choice-card:focus-visible .sm-choice-card__cta {
+    transform: translateX(8px);
+}
+
+.sm-choice-card:hover .sm-choice-card__cta::before,
+.sm-choice-card:focus-visible .sm-choice-card__cta::before {
+    transform: rotate(-1.2deg) skewX(-14deg) scaleX(1);
+}
+
+.sm-choice-card--disabled { cursor: not-allowed; opacity: .55; }
+.sm-choice-card--disabled:hover { border-color: var(--color-border); box-shadow: none; transform: none; }
+.sm-choice-card__badge {
+    align-self: flex-start;
+    background: rgba(145, 163, 196, .18); color: var(--color-text-muted);
+    border-radius: 1rem; padding: .1rem .6rem;
+    font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+}
+
+@media (min-width: 1101px) {
+    .sm-choice-grid > .sm-choice-card:only-child {
+        grid-column: 1 / -1;
+        justify-self: center;
+        width: calc(50% - 1.5rem);
+    }
+}
+
+@media (min-width: 641px) and (max-width: 1100px) {
+    .sm-choice-grid {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 48rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .sm-choice-page {
+        justify-content: flex-start;
+        height: auto;
+        min-height: auto;
+        overflow: visible;
+        padding-block: 1.5rem 2rem;
+    }
+    .sm-choice-grid { grid-template-columns: minmax(0, 1fr); }
+    .sm-choice-card {
+        display: flex;
+        min-height: 17rem;
+        flex-direction: column;
+        align-items: center;
+        gap: .5rem;
+        text-align: center;
+    }
+    .sm-choice-card__icon {
+        width: 4.5rem;
+        height: 4.5rem;
+        margin-bottom: .5rem;
+        border-radius: 1.15rem;
+    }
+    .sm-choice-card__icon svg {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    .sm-choice-card p { max-width: 22rem; }
+}
+@media (min-width: 641px) and (max-height: 700px) {
+    .sm-choice-page {
+        justify-content: center;
+        padding-block: .75rem;
+    }
+
+    .sm-choice-page .sm-page__head {
+        margin-bottom: 1rem;
+    }
+
+    .sm-choice-card {
+        min-height: 15rem;
+        padding: 1.5rem;
+    }
+}
+
+.su-review__meta {
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.su-review__empty {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* ---------- Auftragsanlage: Checkliste & Vergleich ---------- */
+
+.aa-checkliste {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+    display: grid;
+    gap: .5rem;
+}
+
+.aa-hinweis--warnung {
+    background: var(--color-warning-bg);
+    border: 1px solid var(--color-warning-border);
+    border-radius: .375rem;
+    padding: .75rem 1rem;
+    margin: 0 0 1rem;
+    color: var(--color-text);
+}
+
+.aa-hinweis--erfolg {
+    background: var(--color-success-bg);
+    border: 1px solid var(--color-success-border);
+    border-radius: .375rem;
+    padding: .75rem 1rem;
+    margin: 0 0 1rem;
+    color: var(--color-text);
+}

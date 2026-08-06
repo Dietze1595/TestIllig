@@ -1,0 +1,329 @@
+.profile-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    outline: none;
+}
+
+.profile-menu__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.7rem 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text);
+    box-shadow: none;
+    cursor: default;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.profile-menu:hover .profile-menu__trigger,
+.profile-menu:focus-within .profile-menu__trigger {
+    border-color: var(--color-border);
+    background: var(--color-surface-hover);
+}
+
+.profile-menu__identity {
+    display: grid;
+    gap: 0.05rem;
+    min-width: 0;
+    line-height: 1.2;
+    justify-items: end;
+}
+
+.profile-menu__name {
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.profile-menu__email {
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-muted);
+    font-size: 0.76rem;
+    font-weight: 500;
+}
+
+.profile-menu__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(47, 103, 255, 0.18), rgba(91, 143, 255, 0.34));
+    color: var(--color-accent-strong);
+}
+
+.profile-menu__avatar svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: currentColor;
+}
+
+.profile-menu__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.profile-menu__skeleton {
+    display: inline-block;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+        rgba(140, 156, 186, 0.14) 25%,
+        rgba(140, 156, 186, 0.28) 37%,
+        rgba(140, 156, 186, 0.14) 63%);
+    background-size: 400% 100%;
+    animation: profile-menu-skeleton-shimmer 1.4s ease infinite;
+}
+
+.profile-menu__skeleton--name {
+    width: 6rem;
+    height: 0.95rem;
+}
+
+.profile-menu__skeleton--email {
+    width: 8rem;
+    height: 0.7rem;
+    margin-top: 0.2rem;
+}
+
+.profile-menu__skeleton--avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+@keyframes profile-menu-skeleton-shimmer {
+    0% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0 50%;
+    }
+}
+
+.profile-menu__chevron {
+    color: #8fa8d7;
+    font-size: 0.78rem;
+}
+
+.profile-menu__dropdown {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    right: 0;
+    display: grid;
+    gap: 0.55rem;
+    min-width: 14rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(136, 157, 194, 0.16);
+    border-radius: 1rem;
+    background: var(--color-menu-bg);
+    box-shadow: 0 24px 60px var(--color-shadow);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(0.45rem);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+/* Unsichtbare Brücke über dem Dropdown: überbrückt die Lücke zum Trigger,
+   damit das Menü beim Runterfahren der Maus nicht zuklappt. Nur aktiv, wenn
+   das Dropdown sichtbar ist (erbt dessen pointer-events). */
+.profile-menu__dropdown::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -30px;
+    height: 30px;
+}
+
+.profile-menu:hover .profile-menu__dropdown,
+.profile-menu:focus-within .profile-menu__dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.profile-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.85rem;
+    width: 100%;
+    padding: 0.75rem 0.95rem;
+    border: 1px solid transparent;
+    border-radius: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.profile-action:hover {
+    transform: translateY(-1px);
+}
+
+.profile-action--primary {
+    border-color: rgba(91, 143, 255, 0.24);
+    background: linear-gradient(180deg, rgba(22, 40, 75, 0.98) 0%, rgba(16, 30, 56, 0.98) 100%);
+    color: #edf4ff;
+}
+
+.profile-action--primary:hover {
+    border-color: rgba(111, 151, 235, 0.42);
+    background: linear-gradient(180deg, rgba(26, 47, 88, 0.98) 0%, rgba(18, 33, 62, 0.98) 100%);
+}
+
+.profile-action--admin {
+    border-color: rgba(91, 143, 255, 0.28);
+    background: rgba(16, 28, 52, 0.6);
+    color: #cfe0ff;
+}
+
+.profile-action--admin:hover {
+    border-color: rgba(111, 151, 235, 0.5);
+    background: rgba(22, 40, 75, 0.8);
+}
+
+.profile-action--theme {
+    justify-content: flex-start;
+    gap: 0.65rem;
+    border-color: var(--color-border);
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.profile-action--theme:hover {
+    border-color: var(--color-accent);
+    background: var(--color-surface-hover);
+}
+
+.profile-action:focus-visible {
+    outline: 3px solid rgba(0, 116, 178, 0.28);
+    outline-offset: 2px;
+}
+
+.profile-action__theme-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-accent-strong);
+}
+
+.profile-action__theme-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.profile-action--danger {
+    border-color: rgba(183, 82, 101, 0.2);
+    background: linear-gradient(180deg, rgba(82, 24, 36, 0.98) 0%, rgba(61, 18, 28, 0.98) 100%);
+    color: #ffe8eb;
+    cursor: pointer;
+}
+
+.profile-action--danger:hover {
+    border-color: rgba(219, 109, 129, 0.32);
+    background: linear-gradient(180deg, rgba(95, 29, 43, 0.98) 0%, rgba(71, 21, 32, 0.98) 100%);
+}
+
+html[data-bs-theme="light"] .profile-action--primary {
+    border-color: #00457b;
+    background: #00457b;
+    color: #ffffff;
+}
+
+html[data-bs-theme="light"] .profile-action--primary:hover,
+html[data-bs-theme="light"] .profile-action--primary:focus-visible {
+    border-color: #00365f;
+    background: #00365f;
+    color: #ffffff;
+}
+
+html[data-bs-theme="light"] .profile-action--admin {
+    border-color: rgba(0, 69, 123, 0.32);
+    background: rgba(200, 232, 251, 0.42);
+    color: #00457b;
+}
+
+html[data-bs-theme="light"] .profile-action--admin:hover,
+html[data-bs-theme="light"] .profile-action--admin:focus-visible {
+    border-color: rgba(0, 69, 123, 0.52);
+    background: rgba(200, 232, 251, 0.72);
+    color: #00365f;
+}
+
+html[data-bs-theme="light"] .profile-action--theme {
+    border-color: rgba(0, 69, 123, 0.28);
+    background: #f7f9fa;
+    color: #24343c;
+}
+
+html[data-bs-theme="light"] .profile-action--theme:hover,
+html[data-bs-theme="light"] .profile-action--theme:focus-visible {
+    border-color: #00457b;
+    background: rgba(200, 232, 251, 0.42);
+    color: #102a3a;
+}
+
+html[data-bs-theme="light"] .profile-action__theme-icon {
+    color: #00457b;
+}
+
+html[data-bs-theme="light"] .profile-action--danger {
+    border-color: rgba(180, 38, 18, 0.3);
+    background: rgba(229, 49, 14, 0.1);
+    color: #8f210f;
+}
+
+html[data-bs-theme="light"] .profile-action--danger:hover,
+html[data-bs-theme="light"] .profile-action--danger:focus-visible {
+    border-color: rgba(180, 38, 18, 0.52);
+    background: rgba(229, 49, 14, 0.17);
+    color: #70190b;
+}
+
+.login-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.9rem;
+    padding: 0.65rem 1.05rem;
+    border: 1px solid rgba(145, 165, 203, 0.16);
+    border-radius: 999px;
+    background: var(--color-profile-bg);
+    color: var(--color-text);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+@media (max-width: 640px) {
+    .profile-menu__name,
+    .profile-menu__email {
+        max-width: 10rem;
+    }
+
+    .profile-menu__dropdown {
+        min-width: 12.5rem;
+    }
+}

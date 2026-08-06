@@ -1,0 +1,113 @@
+.kunden-detail-main {
+    min-width: 0;
+    transition: padding-right .2s ease;
+}
+.kunden-detail-main--pdf-offen { padding-right: min(30vw, 520px); }
+.kunden-detail-main--pdf-eingeklappt { padding-right: 7.5rem; }
+.kunden-detail-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.kunden-detail-head h2 { margin: 0 0 .35rem; }
+.kunden-detail-head p { margin: .15rem 0; color: var(--color-text-muted); }
+.kunden-detail-title { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.kunden-detail-status {
+    padding: .28rem .65rem;
+    border: 1px solid;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+.kunden-detail-status--bestaetigt {
+    border-color: var(--color-success-border);
+    background: var(--color-success-bg);
+    color: var(--color-success);
+}
+.kunden-detail-status--neukunde {
+    border-color: rgba(0, 170, 228, .42);
+    background: rgba(0, 170, 228, .12);
+    color: #83c9f0;
+}
+.kunden-detail-status--vorlaeufig {
+    border-color: var(--color-warning-border);
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+}
+.kunden-detail-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .75rem;
+    margin: 1rem 0;
+}
+.kunden-detail-kpis div {
+    display: flex; flex-direction: column; gap: .25rem;
+    padding: 1rem; border: 1px solid var(--color-border); border-radius: .7rem;
+    background: var(--color-bg-panel);
+}
+.kunden-detail-kpis strong { font-size: 1.65rem; color: #9bc832; }
+.kunden-detail-kpis span { color: var(--color-text-muted); font-size: .8rem; }
+.kunden-orders { display: grid; gap: .65rem; }
+.kunden-orders details { border: 1px solid var(--color-border); border-radius: .6rem; background: var(--color-bg-elevated); }
+.kunden-orders summary { display: flex; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; cursor: pointer; }
+.kunden-orders summary span { color: var(--color-text-muted); }
+.kunden-order-positions { display: grid; border-top: 1px solid var(--color-border); }
+.kunden-order-positions div {
+    display: grid; grid-template-columns: 9rem 1fr auto; gap: 1rem;
+    padding: .7rem 1rem; border-bottom: 1px solid var(--color-border);
+}
+.kunden-order-positions div:last-child { border-bottom: 0; }
+.kunden-order-positions span { color: var(--color-text-soft); }
+.kunden-document-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.kunden-document-section { min-width: 0; }
+.kunden-document-section h2, .sm-card > h2 { font-size: 1.1rem; }
+.kunden-document-list { display: grid; gap: .55rem; margin-top: .85rem; }
+.kunden-document-link {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    align-items: center;
+    width: 100%;
+    padding: .75rem .8rem;
+    border: 1px solid rgba(98, 144, 255, .28);
+    border-radius: .55rem;
+    background: var(--color-bg-elevated);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .18s ease, background-color .18s ease;
+}
+.kunden-document-link:hover:not(:disabled),
+.kunden-document-link:focus-visible,
+.kunden-document-link--aktiv {
+    border-color: rgba(98, 144, 255, .7);
+    background: var(--color-surface-hover);
+    outline: none;
+}
+.kunden-document-link:disabled { cursor: wait; opacity: .78; }
+.kunden-document-link > span { display: grid; gap: .18rem; min-width: 0; }
+.kunden-document-link strong,
+.kunden-document-link small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.kunden-document-link strong { color: var(--color-text); font-size: .84rem; }
+.kunden-document-link small { color: var(--color-text-muted); font-size: .7rem; }
+.kunden-document-link b {
+    flex: 0 0 auto;
+    color: #9bc832;
+    font-size: .72rem;
+    white-space: nowrap;
+}
+@media (max-width: 760px) {
+    .kunden-detail-head { flex-direction: column; }
+    .kunden-detail-main--pdf-offen,
+    .kunden-detail-main--pdf-eingeklappt { padding-right: 0; }
+    .kunden-detail-kpis { grid-template-columns: 1fr 1fr; }
+    .kunden-document-columns { grid-template-columns: 1fr; }
+    .kunden-order-positions div { grid-template-columns: 1fr; gap: .2rem; }
+}

@@ -1,0 +1,105 @@
+@if (!Offen)
+{
+    <button type="button" class="su-verlauf__toggle" title="Historie" @onclick="() => OffenChanged.InvokeAsync(true)">
+        <svg class="su-verlauf__toggle-icon" viewBox="0 -960 960 960" aria-hidden="true">
+            <path d="M480-120q-138 0-240.5-91.5T122-440h82q14 104 92.5 172T480-200q117 0 198.5-81.5T760-480q0-117-81.5-198.5T480-760q-69 0-129 32t-101 88h110v80H120v-240h80v94q51-64 124.5-104T480-840q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-480q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-120Zm112-152L440-440v-240h80v206l128 128-56 56Z" />
+        </svg>
+    </button>
+}
+
+<aside class="su-verlauf @(Offen ? "su-verlauf--offen" : "")">
+    <div class="su-verlauf__head">
+        <h3>Historie</h3>
+        <button type="button" class="su-verlauf__close" title="Schließen" @onclick="() => OffenChanged.InvokeAsync(false)">✕</button>
+    </div>
+
+    <div class="su-verlauf__filter">
+        <button type="button" class="su-verlauf__filter-btn @(!NurMeine ? "su-verlauf__filter-btn--aktiv" : "")"
+                @onclick="() => NurMeineChanged.InvokeAsync(false)">Alle</button>
+        <button type="button" class="su-verlauf__filter-btn @(NurMeine ? "su-verlauf__filter-btn--aktiv" : "")"
+                @onclick="() => NurMeineChanged.InvokeAsync(true)">Meine</button>
+    </div>
+
+    @if (Laedt)
+    {
+        <p class="su-review__empty">Lädt…</p>
+    }
+    else if (Fehler)
+    {
+        <p class="su-review__empty">
+            Historie konnte nicht geladen werden.
+            <button type="button" class="btn btn-link p-0" @onclick="OnRetry">Erneut versuchen</button>
+        </p>
+    }
+    else if (Eintraege.Count == 0)
+    {
+        <p class="su-review__empty">@Leertext</p>
+    }
+    else
+    {
+        <ul class="su-verlauf__liste">
+            @foreach (var eintrag in Eintraege)
+            {
+                <li>
+                    <button type="button"
+                            class="su-verlauf__eintrag @(GeoeffneterId == eintrag.Id ? "su-verlauf__eintrag--aktiv" : "")"
+                            @onclick="() => OnEintragOeffnen.InvokeAsync(eintrag)">
+                        <strong>
+                            @eintrag.Angebotsnummer
+                            <span class="su-verlauf__uploader">@(string.IsNullOrWhiteSpace(eintrag.HochgeladenVon) ? "Unbekannt" : eintrag.HochgeladenVon)</span>
+                        </strong>
+                        <span>@(string.IsNullOrWhiteSpace(eintrag.Kundenname) ? "—" : eintrag.Kundenname)</span>
+                        <span class="su-verlauf__datum">
+                            @eintrag.HochgeladenAm.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                            @if (FreigabeAnzeigen && eintrag.Freigegeben)
+                            {
+                                <span class="su-verlauf__badge">Freigegeben</span>
+                            }
+                        </span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</aside>
+
+@code {
+    /// <summary>Ob die Historie ausgeklappt ist. Wird vom Elternteil gehalten, weil auch .su-main
+    /// seine Breite daran ausrichtet.</summary>
+    [Parameter, EditorRequired]
+    public bool Offen { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<bool> OffenChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<AngebotUebersicht> Eintraege { get; set; } = [];
+
+    [Parameter]
+    public bool Laedt { get; set; }
+
+    [Parameter]
+    public bool Fehler { get; set; }
+
+    [Parameter]
+    public string Leertext { get; set; } = "Noch keine Angebote.";
+
+    [Parameter]
+    public bool FreigabeAnzeigen { get; set; } = true;
+
+    [Parameter]
+    public int? GeoeffneterId { get; set; }
+
+    /// <summary>Umschalter: false = alle Angebote, true = nur eigene Uploads.</summary>
+    [Parameter]
+    public bool NurMeine { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> NurMeineChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnRetry { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<AngebotUebersicht> OnEintragOeffnen { get; set; }
+}

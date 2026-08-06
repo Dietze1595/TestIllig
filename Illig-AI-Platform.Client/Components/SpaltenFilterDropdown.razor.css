@@ -1,0 +1,168 @@
+.la-spaltenfilter {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.la-spaltenfilter__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-height: 1.85rem;
+    margin: -0.3rem -0.45rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    line-height: 1.1;
+    text-transform: inherit;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.la-spaltenfilter__trigger:hover,
+.la-spaltenfilter--offen .la-spaltenfilter__trigger {
+    border-color: color-mix(in srgb, #83c9f0 42%, var(--color-border));
+    background: color-mix(in srgb, #00457b 14%, var(--color-bg-panel));
+    color: var(--color-text);
+}
+
+.la-spaltenfilter__trigger--aktiv {
+    border-color: color-mix(in srgb, #9bc832 45%, var(--color-border));
+    background: color-mix(in srgb, #9bc832 10%, transparent);
+    color: var(--color-text);
+}
+
+.la-spaltenfilter__trigger:focus-visible {
+    outline: 2px solid #83c9f0;
+    outline-offset: 2px;
+}
+
+.la-spaltenfilter__label {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1rem;
+    line-height: 1;
+    white-space: nowrap;
+    transform: translateY(1px);
+}
+
+.la-spaltenfilter__count {
+    display: inline-grid;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    padding-inline: 0.3rem;
+    border-radius: 999px;
+    background: #9bc832;
+    color: #17210a;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1;
+    text-transform: none;
+}
+
+.la-spaltenfilter__chevron {
+    position: relative;
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 1rem;
+}
+
+.la-spaltenfilter__chevron::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    content: "";
+    transform: translate(-50%, -68%) rotate(45deg);
+    transform-origin: center;
+    transition: transform 0.15s ease;
+}
+
+.la-spaltenfilter--offen .la-spaltenfilter__chevron::before {
+    transform: translate(-50%, -32%) rotate(225deg);
+}
+
+.la-spaltenfilter__panel {
+    position: absolute;
+    top: calc(100% + 0.7rem);
+    left: 0;
+    z-index: 20;
+    display: grid;
+    gap: 0.22rem;
+    min-width: 13rem;
+    max-height: min(18rem, calc(65vh - 4rem));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    touch-action: pan-y;
+    padding: 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+    background: color-mix(in srgb, var(--color-bg-panel) 96%, #00457b);
+    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.36);
+    color: var(--color-text);
+    font-weight: normal;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.la-spaltenfilter__panel-title {
+    padding: 0.35rem 0.5rem 0.45rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.la-spaltenfilter__option {
+    display: flex;
+    align-items: center;
+    gap: 0.58rem;
+    min-height: 2.25rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 0.45rem;
+    color: var(--color-text-soft);
+    white-space: nowrap;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1.25;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.la-spaltenfilter__option:hover {
+    background: color-mix(in srgb, #83c9f0 10%, transparent);
+    color: var(--color-text);
+}
+
+.la-spaltenfilter__option--aktiv {
+    background: color-mix(in srgb, #9bc832 11%, transparent);
+    color: var(--color-text);
+}
+
+.la-spaltenfilter__option input {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    margin: 0;
+    accent-color: #9bc832;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .la-spaltenfilter__trigger,
+    .la-spaltenfilter__chevron::before,
+    .la-spaltenfilter__option {
+        transition: none;
+    }
+}

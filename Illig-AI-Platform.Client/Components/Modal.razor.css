@@ -1,0 +1,103 @@
+.la-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 10, 26, 0.82);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+}
+
+.la-dialog {
+    display: flex;
+    width: min(54rem, 96vw);
+    max-height: min(54rem, calc(100dvh - 2rem));
+    overflow: hidden;
+    flex-direction: column;
+    border: 1px solid var(--color-border);
+    border-top: 4px solid #00457b;
+    border-radius: 0.75rem;
+    background: var(--color-bg-panel);
+    box-shadow:
+        0 1.5rem 4rem rgba(0, 0, 0, 0.42),
+        0 0 0 1px color-mix(in srgb, #83c9f0 8%, transparent) inset;
+    color: var(--color-text);
+}
+
+.la-dialog__kopf {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+}
+
+.la-dialog h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.25;
+}
+
+.la-dialog__schliessen {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    border: 1px solid var(--color-border);
+    border-radius: 0.45rem;
+    background: var(--color-bg-panel);
+    color: var(--color-text-soft);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.la-dialog__schliessen:hover {
+    border-color: color-mix(in srgb, #83c9f0 55%, var(--color-border));
+    background: color-mix(in srgb, #00457b 16%, var(--color-bg-panel));
+    color: var(--color-text);
+}
+
+.la-dialog__schliessen:focus-visible {
+    outline: 2px solid #00457b;
+    outline-offset: 2px;
+}
+
+.la-dialog__inhalt {
+    padding: 1.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+.la-dialog__aktionen {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid var(--color-border);
+    padding: 1rem 1.5rem;
+    background: var(--color-bg-panel);
+}
+
+@media (max-width: 520px) {
+    .la-dialog-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .la-dialog {
+        width: 100%;
+        max-height: calc(100dvh - 1rem);
+        border-radius: 1rem 1rem 0 0;
+    }
+
+    .la-dialog__kopf,
+    .la-dialog__inhalt,
+    .la-dialog__aktionen {
+        padding-inline: 1rem;
+    }
+}

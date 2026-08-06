@@ -1,0 +1,102 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JS
+
+<div @ref="_dropzoneElement"
+     class="su-dropzone @(Busy ? "su-dropzone--busy" : null) @CssClass"
+     role="button"
+     tabindex="@(Busy ? -1 : 0)"
+     aria-disabled="@(Busy ? "true" : "false")">
+    <InputFile @ref="_inputFile" id="@_inputId" OnChange="OnChange" accept="@Accept" class="su-dropzone__input" disabled="@Busy" hidden />
+    <div class="su-dropzone__content">
+        @if (Busy)
+        {
+            <div class="su-scan">
+                <div class="su-scan__seite">
+                    <span class="su-scan__zeile"></span>
+                    <span class="su-scan__zeile"></span>
+                    <span class="su-scan__zeile"></span>
+                    <span class="su-scan__zeile su-scan__zeile--kurz"></span>
+                    <div class="su-scan__wisch"></div>
+                </div>
+                <p>@BusyText</p>
+            </div>
+        }
+        else
+        {
+            <div class="su-dropzone__idle">
+                <span class="su-dropzone__eyebrow">Datei-Upload</span>
+                @if (Accept.Contains("pdf", StringComparison.OrdinalIgnoreCase))
+                {
+                    <svg class="su-dropzone__scan-icon" viewBox="0 0 64 64" aria-hidden="true">
+                        <path d="M21 12h16l9 9v31H21z" />
+                        <path d="M37 12v10h9" />
+                        <path d="M12 23v-7a4 4 0 0 1 4-4h3M52 23v-7a4 4 0 0 0-4-4h-3M12 41v7a4 4 0 0 0 4 4h3M52 41v7a4 4 0 0 1-4 4h-3" />
+                        <path class="su-dropzone__scan-line" d="M14 32h36" />
+                    </svg>
+                }
+                else
+                {
+                    <svg class="su-dropzone__scan-icon" viewBox="0 0 64 64" aria-hidden="true">
+                        <path d="M18 18h28a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6z" />
+                        <path d="M32 24v16" />
+                        <path d="M24 32h16" />
+                    </svg>
+                }
+                <p class="su-dropzone__title">@DropzoneTitle</p>
+                <p class="su-dropzone__copy">@IdleText</p>
+                <PrimaryButton RenderAsSpan="true" Class="su-dropzone__action">@ActionText</PrimaryButton>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly string _inputId = $"su-dropzone-{Guid.NewGuid():N}";
+    private ElementReference _dropzoneElement;
+    private InputFile? _inputFile;
+    private bool _initialized;
+
+    /// <summary>Text im Ruhezustand, z. B. "Angebot (PDF) hierher ziehen oder klicken zum Auswählen".</summary>
+    [Parameter, EditorRequired]
+    public string IdleText { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public EventCallback<InputFileChangeEventArgs> OnChange { get; set; }
+
+    /// <summary>MIME-Type oder Dateiendung(en) für das accept-Attribut, z. B. "application/pdf" oder ".txt".</summary>
+    [Parameter]
+    public string Accept { get; set; } = "";
+
+    /// <summary>True während Upload/Analyse läuft — sperrt die Eingabe und zeigt die Scan-Animation statt IdleText.</summary>
+    [Parameter]
+    public bool Busy { get; set; }
+
+    /// <summary>Text unter der Scan-Animation während Busy, z. B. "Angebot wird analysiert…".</summary>
+    [Parameter]
+    public string BusyText { get; set; } = "Wird verarbeitet…";
+
+    /// <summary>Zusätzliche CSS-Klasse auf dem äußeren Container, z. B. "mt-3".</summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_initialized || _inputFile is null)
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("suFileDropzone.init", _dropzoneElement, _inputFile.Element);
+        _initialized = true;
+    }
+
+    private string ActionText =>
+        Accept.Contains("pdf", StringComparison.OrdinalIgnoreCase) ? "PDF auswählen" :
+        Accept.Contains(".txt", StringComparison.OrdinalIgnoreCase) ? "TXT auswählen" :
+        "Datei auswählen";
+
+    private string DropzoneTitle =>
+        Accept.Contains("pdf", StringComparison.OrdinalIgnoreCase) ? "Dokument hochladen" :
+        Accept.Contains(".txt", StringComparison.OrdinalIgnoreCase) ? "Stückliste importieren" :
+        "Datei hochladen";
+}

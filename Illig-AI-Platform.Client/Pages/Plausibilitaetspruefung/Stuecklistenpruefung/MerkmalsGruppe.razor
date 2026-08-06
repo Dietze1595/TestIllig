@@ -1,0 +1,84 @@
+<section class="sm-feature-group sm-feature-group--@CssModifier">
+    <header class="sm-feature-group__head">
+        <div>
+            <h3>@Titel</h3>
+            <p>@Beschreibung</p>
+        </div>
+        <span class="sm-feature-group__badge">@Merkmale.Count</span>
+    </header>
+
+    @if (Merkmale.Count == 0)
+    {
+        <p class="sm-feature-group__empty">Keine Merkmale in dieser Gruppe.</p>
+    }
+    else
+    {
+        <div class="sm-feature-table-wrap">
+            <table class="sm-feature-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Merkmalsnummer</th>
+                        <th scope="col">Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var merkmal in Merkmale)
+                    {
+                        <tr>
+                            <td class="sm-feature-table__number">
+                                <strong class="sm-detail__number-chip @(IstAktuellstesMerkmal(merkmal.Merkmalsnummer) ? "sm-detail__number--aktuell" : null)"
+                                        title="@(IstAktuellstesMerkmal(merkmal.Merkmalsnummer) ? "Aktuellste Stückliste, in der dieses Merkmal zuletzt vorkam" : null)">
+                                    @merkmal.Merkmalsnummer
+                                </strong>
+                            </td>
+                            <td class="sm-feature-table__description">
+                                @{
+                                    var istLang = HatLangeBeschreibung(merkmal.Beschreibung);
+                                    var istAusgeklappt = _ausgeklappteBeschreibungen.Contains(merkmal.Merkmalsnummer);
+                                }
+                                <div class="sm-feature-description__content @(istLang && !istAusgeklappt ? "sm-feature-description__content--eingeklappt" : null)">
+                                    <p class="@(istLang && !istAusgeklappt ? "sm-feature-description__text--eingeklappt" : null)">
+                                        @merkmal.Beschreibung
+                                    </p>
+                                    @if (istLang)
+                                    {
+                                        <button type="button"
+                                                class="sm-feature-description__toggle"
+                                                aria-expanded="@istAusgeklappt"
+                                                aria-label="Beschreibung zu Merkmal @merkmal.Merkmalsnummer @(istAusgeklappt ? "einklappen" : "vollständig anzeigen")"
+                                                @onclick="() => BeschreibungUmschalten(merkmal.Merkmalsnummer)">
+                                            @(istAusgeklappt ? "Weniger" : "Mehr")
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Titel { get; set; } = "";
+    [Parameter, EditorRequired] public string Beschreibung { get; set; } = "";
+    [Parameter, EditorRequired] public string CssModifier { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<StuecklisteDetailMerkmal> Merkmale { get; set; } = [];
+    [Parameter] public IReadOnlyCollection<string> AktuellsteMerkmalsnummern { get; set; } = [];
+
+    private const int VorschauZeichen = 110;
+    private readonly HashSet<string> _ausgeklappteBeschreibungen = new(StringComparer.OrdinalIgnoreCase);
+
+    private static bool HatLangeBeschreibung(string text) =>
+        text.Length > VorschauZeichen;
+
+    private bool IstAktuellstesMerkmal(string merkmalsnummer) =>
+        AktuellsteMerkmalsnummern.Contains(merkmalsnummer, StringComparer.OrdinalIgnoreCase);
+
+    private void BeschreibungUmschalten(string merkmalsnummer)
+    {
+        if (!_ausgeklappteBeschreibungen.Remove(merkmalsnummer))
+            _ausgeklappteBeschreibungen.Add(merkmalsnummer);
+    }
+}

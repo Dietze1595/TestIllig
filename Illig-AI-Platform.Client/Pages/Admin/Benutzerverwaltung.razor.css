@@ -1,0 +1,129 @@
+.benutzer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.benutzer-suche {
+    max-width: 22rem;
+}
+
+.benutzer-anzahl {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.benutzer-tabelle-card {
+    padding: 0;
+    overflow-x: auto;
+}
+
+.benutzer-tabelle {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 40rem;
+}
+
+.benutzer-tabelle th {
+    text-align: left;
+    padding: 0.85rem 1.1rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.benutzer-tabelle td {
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+.benutzer-tabelle tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.benutzer-tabelle tbody tr:hover {
+    background: rgba(47, 103, 255, 0.06);
+}
+
+.benutzer-name {
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.benutzer-identitaet {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.benutzer-dev-badge {
+    padding: .12rem .42rem;
+    border: 1px solid color-mix(in srgb, #6f2082 52%, var(--color-border));
+    background: color-mix(in srgb, #6f2082 12%, var(--color-bg-panel));
+    color: color-mix(in srgb, #6f2082 82%, var(--color-text));
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    line-height: 1.2;
+}
+
+.benutzer-mail {
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    margin-top: 0.1rem;
+}
+
+.benutzer-tabelle__aktion-spalte {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.benutzer-aktion {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.benutzer-status {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+}
+
+.benutzer-status--ok {
+    color: var(--color-success);
+}
+
+.benutzer-status--fehler {
+    color: var(--color-danger);
+    max-width: 16rem;
+    white-space: normal;
+    text-align: right;
+}
+
+.benutzer-geschuetzt {
+    display: inline-block;
+    padding: .2rem .55rem;
+    border: 1px solid var(--color-border);
+    border-radius: .5rem;
+    background: var(--color-bg-elevated);
+    color: var(--color-text-muted);
+    font-size: .78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: help;
+}
+
+@media (max-width: 640px) {
+    .benutzer-status--fehler {
+        max-width: 10rem;
+    }
+}

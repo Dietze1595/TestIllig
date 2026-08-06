@@ -1,0 +1,317 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject IAccessTokenProvider TokenProvider
+@inject UserProfileState ProfileState
+@inject ILogger<MainLayout> Logger
+@inject NavigationManager Nav
+
+<div class="page">
+    <main>
+        <ErrorBoundary @key="Nav.Uri">
+            <ChildContent>
+                <div class="top-row px-4">
+                    <div class="top-row__left">
+                        <a class="top-row__brand" href="">
+                            <img class="top-row__logo top-row__logo--dark"
+                                 src="images/ILLIG_Maschinenbau.png" alt="ILLIG Maschinenbau" />
+                            <img class="top-row__logo top-row__logo--light"
+                                 src="images/ILLIG_Maschinenbau_light.png" alt="ILLIG Maschinenbau" />
+                            <span class="top-row__label">KI-Plattform</span>
+                        </a>
+                        @if (_breadcrumb is not null)
+                        {
+                            <span class="top-row__crumb">
+                                <span aria-hidden="true">|</span>
+                                @if (BreadcrumbHref is { } breadcrumbHref)
+                                {
+                                    <a class="top-row__crumb-link" href="@breadcrumbHref">
+                                        @_breadcrumb
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span>@_breadcrumb</span>
+                                }
+                            </span>
+                        }
+                    </div>
+
+                    <LoginDisplay />
+                </div>
+
+                <article class="content px-4">
+                    <CascadingValue Value="this" IsFixed="false">
+                        <AuthorizeView>
+                            <Authorized>
+                                @* Bis das DB-Profil (inkl. Rollen) geladen ist, keinen Inhalt zeigen — sonst
+                                   klickt der Nutzer einen Use-Case an, bevor die Berechtigungen bekannt sind. *@
+                                @if (_profilBereit)
+                                {
+                                    @Body
+                                }
+                                else
+                                {
+                                    <div class="aa-ladescreen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4rem 1rem;">
+                                        <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Laden…</span></div>
+                                        <p class="text-muted mt-3 mb-0">Berechtigungen werden geladen…</p>
+                                    </div>
+                                }
+                            </Authorized>
+                            <NotAuthorized>
+                                @* Anonym (Login-Callback / Redirect zur Anmeldung) — Body muss durchlaufen. *@
+                                @Body
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </CascadingValue>
+                </article>
+            </ChildContent>
+            <ErrorContent>
+                <div class="alert alert-danger m-4">
+                    Etwas ist schiefgelaufen. Bitte lade die Seite neu.
+                    <a href="." class="btn btn-outline-secondary btn-sm ms-2">Neu laden</a>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
+    </main>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool _synced;
+    private bool _profilBereit;
+    private int _wizardStep;
+    private int _wizardMaxStep;
+    private string? _breadcrumb;
+    private string? _sonderAuftragsnummer;
+    private string? _sonderMerkmale;
+    private string? _sonderDetailAuftragsnummer;
+
+    public int SonderWizardStep => _wizardStep;
+    public int SonderWizardMaxStep => _wizardMaxStep;
+
+    public Task SonderWizardStepWechseln(int schritt)
+    {
+        WizardStepWechseln(schritt);
+        return Task.CompletedTask;
+    }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        UpdateNav();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdateNav();
+        StateHasChanged();
+    }
+
+    private void UpdateNav()
+    {
+        var uri = new Uri(Nav.Uri);
+        var path = uri.AbsolutePath.ToLowerInvariant();
+        var sondermerkmalsucheModus = uri.Query.ToLowerInvariant().Contains("modus=sondermerkmalsuche");
+        var istSonderWizard = false;
+
+        if (path.StartsWith(AppRoutes.Plausibilitaetspruefung))
+        {
+            _breadcrumb = sondermerkmalsucheModus
+                ? "Plausibilitätsprüfung · Sondermerkmalsuche"
+                : "Plausibilitätsprüfung";
+            _wizardStep = sondermerkmalsucheModus ? 1 : 0;
+            if (sondermerkmalsucheModus)
+            {
+                istSonderWizard = true;
+                AktualisiereSonderWizard(1, uri);
+            }
+        }
+        else if (path.StartsWith(AppRoutes.Sondermerkmale))
+        {
+            _breadcrumb = "Plausibilitätsprüfung · Sondermerkmalsuche";
+            istSonderWizard = true;
+            AktualisiereSonderWizard(2, uri);
+        }
+        else if (path.StartsWith(AppRoutes.Referenztreffer))
+        {
+            _breadcrumb = "Plausibilitätsprüfung · Sondermerkmalsuche";
+            istSonderWizard = true;
+            AktualisiereSonderWizard(3, uri);
+        }
+        else if (path.StartsWith(AppRoutes.Auftragsdetails))
+        {
+            _breadcrumb = "Plausibilitätsprüfung · Sondermerkmalsuche";
+            istSonderWizard = true;
+            AktualisiereSonderWizard(4, uri);
+        }
+        else if (path.StartsWith(AppRoutes.Stuecklistenpruefung))
+        {
+            _breadcrumb = "Plausibilitätsprüfung · Stücklistenprüfung";
+            _wizardStep = 0;
+        }
+        else if (path.StartsWith(AppRoutes.Kunden))
+        {
+            _breadcrumb = "Unternehmensweites Suchsystem · Kunden";
+            _wizardStep = 0;
+        }
+        else if (path.StartsWith(AppRoutes.IlligGpt))
+        {
+            _breadcrumb = "Unternehmensweites Suchsystem";
+            _wizardStep = 0;
+        }
+        else if (path.StartsWith(AppRoutes.AuftragsanlageVertrieb))
+        {
+            _breadcrumb = "Prüfung der Auftragsanlage · Angebotsprüfung";
+            _wizardStep = 0;
+        }
+        else if (path.StartsWith(AppRoutes.AuftragsanlageInnendienst))
+        {
+            _breadcrumb = "Prüfung der Auftragsanlage · Bestätigungsabgleich";
+            _wizardStep = 0;
+        }
+        else if (path.StartsWith(AppRoutes.Auftragsanlage))
+        {
+            _breadcrumb = "Prüfung der Auftragsanlage";
+            _wizardStep = 0;
+        }
+        else
+        {
+            _breadcrumb = null;
+            _wizardStep = 0;
+        }
+
+        if (!istSonderWizard)
+            SonderWizardZuruecksetzen();
+    }
+
+    private string? BreadcrumbHref =>
+        _breadcrumb?.StartsWith("Plausibilitätsprüfung", StringComparison.Ordinal) == true
+            ? AppRoutes.Plausibilitaetspruefung
+            : _breadcrumb?.StartsWith("Prüfung der Auftragsanlage", StringComparison.Ordinal) == true
+                ? AppRoutes.Auftragsanlage
+                : null;
+
+    private void AktualisiereSonderWizard(int schritt, Uri uri)
+    {
+        var auftragsnummer = QueryWert(uri, schritt == 4 ? "quelle" : "auftragsnummer");
+        var merkmale = QueryWert(uri, "merkmale");
+        var detailAuftragsnummer = schritt == 4 ? QueryWert(uri, "auftragsnummer") : null;
+
+        if (schritt == 2
+            && !string.IsNullOrWhiteSpace(auftragsnummer)
+            && !string.Equals(_sonderAuftragsnummer, auftragsnummer, StringComparison.OrdinalIgnoreCase))
+        {
+            _wizardMaxStep = 1;
+            _sonderMerkmale = null;
+            _sonderDetailAuftragsnummer = null;
+        }
+
+        if (schritt == 3
+            && !string.IsNullOrWhiteSpace(merkmale)
+            && !string.Equals(_sonderMerkmale, merkmale, StringComparison.Ordinal))
+        {
+            _wizardMaxStep = Math.Min(_wizardMaxStep, 3);
+            _sonderDetailAuftragsnummer = null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(auftragsnummer))
+            _sonderAuftragsnummer = auftragsnummer;
+        if (!string.IsNullOrWhiteSpace(merkmale))
+            _sonderMerkmale = merkmale;
+        if (!string.IsNullOrWhiteSpace(detailAuftragsnummer))
+            _sonderDetailAuftragsnummer = detailAuftragsnummer;
+
+        _wizardStep = schritt;
+        _wizardMaxStep = Math.Max(_wizardMaxStep, schritt);
+    }
+
+    private void WizardStepWechseln(int schritt)
+    {
+        var auftrag = Uri.EscapeDataString(_sonderAuftragsnummer ?? "");
+        var merkmale = Uri.EscapeDataString(_sonderMerkmale ?? "");
+        var detailAuftrag = Uri.EscapeDataString(_sonderDetailAuftragsnummer ?? "");
+
+        var ziel = schritt switch
+        {
+            1 => $"{AppRoutes.Plausibilitaetspruefung}?modus=sondermerkmalsuche",
+            2 when !string.IsNullOrWhiteSpace(_sonderAuftragsnummer)
+                => $"{AppRoutes.Sondermerkmale}?auftragsnummer={auftrag}",
+            3 when !string.IsNullOrWhiteSpace(_sonderMerkmale)
+                => $"{AppRoutes.Referenztreffer}?auftragsnummer={auftrag}&merkmale={merkmale}",
+            4 when !string.IsNullOrWhiteSpace(_sonderDetailAuftragsnummer)
+                => $"{AppRoutes.Auftragsdetails}?auftragsnummer={detailAuftrag}&quelle={auftrag}&merkmale={merkmale}",
+            _ => $"{AppRoutes.Plausibilitaetspruefung}?modus=sondermerkmalsuche"
+        };
+
+        Nav.NavigateTo(ziel);
+    }
+
+    private void SonderWizardZuruecksetzen()
+    {
+        _wizardMaxStep = 0;
+        _sonderAuftragsnummer = null;
+        _sonderMerkmale = null;
+        _sonderDetailAuftragsnummer = null;
+    }
+
+    private static string? QueryWert(Uri uri, string name)
+    {
+        foreach (var teil in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var paar = teil.Split('=', 2);
+            if (!string.Equals(Uri.UnescapeDataString(paar[0]), name, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            return paar.Length == 2
+                ? Uri.UnescapeDataString(paar[1].Replace("+", " "))
+                : "";
+        }
+
+        return null;
+    }
+
+    // NICHT an firstRender koppeln: Beim Login-Callback rendert MainLayout zuerst,
+    // bevor der Nutzer authentifiziert ist. Erst bei einem späteren Render
+    // (firstRender=false, gleiche Layout-Instanz) ist er angemeldet. Wir prüfen
+    // daher bei jedem Render bis _synced gesetzt ist.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_synced || AuthState is null)
+            return;
+
+        var state = await AuthState;
+        if (state.User.Identity?.IsAuthenticated != true)
+            return;
+
+        _synced = true;
+
+        try
+        {
+            // Token explizit holen, bevor der Call rausgeht → keine 401-Race.
+            var result = await TokenProvider.RequestAccessToken(
+                new AccessTokenRequestOptions { Scopes = new[] { AppConfig.ApiScope } });
+
+            if (result.TryGetToken(out _))
+                // Lädt das Profil zentral (triggert serverseitig auch das Provisioning).
+                await ProfileState.EnsureLoadedAsync();
+            else
+                Logger.LogWarning("Profil-Sync: kein Access-Token verfügbar (Status {Status}).", result.Status);
+        }
+        catch (Exception ex)
+        {
+            // Profil-Sync ist best-effort und darf den UI-Flow nie stören — aber wir loggen den Fehler.
+            Logger.LogError(ex, "Profil-Sync fehlgeschlagen.");
+        }
+        finally
+        {
+            // Ladescreen in jedem Fall auflösen (auch bei fehlendem Token/Fehler) — sonst hinge die
+            // UI ewig. Bei Fehler bleibt Profile null, die RoleGuards zeigen dann korrekt „keine Berechtigung".
+            _profilBereit = true;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

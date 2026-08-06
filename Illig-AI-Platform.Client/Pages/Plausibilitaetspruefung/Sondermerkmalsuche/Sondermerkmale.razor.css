@@ -1,0 +1,412 @@
+.sm-merkmal__nr { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-accent-strong); }
+
+.su-order-overview {
+    flex: 0 0 auto;
+    padding: 1rem 1.25rem;
+}
+
+.su-order-overview__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.su-order-overview__head h2 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1.3rem;
+    line-height: 1.3;
+}
+
+.su-order-overview__info {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .75rem 1.5rem;
+    margin: 0;
+}
+
+.su-order-overview__info > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.su-order-overview__info dt {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    color: var(--color-text-muted);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.su-order-overview__info dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    font-size: .95rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.su-order-overview__numeric {
+    font-variant-numeric: tabular-nums;
+}
+
+.su-order-overview__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: 0 0 1.05rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.sm-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.sm-page > .sm-page__head,
+.sm-wizard-content > .su-order-overview {
+    flex: 0 0 auto;
+}
+
+.sm-sondermerkmale-page > .sm-wizard-content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.sm-merkmale-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: .75rem !important;
+    margin-bottom: 0.5rem;
+}
+
+.sm-merkmale-card__head {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.sm-merkmale-card__head .sm-merkmal-summary {
+    margin-bottom: .25rem;
+}
+
+.sm-merkmale-card__head .sm-add__hint {
+    margin-top: 0;
+}
+
+.sm-merkmale-card__start {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.sm-merkmale-card__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: .5rem;
+    scrollbar-gutter: stable;
+}
+
+/* Die Tabelle bleibt auf großen Bildschirmen kompakt. Auf kleinen Viewports kann sie horizontal
+   gescrollt werden, statt Beschreibung und Aktionen unlesbar zusammenzudrücken. */
+.sm-merkmal-table-wrap {
+    overflow-x: auto;
+}
+
+.sm-merkmal-table-wrap--grouped {
+    overflow: visible;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid #9ca9b1;
+    background: var(--color-bg-panel);
+}
+
+.sm-merkmal-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 42rem;
+}
+
+.sm-merkmal-table--grouped {
+    border-collapse: separate;
+    border-spacing: 0;
+    text-align: left;
+}
+
+.sm-merkmal-table--grouped thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    padding: .55rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.sm-merkmal-table--grouped tbody td {
+    padding: .7rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+    color: var(--color-text-soft);
+    font-size: .85rem;
+    line-height: 1.4;
+    vertical-align: middle;
+}
+
+.sm-position-group:last-child tr:last-child td {
+    border-bottom: 0;
+}
+
+.sm-position-group--dragging {
+    opacity: .5;
+}
+
+.sm-position-group__row th {
+    padding: .55rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #9ca9b1 12%, var(--color-bg-panel));
+    cursor: grab;
+    text-transform: none;
+}
+
+.sm-position-group:not(:first-of-type) .sm-position-group__row th {
+    border-top: 1px solid var(--color-border);
+}
+
+.sm-position-group__row th:active {
+    cursor: grabbing;
+}
+
+.sm-position-group__handle {
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.sm-position-group__prio {
+    display: inline-grid;
+    width: 1.6rem;
+    height: 1.6rem;
+    place-items: center;
+    border-radius: 50%;
+    background: #00457b;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.sm-position-group__title {
+    margin-left: .6rem;
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.sm-position-group__count {
+    float: right;
+    margin: .15rem 2.5rem 0 0;
+    color: var(--color-text-muted);
+    font-size: .8rem;
+    font-weight: 500;
+}
+
+.sm-position-group__row th {
+    position: relative;
+}
+
+.sm-position-group__toggle {
+    position: absolute;
+    top: 50%;
+    right: .65rem;
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: .25rem;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.sm-position-group__toggle svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    transition: transform .15s ease;
+}
+
+.sm-position-group__toggle--collapsed svg {
+    transform: rotate(-90deg);
+}
+
+.sm-position-group__toggle:hover {
+    background: color-mix(in srgb, #00457b 10%, transparent);
+    color: var(--color-text);
+}
+
+.sm-position-group__toggle:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+    outline-offset: 1px;
+}
+
+.sm-merkmal-table > thead th:first-child, .sm-merkmal-table tbody td:first-child { width: 3rem; }
+.sm-merkmal-table > thead th:nth-child(2), .sm-merkmal-table tbody td:nth-child(2) { width: 10.5rem; }
+.sm-merkmal-table > thead th:last-child, .sm-merkmal-table tbody td:last-child { width: 5rem; }
+.sm-merkmal__desc { overflow-wrap: break-word; }
+
+.sm-merkmal__desc-content {
+    position: relative;
+    min-width: 0;
+}
+
+.sm-merkmal__desc-content p {
+    margin: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+}
+
+.sm-merkmal__desc-clamp {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.sm-merkmal__desc-mehr {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 50%;
+    margin: .3rem 0 0 50%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-accent-strong);
+    font: inherit;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.sm-merkmal__desc-content--collapsed .sm-merkmal__desc-mehr {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    height: 1.4em;
+    margin: 0;
+    padding-left: 2.5rem;
+    background: linear-gradient(
+        to right,
+        transparent,
+        var(--color-bg-panel) 2.5rem,
+        var(--color-bg-panel)
+    );
+}
+
+.sm-merkmal__desc-mehr:hover { text-decoration: underline; }
+
+.sm-merkmal__desc-mehr:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+    outline-offset: 2px;
+    border-radius: .15rem;
+}
+
+.sm-merkmal__action {
+    text-align: center;
+}
+
+/* Dauerhaft sichtbare Löschaktion mit ausreichend großer Klickfläche. */
+.sm-merkmal__remove {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    background: color-mix(in srgb, var(--color-danger) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+    border-radius: .55rem;
+    color: var(--color-danger);
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s, transform .15s;
+}
+
+.sm-merkmal__remove svg {
+    display: block;
+    width: 1.5rem;
+    height: 1.5rem;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.sm-merkmal__remove:hover {
+    background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+    border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+    transform: translateY(-1px);
+}
+
+.sm-merkmal__remove:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-danger) 25%, transparent);
+    outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+    .su-order-overview__info {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .su-order-overview__info {
+        grid-template-columns: 1fr;
+    }
+
+    .sm-merkmale-card__head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .sm-merkmale-card__start {
+        align-self: flex-start;
+        white-space: normal;
+    }
+}

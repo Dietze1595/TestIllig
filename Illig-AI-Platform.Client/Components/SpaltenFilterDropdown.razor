@@ -1,0 +1,107 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<span class="la-spaltenfilter @(_offen ? "la-spaltenfilter--offen" : null)" @ref="_element">
+    <button type="button"
+            class="la-spaltenfilter__trigger @(Ausgewaehlt.Count > 0 ? "la-spaltenfilter__trigger--aktiv" : null)"
+            @onclick="Umschalten"
+            aria-expanded="@(_offen ? "true" : "false")"
+            aria-haspopup="true"
+            aria-label="@($"{Titel} filtern")">
+        <span class="la-spaltenfilter__label">@Titel</span>
+        @if (Ausgewaehlt.Count > 0)
+        {
+            <span class="la-spaltenfilter__count" aria-label="@($"{Ausgewaehlt.Count} Filter aktiv")">
+                @Ausgewaehlt.Count
+            </span>
+        }
+        <span class="la-spaltenfilter__chevron" aria-hidden="true"></span>
+    </button>
+    @if (_offen)
+    {
+        <div class="la-spaltenfilter__panel" role="group" aria-label="@Titel">
+            <span class="la-spaltenfilter__panel-title">@Titel auswählen</span>
+            @foreach (var option in Optionen)
+            {
+                <label class="la-spaltenfilter__option @(Ausgewaehlt.Contains(option) ? "la-spaltenfilter__option--aktiv" : null)">
+                    <input type="checkbox" checked="@Ausgewaehlt.Contains(option)"
+                           @onchange="_ => OnOptionUmgeschaltet.InvokeAsync(option)" />
+                    <span>@option</span>
+                </label>
+            }
+        </div>
+    }
+</span>
+
+@code {
+    /// <summary>Spaltenname, wird zusammen mit der Anzahl aktiver Filter angezeigt.</summary>
+    [Parameter, EditorRequired]
+    public string Titel { get; set; } = "";
+
+    /// <summary>Verfügbare Werte für die Checkbox-Liste.</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Optionen { get; set; } = [];
+
+    /// <summary>
+    /// Aktuell selektierte Werte — nur zum Anzeigen des Checkbox-Zustands. Die Komponente
+    /// besitzt die Auswahl nicht selbst, das entscheidet der Aufrufer.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyCollection<string> Ausgewaehlt { get; set; } = [];
+
+    /// <summary>Wird mit dem betroffenen Wert aufgerufen, wenn eine Checkbox angeklickt wird.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback<string> OnOptionUmgeschaltet { get; set; }
+
+    private bool _offen;
+    private ElementReference _element;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<SpaltenFilterDropdown>? _dotNetReferenz;
+
+    private async Task Umschalten()
+    {
+        _offen = !_offen;
+
+        _module ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./Components/SpaltenFilterDropdown.razor.js");
+
+        if (_offen)
+        {
+            _dotNetReferenz ??= DotNetObjectReference.Create(this);
+            await _module.InvokeVoidAsync("aussenklickRegistrieren", _element, _dotNetReferenz);
+        }
+        else
+        {
+            await _module.InvokeVoidAsync("aussenklickEntfernen", _element);
+        }
+    }
+
+    [JSInvokable]
+    public Task VonAussenSchliessen()
+    {
+        if (!_offen)
+            return Task.CompletedTask;
+
+        _offen = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("aussenklickEntfernen", _element);
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Die Seite wurde bereits verlassen; im Browser gibt es nichts mehr aufzuräumen.
+            }
+        }
+
+        _dotNetReferenz?.Dispose();
+    }
+}

@@ -1,0 +1,161 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject UserProfileState ProfileState
+@inject IJSRuntime JS
+
+<AuthorizeView>
+    <Authorized>
+        <div class="profile-menu" tabindex="0">
+            <div class="profile-menu__trigger">
+                <span class="profile-menu__identity">
+                    @if (DisplayName(context.User) is { Length: > 0 } name)
+                    {
+                        <span class="profile-menu__name">@name</span>
+                    }
+                    else if (!ProfileState.Loaded)
+                    {
+                        <span class="profile-menu__skeleton profile-menu__skeleton--name" aria-hidden="true"></span>
+                    }
+                    @if (Email(context.User) is { Length: > 0 } email)
+                    {
+                        <span class="profile-menu__email">@email</span>
+                    }
+                    else if (!ProfileState.Loaded)
+                    {
+                        <span class="profile-menu__skeleton profile-menu__skeleton--email" aria-hidden="true"></span>
+                    }
+                </span>
+                <span class="profile-menu__avatar" aria-hidden="true">
+                    @if (!ProfileState.Loaded)
+                    {
+                        <span class="profile-menu__skeleton profile-menu__skeleton--avatar" aria-hidden="true"></span>
+                    }
+                    else if (ProfileState.Profile?.ProfileImageBase64 is { Length: > 0 } image)
+                    {
+                        <img src="@image" alt="" />
+                    }
+                    else
+                    {
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M12 12.25a4.25 4.25 0 1 0-4.25-4.25A4.26 4.26 0 0 0 12 12.25Zm0 2c-4.08 0-7.5 2.09-7.5 4.58 0 .37.3.67.67.67h13.66a.67.67 0 0 0 .67-.67c0-2.49-3.42-4.58-7.5-4.58Z" />
+                        </svg>
+                    }
+                </span>
+            </div>
+
+            <div class="profile-menu__dropdown">
+                <a class="profile-action profile-action--primary" href="@AppRoutes.Profile">Profil bearbeiten</a>
+                @if (HatBenutzerverwaltung)
+                {
+                    <a class="profile-action profile-action--admin" href="@AppRoutes.AdminBenutzer">Benutzerverwaltung</a>
+                }
+                <button type="button" class="profile-action profile-action--theme" @onclick="ThemeWechseln"
+                        aria-label="@(_theme == "dark" ? "Light Mode aktivieren" : "Dark Mode aktivieren")">
+                    <span class="profile-action__theme-icon" aria-hidden="true">
+                        @if (_theme == "dark")
+                        {
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M12 7.25A4.75 4.75 0 1 0 16.75 12 4.76 4.76 0 0 0 12 7.25Zm0-5v2M12 19.75v2M2.25 12h2M19.75 12h2M5.1 5.1l1.42 1.42M17.48 17.48l1.42 1.42M18.9 5.1l-1.42 1.42M6.52 17.48 5.1 18.9" />
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M20.3 15.1A8.4 8.4 0 0 1 8.9 3.7 8.5 8.5 0 1 0 20.3 15.1Z" />
+                            </svg>
+                        }
+                    </span>
+                    <span>@(_theme == "dark" ? "Light Mode" : "Dark Mode")</span>
+                </button>
+                <button type="button" class="profile-action profile-action--danger" @onclick="BeginLogout">Logout</button>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <a class="login-link" href="authentication/login">Login</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    protected override void OnInitialized() => ProfileState.Changed += OnProfileChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _theme = await JS.InvokeAsync<string>("illigTheme.get");
+        StateHasChanged();
+    }
+
+    public void Dispose() => ProfileState.Changed -= OnProfileChanged;
+
+    private void OnProfileChanged() => InvokeAsync(StateHasChanged);
+
+    private bool HatBenutzerverwaltung => ProfileState.HatAdminBerechtigungen;
+    private string _theme = "dark";
+
+    private async Task ThemeWechseln()
+    {
+        _theme = await JS.InvokeAsync<string>("illigTheme.toggle");
+    }
+
+    private void BeginLogout()
+    {
+        Navigation.NavigateToLogout("authentication/logout");
+    }
+
+    private string? DisplayName(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (!ProfileState.Loaded)
+            return null;
+
+        return ProfileState.Profile?.DisplayName is { Length: > 0 } name
+            ? name
+            : GetDisplayName(user.Identity?.Name);
+    }
+
+    private string? Email(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (!ProfileState.Loaded)
+            return null;
+
+        return ProfileState.Profile?.Email is { Length: > 0 } mail
+            ? mail
+            : GetEmail(user);
+    }
+
+    private static string GetDisplayName(string? identityName)
+    {
+        if (string.IsNullOrWhiteSpace(identityName))
+            return "Profil";
+
+        return identityName;
+    }
+
+    private static string? GetEmail(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var raw = user.FindFirst("emails")?.Value
+            ?? user.FindFirst("email")?.Value
+            ?? user.FindFirst("preferred_username")?.Value;
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        raw = raw.Trim();
+        if (raw.StartsWith('['))
+        {
+            try
+            {
+                var emails = System.Text.Json.JsonSerializer.Deserialize<string[]>(raw);
+                if (emails is { Length: > 0 })
+                    return emails[0];
+            }
+            catch
+            {
+            }
+        }
+
+        return raw.Trim('[', ']', '"', ' ');
+    }
+}

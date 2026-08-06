@@ -1,0 +1,644 @@
+/* Seiten- und PDF-Layout – identisch zur Stücklistenprüfung. */
+.su-layout {
+    position: relative;
+}
+
+.su-main {
+    box-sizing: border-box;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    transition: padding-right .2s ease, padding-left .2s ease;
+    overflow-wrap: anywhere;
+}
+
+.su-main--verlauf-offen {
+    padding-left: min(30vw, 360px);
+}
+
+.su-main--pdf-offen {
+    padding-right: min(30vw, 520px);
+}
+
+.su-main--resizing {
+    transition: none;
+}
+
+.aa-innendienst-content {
+    box-sizing: border-box;
+    min-width: 0;
+    padding-inline: 4rem;
+}
+
+.aa-innendienst-prueflayout {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.aa-innendienst-vergleich {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.aa-innendienst-scrollsektion {
+    position: relative;
+}
+
+.aa-innendienst-sapstatus {
+    margin-top: 1rem;
+}
+
+.aa-innendienst-sapstatus__hinweis {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    margin: 0 0 .5rem;
+    color: var(--color-text-muted);
+    font-size: .8rem;
+}
+
+.aa-innendienst-sapstatus__hinweis strong {
+    color: var(--color-text);
+    font-size: .9rem;
+}
+
+@media (min-width: 901px) {
+    .aa-innendienst-prueflayout-aktiv {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        height: auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .aa-innendienst-prueflayout-aktiv .su-layout {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .aa-innendienst-prueflayout-aktiv .su-main {
+        height: 100%;
+        min-height: 0;
+    }
+
+    .aa-innendienst-prueflayout-aktiv .su-main,
+    .aa-innendienst-prueflayout-aktiv .aa-innendienst-content,
+    .aa-innendienst-prueflayout {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .aa-innendienst-prueflayout-aktiv .aa-innendienst-content,
+    .aa-innendienst-prueflayout {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .aa-innendienst-prueflayout {
+        gap: 1rem;
+    }
+
+    .aa-innendienst-prueflayout__kopf {
+        flex: 0 0 auto;
+    }
+
+    .aa-innendienst-prueflayout__inhalt {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        margin-bottom: .5rem;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .aa-innendienst-prueflayout__scroll {
+        --aa-innendienst-scrolltitel-hoehe: 4.75rem;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-right: .35rem;
+        scrollbar-color: var(--color-text-muted) transparent;
+        scrollbar-gutter: stable;
+    }
+
+    .aa-innendienst-scrolltitel {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        box-sizing: border-box;
+        height: var(--aa-innendienst-scrolltitel-hoehe);
+        margin: 0 0 1rem;
+        padding: .1rem 0 .75rem;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-bg-panel);
+    }
+
+    .aa-innendienst-scrolltitel h2 {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .aa-innendienst-scrolltitel .sm-detail__sub {
+        margin: .25rem 0 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .aa-checkliste-kopf {
+        position: sticky;
+        top: var(--aa-innendienst-scrolltitel-hoehe);
+        z-index: 3;
+    }
+
+    .aa-innendienst-vergleich .sm-feature-group,
+    .aa-innendienst-vergleich .sm-feature-table-wrap {
+        overflow: visible;
+    }
+
+    .aa-innendienst-sticky-tabelle .sm-feature-table thead th {
+        position: sticky;
+        top: var(--aa-innendienst-scrolltitel-hoehe);
+        z-index: 3;
+    }
+
+    .aa-innendienst-sticky-tabelle .sm-feature-table {
+        min-width: 0;
+        table-layout: fixed;
+    }
+}
+
+.aa-verlauf-badge {
+    margin-left: .5rem;
+    padding: .1rem .5rem;
+    border-radius: 999px;
+    background: rgba(139, 157, 188, .16);
+    color: var(--color-text-muted);
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.aa-pruefergebnis-card {
+    border-top: 4px solid #00457b;
+}
+
+.sm-detail__head h2,
+.aa-section-head h2 {
+    margin: 0;
+}
+
+.sm-detail__sub {
+    margin: .25rem 0 1rem;
+    color: var(--color-text-muted);
+}
+
+/* Globale Angebots-Infos – gleiches Muster wie auf der Sondermerkmale-Seite. */
+.sm-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .75rem 1.5rem;
+    margin: 0;
+}
+
+.sm-info > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.sm-info dt {
+    color: var(--color-text-muted);
+    font-size: .8rem;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.aa-info-label {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.aa-info-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: 0 0 1.05rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.sm-info dd {
+    margin: 0;
+    color: var(--color-text);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.aa-text--ok {
+    color: #9bc832 !important;
+}
+
+.aa-text--warnung {
+    color: #f7a600 !important;
+}
+
+.aa-vertriebsstatus {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.aa-vertriebsstatus__info {
+    position: relative;
+    color: inherit;
+    font-weight: 400;
+}
+
+.aa-vertriebsstatus__trigger {
+    display: grid;
+    width: 1rem;
+    height: 1rem;
+    place-items: center;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    color: inherit;
+    font-size: .7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.aa-vertriebsstatus__trigger:hover,
+.aa-vertriebsstatus__trigger:focus-visible {
+    color: inherit;
+}
+
+.aa-vertriebsstatus__trigger:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.aa-vertriebsstatus__popover {
+    position: absolute;
+    top: calc(100% + .5rem);
+    right: -.5rem;
+    z-index: 5;
+    width: max-content;
+    max-width: min(20rem, 75vw);
+    padding: .65rem .8rem;
+    border: 1px solid var(--color-border);
+    border-radius: .5rem;
+    background: var(--color-bg-panel);
+    box-shadow: 0 .5rem 1.25rem rgb(0 69 123 / 18%);
+    color: var(--color-text);
+    font-size: .8rem;
+    line-height: 1.4;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-.2rem);
+    transition: opacity .15s ease, transform .15s ease, visibility .15s;
+    visibility: hidden;
+}
+
+.aa-vertriebsstatus__info:hover .aa-vertriebsstatus__popover,
+.aa-vertriebsstatus__info:focus-within .aa-vertriebsstatus__popover {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+}
+
+.aa-vertriebsstatus__popover::before {
+    position: absolute;
+    top: -.3rem;
+    right: .7rem;
+    width: .55rem;
+    height: .55rem;
+    border-top: 1px solid var(--color-border);
+    border-left: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+    content: "";
+    transform: rotate(45deg);
+}
+
+.aa-section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.aa-quellen-badge {
+    flex: 0 0 auto;
+    padding: .15rem .55rem;
+    border: 1px solid #00457b;
+    border-radius: 1rem;
+    background: rgba(0, 69, 123, .12);
+    color: #83c9f0;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+/* Ausgelesene Angebotswerte im gleichen klaren Tabellenaufbau wie beim Vertrieb. */
+.aa-checkliste {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0;
+}
+
+.aa-checkliste-tabelle {
+    position: relative;
+}
+
+.aa-checkliste-kopf {
+    border-left: 3px solid #9ca9b1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 32%);
+    align-items: center;
+    gap: .5rem .75rem;
+    padding: .55rem .85rem;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.aa-checkliste-kopf__daten {
+    display: grid;
+    grid-template-columns: minmax(135px, .7fr) minmax(0, 1.3fr);
+    gap: .75rem;
+}
+
+.aa-status-legende {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem 1rem;
+    margin: .65rem 0 1rem;
+    color: var(--color-text-muted);
+    font-size: .78rem;
+}
+
+.aa-status-legende span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.aa-status-legende__punkt {
+    width: .55rem;
+    height: .55rem;
+    border-radius: 50%;
+}
+
+.aa-status-legende__punkt--ok {
+    background: #9bc832;
+}
+
+.aa-status-legende__punkt--abweichend {
+    background: #f7a600;
+}
+
+.aa-status-legende__punkt--fehlt {
+    background: #e5310e;
+}
+
+/* Vergleichsaufbau aus den Auftragsdetails der Sondermerkmalsuche. */
+.sm-comparison {
+    display: grid;
+    gap: .75rem;
+}
+
+.sm-comparison__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0;
+    margin-bottom: .25rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.sm-comparison__summary-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    min-height: 3.75rem;
+    padding: .65rem .85rem;
+    border: 0;
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: var(--color-bg-panel);
+    color: var(--color-text-soft);
+}
+
+.sm-comparison__summary-item--match {
+    border-left-color: #9bc832;
+}
+
+.sm-comparison__summary-item--missing {
+    border-left-color: #f7a600;
+}
+
+.sm-comparison__count {
+    color: var(--color-text);
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.sm-feature-group {
+    overflow: hidden;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: var(--color-bg-panel);
+}
+
+.sm-feature-group--match {
+    border-left-color: #9bc832;
+}
+
+.sm-feature-group--missing {
+    border-left-color: #f7a600;
+}
+
+.sm-feature-group__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .7rem .85rem;
+}
+
+.sm-feature-group--match .sm-feature-group__head {
+    background: rgba(155, 200, 50, .07);
+}
+
+.sm-feature-group--missing .sm-feature-group__head {
+    background: rgba(247, 166, 0, .07);
+}
+
+.sm-feature-group__head h3 {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+.sm-feature-group__head p {
+    margin: .25rem 0 0;
+    color: var(--color-text-muted);
+    font-size: .875rem;
+}
+
+.sm-feature-group__badge {
+    min-width: 2rem;
+    padding: .15rem .55rem;
+    border: 1px solid var(--color-border);
+    border-radius: .2rem;
+    background: transparent;
+    color: var(--color-text);
+    font-weight: 700;
+    text-align: center;
+}
+
+.sm-feature-group__empty {
+    margin: 0;
+    padding: .85rem 1rem;
+    color: var(--color-text-muted);
+    font-size: .875rem;
+}
+
+.sm-feature-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-top: 1px solid var(--color-border);
+}
+
+.sm-feature-table {
+    width: 100%;
+    min-width: 42rem;
+    border-spacing: 0;
+    border-collapse: separate;
+    text-align: left;
+}
+
+.sm-feature-table th {
+    padding: .55rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.sm-feature-table td {
+    padding: .7rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+    color: var(--color-text-soft);
+    font-size: .85rem;
+    line-height: 1.4;
+    vertical-align: top;
+}
+
+.sm-feature-table th:first-child,
+.sm-feature-table td:first-child {
+    width: 12rem;
+}
+
+.sm-feature-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.aa-pdf-tab {
+    padding: .3rem .7rem;
+    border: 1px solid var(--color-border);
+    border-radius: .4rem;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: .8rem;
+    cursor: pointer;
+}
+
+.aa-pdf-tab--aktiv {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: #fff;
+}
+
+.aa-pdf-tab:hover:not(.aa-pdf-tab--aktiv) {
+    border-color: var(--color-accent);
+}
+
+.aa-innendienst-detailkopf {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.25rem;
+}
+
+.aa-innendienst-detailkopf ::deep .aa-innendienst-detailkopf__aktion {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+    .su-main,
+    .su-main--verlauf-offen {
+        padding-left: 0;
+    }
+
+    .aa-innendienst-content {
+        padding-inline: 0;
+    }
+
+    .su-main--pdf-offen,
+    .su-main--pdf-eingeklappt {
+        padding-right: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .aa-innendienst-detailkopf {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .aa-innendienst-detailkopf ::deep .aa-innendienst-detailkopf__aktion {
+        width: 100%;
+    }
+
+    .sm-comparison__summary {
+        grid-template-columns: 1fr;
+    }
+
+    .sm-feature-group__head p {
+        margin-left: 0;
+    }
+
+    .aa-section-head {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 560px) {
+    .aa-checkliste-kopf {
+        display: none;
+    }
+}

@@ -1,0 +1,181 @@
+@page "/illig-gpt/kunden"
+@inject KundenClient Client
+
+<PageTitle>Kundenübersicht</PageTitle>
+
+<div class="sm-page kunden-page">
+    <SeitenKopf Titel="Kundenübersicht"
+                 Lead="Angebote, Bestellungen, Aufträge und Maschinen zentral durchsuchen." />
+
+    <RoleGuard Roles="@(new[] { AppClientRoles.SearchSystem, AppClientRoles.Admin })">
+        <section class="kunden-search-panel" aria-labelledby="kunden-search-title">
+            <div>
+                <h2 id="kunden-search-title">Kunden finden</h2>
+                <p>Name, Kundennummer oder Adresse eingeben.</p>
+            </div>
+            <div class="kunden-search">
+                <label class="visually-hidden" for="kundensuche">Name, Kundennummer oder Adresse</label>
+                <input id="kundensuche"
+                       class="form-control"
+                       placeholder="Name, Kundennummer oder Adresse suchen"
+                       autocomplete="off"
+                       @bind="_suche"
+                       @bind:event="oninput"
+                       @onkeydown="SucheKeyDown" />
+                <PrimaryButton Class="kunden-search__button" OnClick="LadenAsync" Disabled="_laedt">
+                    @(_laedt ? "Suche läuft…" : "Suchen →")
+                </PrimaryButton>
+            </div>
+        </section>
+
+        <div class="kunden-summary" aria-label="Kunden filtern">
+            <button type="button"
+                    class="kunden-summary__tile @(_filter == KundenFilter.Alle ? "is-active" : null)"
+                    aria-pressed="@(_filter == KundenFilter.Alle)"
+                    disabled="@_laedt"
+                    @onclick="@(() => _filter = KundenFilter.Alle)">
+                <span>Kunden</span>
+                <strong>@(_laedt ? "—" : _kunden.Count.ToString())</strong>
+            </button>
+            <button type="button"
+                    class="kunden-summary__tile @(_filter == KundenFilter.Neukunden ? "is-active" : null)"
+                    aria-pressed="@(_filter == KundenFilter.Neukunden)"
+                    disabled="@_laedt"
+                    @onclick="@(() => _filter = KundenFilter.Neukunden)">
+                <span>Neukunden</span>
+                <strong>@(_laedt ? "—" : _kunden.Count(k => k.Status == KundeStatus.Neukunde).ToString())</strong>
+            </button>
+            <button type="button"
+                    class="kunden-summary__tile @(_filter == KundenFilter.Vertriebsvorgaenge ? "is-active" : null)"
+                    aria-pressed="@(_filter == KundenFilter.Vertriebsvorgaenge)"
+                    disabled="@_laedt"
+                    @onclick="@(() => _filter = KundenFilter.Vertriebsvorgaenge)">
+                <span>Vertriebsvorgänge</span>
+                <strong>@(_laedt ? "—" : _kunden.Sum(k => k.Angebote + k.Kundenbestellungen).ToString())</strong>
+            </button>
+        </div>
+
+        @if (_fehler is not null)
+        {
+            <ApiFehlerHinweis Message="@_fehler.Message" OnRetry="LadenAsync" />
+        }
+        else if (_laedt)
+        {
+            <section class="kunden-feedback" aria-live="polite">
+                <span class="kunden-feedback__pulse" aria-hidden="true"></span>
+                <div>
+                    <strong>Kundenwissen wird zusammengeführt</strong>
+                    <p>Die verbundenen Quellen werden gerade ausgewertet.</p>
+                </div>
+            </section>
+        }
+        else if (_kunden.Count == 0)
+        {
+            <section class="kunden-feedback">
+                <div>
+                    <strong>Keine passenden Kunden gefunden</strong>
+                    <p>Versuche einen anderen Namen, eine Kundennummer oder einen Teil der Adresse.</p>
+                </div>
+            </section>
+        }
+        else if (!GefilterteKunden.Any())
+        {
+            <section class="kunden-feedback">
+                <div>
+                    <strong>Keine Kunden in diesem Filter</strong>
+                    <p>Wähle einen anderen Filter oder passe die Suche an.</p>
+                </div>
+            </section>
+        }
+        else
+        {
+            <div class="kunden-grid">
+                @foreach (var kunde in GefilterteKunden)
+                {
+                    <a class="kunden-card" href="@($"{AppRoutes.KundenDetail}?id={kunde.Id}")">
+                        <span class="kunden-card__accent" aria-hidden="true"></span>
+                        <div class="kunden-card__head">
+                            <div>
+                                <h2>@kunde.Anzeigename</h2>
+                                <p>@(kunde.Kundennummer is null ? "Noch keine Kundennummer" : $"Kd.Nr. {kunde.Kundennummer}")</p>
+                            </div>
+                            <span class="kunden-status kunden-status--@kunde.Status.ToString().ToLowerInvariant()">
+                                @StatusText(kunde.Status)
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(kunde.Adresse))
+                        {
+                            <p class="kunden-card__address">@kunde.Adresse</p>
+                        }
+                        <dl class="kunden-kpis">
+                            <div><dt>@kunde.Angebote</dt><dd>Angebote</dd></div>
+                            <div><dt>@kunde.Kundenbestellungen</dt><dd>Bestellungen</dd></div>
+                            <div><dt>@kunde.Auftraege</dt><dd>Aufträge</dd></div>
+                            <div><dt>@kunde.Maschinen</dt><dd>Maschinen</dd></div>
+                        </dl>
+                        <div class="kunden-card__footer">
+                            <span>Aktualisiert @kunde.LetzteAktivitaet.ToLocalTime().ToString("dd.MM.yyyy")</span>
+                            <strong>Kundendetails öffnen →</strong>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </RoleGuard>
+</div>
+
+@code {
+    private string _suche = "";
+    private bool _laedt = true;
+    private IReadOnlyList<KundenUebersicht> _kunden = [];
+    private ApiRequestException? _fehler;
+    private KundenFilter _filter = KundenFilter.Alle;
+
+    private IEnumerable<KundenUebersicht> GefilterteKunden => _filter switch
+    {
+        KundenFilter.Neukunden => _kunden.Where(k => k.Status == KundeStatus.Neukunde),
+        KundenFilter.Vertriebsvorgaenge => _kunden.Where(
+            k => k.Angebote > 0 || k.Kundenbestellungen > 0),
+        _ => _kunden,
+    };
+
+    private enum KundenFilter
+    {
+        Alle,
+        Neukunden,
+        Vertriebsvorgaenge,
+    }
+
+    private static string StatusText(KundeStatus status) => status switch
+    {
+        KundeStatus.Bestaetigt => "Bestätigt",
+        KundeStatus.Neukunde => "Neukunde",
+        _ => "Vorläufig",
+    };
+
+    protected override async Task OnInitializedAsync() => await LadenAsync();
+
+    private async Task LadenAsync()
+    {
+        _laedt = true;
+        _fehler = null;
+        try
+        {
+            _kunden = await Client.ListeAsync(_suche);
+        }
+        catch (ApiRequestException ex)
+        {
+            _fehler = ex;
+        }
+        finally
+        {
+            _laedt = false;
+        }
+    }
+
+    private async Task SucheKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await LadenAsync();
+    }
+}

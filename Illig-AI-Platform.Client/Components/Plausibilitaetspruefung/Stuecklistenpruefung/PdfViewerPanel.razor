@@ -1,0 +1,49 @@
+<div class="su-review__pdf @(Eingeklappt ? "su-review__pdf--eingeklappt" : "")">
+    @if (!Eingeklappt)
+    {
+        <div class="su-review__pdf-resizer"></div>
+        <div class="su-review__pdf-header">
+            <button type="button" class="su-review__pdf-close" title="PDF schließen" aria-label="PDF schließen" @onclick="() => OnToggle.InvokeAsync()">✕</button>
+            @if (Tabs is not null)
+            {
+                <div class="su-review__pdf-tabs">@Tabs</div>
+            }
+            else
+            {
+                <span class="su-review__pdf-name" title="@DokumentName">@DokumentName</span>
+            }
+        </div>
+    }
+    else
+    {
+        <button type="button" class="su-review__pdf-toggle" @onclick="() => OnToggle.InvokeAsync()">◂ PDF anzeigen</button>
+    }
+    @if (DataUrl is not null)
+    {
+        <iframe title="Auftragsinformation" src="@ViewerUrl"></iframe>
+    }
+    else
+    {
+        <p class="su-review__empty">Dokument nicht verfügbar.</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public bool Eingeklappt { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnToggle { get; set; }
+
+    [Parameter]
+    public string? DokumentName { get; set; }
+
+    [Parameter]
+    public string? DataUrl { get; set; }
+
+    [Parameter]
+    public RenderFragment? Tabs { get; set; }
+
+    // Toolbar ausblenden und Seite auf die Panel-Breite einpassen (Adobe PDF-Open-Parameter).
+    private string? ViewerUrl => DataUrl is null ? null : $"{DataUrl}#toolbar=0&view=FitH";
+}

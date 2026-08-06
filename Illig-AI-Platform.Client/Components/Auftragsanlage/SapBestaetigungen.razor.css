@@ -1,0 +1,187 @@
+.aa-sap-bestaetigungen {
+    border-top: 1px solid var(--color-border);
+}
+
+.aa-sap-punkt {
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid #00457b;
+    background: var(--color-bg-panel);
+}
+
+.aa-sap-punkt:has(.aa-sap-bestaetigung--aktiv) {
+    border-left-color: #9bc832;
+}
+
+.aa-sap-punkt:has(.aa-sap-bestaetigung--pflicht) {
+    border-left-color: #e5310e;
+}
+
+.aa-sap-bestaetigung {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-height: 3.75rem;
+    padding: .65rem .85rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+
+.aa-sap-bestaetigung:hover {
+    background: color-mix(in srgb, #00457b 6%, var(--color-bg-panel));
+}
+
+.aa-sap-bestaetigung:focus-within {
+    outline: 2px solid color-mix(in srgb, #00457b 55%, transparent);
+    outline-offset: -2px;
+}
+
+.aa-sap-bestaetigung--aktiv {
+    border-left-color: #9bc832;
+    background: color-mix(in srgb, #9bc832 7%, var(--color-bg-panel));
+}
+
+.aa-sap-bestaetigung--aktiv:not(.aa-sap-bestaetigung--gesperrt):hover {
+    background: color-mix(in srgb, #9bc832 12%, var(--color-bg-panel));
+}
+
+.aa-sap-bestaetigung--pflicht {
+    border-left-color: #e5310e;
+}
+
+.aa-sap-bestaetigung--gesperrt {
+    cursor: default;
+}
+
+.aa-sap-bestaetigung--gesperrt:hover {
+    background: var(--color-bg-panel);
+}
+
+.aa-sap-bestaetigung--gesperrt.aa-sap-bestaetigung--aktiv:hover {
+    background: color-mix(in srgb, #9bc832 7%, var(--color-bg-panel));
+}
+
+.aa-sap-bestaetigung__input {
+    position: absolute;
+    top: 50%;
+    left: .85rem;
+    z-index: 1;
+    width: 1.45rem;
+    height: 1.45rem;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.aa-sap-bestaetigung__input:disabled {
+    cursor: default;
+}
+
+.aa-sap-bestaetigung__check {
+    display: grid;
+    flex: 0 0 1.45rem;
+    width: 1.45rem;
+    height: 1.45rem;
+    place-items: center;
+    border: 1.5px solid var(--color-control-border);
+    border-radius: .2rem;
+    background: var(--color-control-bg);
+    color: transparent;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 6%, transparent);
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease, color .15s ease;
+}
+
+.aa-sap-bestaetigung:not(.aa-sap-bestaetigung--gesperrt):hover .aa-sap-bestaetigung__check {
+    border-color: var(--color-control-focus);
+    background: var(--color-control-hover-bg);
+}
+
+.aa-sap-bestaetigung__check svg {
+    width: .95rem;
+    height: .95rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.6;
+}
+
+.aa-sap-bestaetigung__input:checked + .aa-sap-bestaetigung__check {
+    border-color: #9bc832;
+    background: #9bc832;
+    box-shadow: none;
+    color: #fff;
+}
+
+.aa-sap-bestaetigung:not(.aa-sap-bestaetigung--gesperrt):hover
+    .aa-sap-bestaetigung__input:checked + .aa-sap-bestaetigung__check {
+    border-color: #9bc832;
+    background: #9bc832;
+    color: #fff;
+}
+
+.aa-sap-bestaetigung__text {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.aa-sap-bestaetigung__text strong {
+    color: var(--color-text);
+    font-size: .9rem;
+}
+
+.aa-sap-bestaetigung__text span {
+    color: var(--color-text-muted);
+    font-size: .78rem;
+}
+
+.aa-sap-bestaetigung__text .aa-sap-bestaetigung__stern {
+    color: #e5310e;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: help;
+}
+
+/* Begründung je SAP-Punkt — unter der Checkbox-Zeile, an deren Text ausgerichtet. */
+.aa-sap-kommentar__input {
+    display: block;
+    box-sizing: border-box;
+    width: calc(100% - 2.35rem);
+    margin: 0 .85rem .65rem 1.5rem;
+    padding: .5rem .7rem;
+    border: 1px solid var(--color-control-border);
+    border-radius: 0;
+    background: var(--color-control-bg);
+    color: var(--color-text);
+    font-size: .85rem;
+}
+
+.aa-sap-kommentar__input::placeholder {
+    color: var(--color-text-muted);
+}
+
+.aa-sap-kommentar__input:hover:not(:disabled) {
+    border-color: var(--color-control-focus);
+}
+
+.aa-sap-kommentar__input:focus {
+    outline: 2px solid color-mix(in srgb, #00457b 55%, transparent);
+    outline-offset: -2px;
+}
+
+.aa-sap-kommentar__input--pflicht {
+    border-color: #e5310e;
+}
+
+.aa-sap-kommentar-anzeige {
+    margin: 0 .85rem .1rem 1.5rem;
+    padding: 0 0 .6rem;
+    color: var(--color-text-muted);
+    font-size: .82rem;
+}

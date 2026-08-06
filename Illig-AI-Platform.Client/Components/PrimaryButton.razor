@@ -1,0 +1,44 @@
+@if (RenderAsSpan)
+{
+    <span class="@CssClasses" @attributes="AdditionalAttributes">
+        @ChildContent
+    </span>
+}
+else
+{
+    <button type="@Type"
+            class="@CssClasses"
+            disabled="@Disabled"
+            @onclick="OnClick"
+            @attributes="AdditionalAttributes">
+        @ChildContent
+    </button>
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public bool RenderAsSpan { get; set; }
+
+    [Parameter]
+    public string Type { get; set; } = "button";
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClasses =>
+        string.IsNullOrWhiteSpace(Class)
+            ? "btn btn-primary"
+            : $"btn btn-primary {Class}";
+}

@@ -1,0 +1,28 @@
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using Microsoft.JSInterop
+@using Illig_AI_Platform.Client
+@using Illig_AI_Platform.Client.Layout
+@using Illig_AI_Platform.Client.Components
+@using Illig_AI_Platform.Client.Models
+@using Illig_AI_Platform.Client.Models.Auftragsanlage
+@using Illig_AI_Platform.Client.Models.Lieferantenassistent
+@using Illig_AI_Platform.Client.Models.Kunden
+@using Illig_AI_Platform.Client.Models.Plausibilitaetspruefung.Sondermerkmalsuche
+@using Illig_AI_Platform.Client.Models.Plausibilitaetspruefung.Stuecklistenpruefung
+@using Illig_AI_Platform.Client.Services
+@using Illig_AI_Platform.Client.Services.Auftragsanlage
+@using Illig_AI_Platform.Client.Services.Lieferantenassistent
+@using Illig_AI_Platform.Client.Services.Plausibilitaetspruefung.Sondermerkmalsuche
+@using Illig_AI_Platform.Client.Services.Plausibilitaetspruefung.Stuecklistenpruefung
+
+@* Alle Seiten erfordern standardmäßig Authentifizierung. Anonyme Seiten setzen [AllowAnonymous]. *@
+@attribute [Authorize]

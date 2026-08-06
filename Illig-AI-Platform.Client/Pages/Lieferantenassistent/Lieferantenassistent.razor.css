@@ -1,0 +1,502 @@
+.la-page {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 5.75rem);
+    min-height: 24rem;
+}
+
+.la-kopfzeile {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.la-nachfrage-aktion {
+    position: relative;
+    display: inline-flex;
+}
+
+.la-nachfrage-aktion--deaktiviert {
+    border-radius: 0.375rem;
+    cursor: not-allowed;
+}
+
+.la-nachfrage-aktion--deaktiviert ::deep .btn {
+    pointer-events: none;
+}
+
+.la-nachfrage-aktion ::deep .la-nachfrage-button--unavailable:disabled {
+    border-color: color-mix(in srgb, var(--color-text-muted) 35%, var(--color-bg-panel));
+    background: color-mix(in srgb, var(--color-text-muted) 18%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.la-nachfrage-aktion--deaktiviert:focus-visible {
+    outline: 2px solid var(--color-control-focus);
+    outline-offset: 3px;
+}
+
+.la-nachfrage-aktion__popover {
+    position: absolute;
+    top: calc(100% + 0.55rem);
+    right: 0;
+    z-index: 20;
+    width: max-content;
+    max-width: min(18rem, 75vw);
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-bg-panel);
+    box-shadow: 0 0.5rem 1.25rem rgb(0 69 123 / 18%);
+    color: var(--color-text);
+    font-size: 0.8rem;
+    line-height: 1.35;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-0.2rem);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+    visibility: hidden;
+}
+
+.la-nachfrage-aktion__popover::before {
+    position: absolute;
+    top: -0.3rem;
+    right: 0.8rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-top: 1px solid var(--color-border);
+    border-left: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+    content: "";
+    transform: rotate(45deg);
+}
+
+.la-nachfrage-aktion--deaktiviert:hover .la-nachfrage-aktion__popover,
+.la-nachfrage-aktion--deaktiviert:focus .la-nachfrage-aktion__popover,
+.la-nachfrage-aktion--deaktiviert:focus-within .la-nachfrage-aktion__popover {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+}
+
+.la-inhalt {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+@media (min-width: 641px) {
+    .la-inhalt {
+        padding-inline: 64px;
+    }
+}
+
+.la-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.la-section-head h2 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1.05rem;
+}
+
+.la-section-head p {
+    margin: 0.25rem 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+@media (max-width: 900px) {
+    .la-section-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+.la-tabelle-card {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.la-step-content {
+    animation: la-step-content-enter 0.28s ease both;
+}
+
+@keyframes la-step-content-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.55rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .la-step-content {
+        animation: none;
+    }
+}
+
+.la-tabelle-scroll {
+    flex: 1 1 auto;
+    min-height: 12rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.65rem;
+    scrollbar-gutter: stable;
+    scrollbar-color: var(--color-text-muted) transparent;
+    scrollbar-width: auto;
+}
+
+.la-tabelle-scroll::-webkit-scrollbar {
+    width: 10px;
+}
+
+.la-tabelle-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-text-muted) 65%, transparent);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+}
+
+.la-feature-section {
+    --la-feature-section-head-height: 4rem;
+    overflow: visible;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid #9ca9b1;
+    background: var(--color-bg-panel);
+    scroll-margin-top: 1rem;
+}
+
+.la-feature-section__head {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    height: var(--la-feature-section-head-height);
+    padding: 0.55rem 1rem;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 9%, var(--color-bg-panel));
+}
+
+.la-feature-section__head h3 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.la-feature-section__head p {
+    margin: 0.15rem 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+@media (max-width: 520px) {
+    .la-feature-section {
+        --la-feature-section-head-height: 5rem;
+    }
+}
+
+.la-feature-section__count {
+    display: inline-grid;
+    min-width: 2rem;
+    min-height: 1.75rem;
+    place-items: center;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-muted) 12%, transparent);
+    color: var(--color-text);
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* overflow-x: auto allein würde overflow-y implizit auch auf auto setzen und damit einen
+   eigenen vertikalen Scroll-Kontext aufmachen — der sticky-Offset von thead th würde sich
+   dann auf diesen Wrapper statt auf .la-tabelle-scroll beziehen und unterhalb des
+   Section-Heads eine leere Lücke lassen (siehe su-merkmal-table-wrap in der
+   Stücklistenprüfung für denselben Fix). */
+.la-tabelle-wrap {
+    width: 100%;
+    overflow-x: visible;
+}
+
+.la-tabelle thead th {
+    position: sticky;
+    top: var(--la-feature-section-head-height);
+    z-index: 2;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.la-tabelle tbody td {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    vertical-align: top;
+}
+
+.la-materialnummer {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.la-mengenspalte {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.la-filter {
+    display: flex;
+    width: min(40rem, 42vw);
+    flex: 0 1 40rem;
+    gap: 0.75rem;
+    margin-left: auto;
+    max-width: 40rem;
+}
+
+.la-filter > * {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .la-filter {
+        width: 100%;
+        flex-basis: auto;
+        margin-left: 0;
+    }
+}
+
+/* Überschreibt Bootstraps ".table"-Defaultfarben (hell), da die App kein
+   data-bs-theme="dark" setzt — dies ist die einzige Stelle im ganzen Client, die die
+   Bootstrap-Tabellenklasse nutzt, daher hier gezielt statt global gefixt. */
+.la-tabelle {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--color-text);
+    border-color: var(--color-border);
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--color-text);
+    --bs-table-striped-bg: var(--color-bg-elevated);
+    --bs-table-striped-color: var(--color-text);
+    --bs-table-hover-bg: var(--color-bg-elevated);
+    --bs-table-hover-color: var(--color-text);
+    --bs-table-border-color: var(--color-border);
+}
+
+.la-zeile--deaktiviert {
+    opacity: 0.4;
+}
+
+.la-status-zelle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 1.25rem;
+}
+
+.la-status-zelle input {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    margin: 0;
+    accent-color: #9bc832;
+}
+
+.la-statusfeld {
+    --la-statusfarbe: #9ca9b1;
+    position: relative;
+    background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--la-statusfarbe) 38%, var(--color-bg-panel)) 0%,
+        color-mix(in srgb, var(--la-statusfarbe) 20%, var(--color-bg-panel)) 45%,
+        var(--color-bg-panel) 100%
+    ) !important;
+}
+
+.la-statusfeld::before {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    left: -3px;
+    z-index: 1;
+    width: 3px;
+    background: var(--la-statusfarbe);
+    content: "";
+    pointer-events: none;
+}
+
+.la-statusfeld--ImPlan {
+    --la-statusfarbe: #9bc832;
+}
+
+.la-statusfeld--BaldFaellig {
+    --la-statusfarbe: #f7a600;
+}
+
+.la-statusfeld--Ueberfaellig {
+    --la-statusfarbe: #e5310e;
+}
+
+.la-mail-kontext {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding: 0 0 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.la-mail-kontext__lieferant {
+    min-width: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.la-mail-kontext__lieferant span {
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.la-mail-kontext__lieferant strong {
+    overflow: hidden;
+    color: var(--color-text);
+    font-size: 1.05rem;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.la-mail-kontext__anzahl {
+    flex: 0 0 auto;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.la-mail-felder {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.la-mail-kopfdaten {
+    display: grid;
+    grid-template-columns: minmax(14rem, 0.85fr) minmax(18rem, 1.35fr);
+    gap: 1rem;
+}
+
+.la-mail-feld {
+    display: grid;
+    gap: 0.48rem;
+    min-width: 0;
+}
+
+.la-mail-feld__label {
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.la-mail-feld__kopf {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.la-mail-feld__hinweis {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.la-mail-feld .form-control,
+.la-mail-feld .form-select {
+    border-color: var(--color-border);
+    border-radius: 0.45rem;
+    background-color: var(--color-bg-panel);
+    color: var(--color-text);
+}
+
+.la-mail-feld:not(.la-mail-feld--text) .form-control,
+.la-mail-feld:not(.la-mail-feld--text) .form-select {
+    min-height: 2.85rem;
+    padding-inline: 0.8rem;
+}
+
+.la-mail-feld .form-control:focus,
+.la-mail-feld .form-select:focus {
+    border-color: #00457b;
+    background-color: var(--color-bg-panel);
+    box-shadow: 0 0 0 0.18rem color-mix(in srgb, #00457b 14%, transparent);
+}
+
+.la-mail-feld--text textarea {
+    min-height: 17rem;
+    padding: 0.85rem 0.95rem;
+    resize: vertical;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+    .la-mail-kopfdaten {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .la-mail-kontext {
+        grid-template-columns: 1fr;
+        gap: 0.35rem;
+    }
+
+    .la-mail-feld__kopf {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+}

@@ -1,0 +1,46 @@
+@if (Visible)
+{
+    <div class="la-dialog-overlay">
+        <div class="la-dialog" role="dialog" aria-modal="true" aria-labelledby="la-dialog-titel">
+            <div class="la-dialog__kopf">
+                <div>
+                    <h3 id="la-dialog-titel">@Title</h3>
+                </div>
+                @if (OnClose.HasDelegate)
+                {
+                    <button type="button" class="la-dialog__schliessen" title="Dialog schließen"
+                            aria-label="Dialog schließen" @onclick="OnClose">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                }
+            </div>
+            <div class="la-dialog__inhalt">
+                @ChildContent
+            </div>
+            @if (Actions is not null)
+            {
+                <div class="la-dialog__aktionen">
+                    @Actions
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public bool Visible { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Aktions-Buttons unten im Dialog (z. B. Abbrechen/Bestätigen).</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+}

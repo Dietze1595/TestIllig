@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="e9c07576-a54d-4a68-bb8c-9a465137264a" name="MarcelDietz@DELL-MARCEL 2026-07-31 08:27:13" runUser="AzureAD\MarcelDietz" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-31T08:27:13.0686391+02:00" queuing="2026-07-31T08:27:13.0686398+02:00" start="2026-07-31T08:27:10.7230830+02:00" finish="2026-07-31T08:27:13.0778062+02:00" />
+  <TestSettings name="default" id="204b07c3-3540-4592-89a9-dea4d829bd79">
+    <Deployment runDeploymentRoot="MarcelDietz_DELL-MARCEL_2026-07-31_08_27_13" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="c5bffc83-b645-426b-831c-c7eb324d8fcf" testId="bd3d6866-5bfe-9078-bc88-1d4341e6f919" testName="Illig_AI_Platform.Tests.Kunden.KundenstammServiceTests.DetailAsync_ZeigtGleicheAuftragsinformationNurEinmal" computerName="DELL-MARCEL" duration="00:00:01.1775212" startTime="2026-07-31T08:27:11.7403921+02:00" endTime="2026-07-31T08:27:12.9412195+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c5bffc83-b645-426b-831c-c7eb324d8fcf">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Single() Failure: The collection contained 2 matching items&#xD;
+Expected:      (predicate expression)&#xD;
+Collection:    [KundenDokument { Quelltyp = Auftragsinformation, QuellId = 2, Titel = Auftragsinformation 11055627 / 10, Dateiname = auftrag-nutzer-b.pdf, ErfasstAm = 02.01.2026 00:00:00 }, KundenDokument { Quelltyp = Auftragsinformation, QuellId = 1, Titel = Auftragsinformation 11055627 / 10, Dateiname = auftrag-nutzer-a.pdf, ErfasstAm = 01.01.2026 00:00:00 }]&#xD;
+Match indices: 0, 1</Message>
+          <StackTrace>   at Illig_AI_Platform.Tests.Kunden.KundenstammServiceTests.DetailAsync_ZeigtGleicheAuftragsinformationNurEinmal() in C:\_\Illig--KI-Tools\Illig-AI-Platform.Tests\Kunden\KundenstammServiceTests.cs:line 225&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Illig_AI_Platform.Tests.Kunden.KundenstammServiceTests.DetailAsync_ZeigtGleicheAuftragsinformationNurEinmal" storage="c:\_\illig--ki-tools\illig-ai-platform.tests\bin\debug\net10.0\illig-ai-platform.tests.dll" id="bd3d6866-5bfe-9078-bc88-1d4341e6f919">
+      <Execution id="c5bffc83-b645-426b-831c-c7eb324d8fcf" />
+      <TestMethod codeBase="C:\_\Illig--KI-Tools\Illig-AI-Platform.Tests\bin\Debug\net10.0\Illig-AI-Platform.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Illig_AI_Platform.Tests.Kunden.KundenstammServiceTests" name="DetailAsync_ZeigtGleicheAuftragsinformationNurEinmal" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="bd3d6866-5bfe-9078-bc88-1d4341e6f919" executionId="c5bffc83-b645-426b-831c-c7eb324d8fcf" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Ergebnisse nicht in einer Liste" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Alle geladenen Ergebnisse" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.0.0+e341b939fe (64-bit .NET 10.0.9)&#xD;
+[xUnit.net 00:00:00.11]   Discovering: Illig-AI-Platform.Tests&#xD;
+[xUnit.net 00:00:00.21]   Discovered:  Illig-AI-Platform.Tests&#xD;
+[xUnit.net 00:00:00.24]   Starting:    Illig-AI-Platform.Tests&#xD;
+[xUnit.net 00:00:01.49]       Assert.Single() Failure: The collection contained 2 matching items&#xD;
+[xUnit.net 00:00:01.49]       Expected:      (predicate expression)&#xD;
+[xUnit.net 00:00:01.49]       Collection:    [KundenDokument { Quelltyp = Auftragsinformation, QuellId = 2, Titel = Auftragsinformation 11055627 / 10, Dateiname = auftrag-nutzer-b.pdf, ErfasstAm = 02.01.2026 00:00:00 }, KundenDokument { Quelltyp = Auftragsinformation, QuellId = 1, Titel = Auftragsinformation 11055627 / 10, Dateiname = auftrag-nutzer-a.pdf, ErfasstAm = 01.01.2026 00:00:00 }]&#xD;
+[xUnit.net 00:00:01.49]       Match indices: 0, 1&#xD;
+[xUnit.net 00:00:01.49]       Stack Trace:&#xD;
+[xUnit.net 00:00:01.49]         C:\_\Illig--KI-Tools\Illig-AI-Platform.Tests\Kunden\KundenstammServiceTests.cs(225,0): at Illig_AI_Platform.Tests.Kunden.KundenstammServiceTests.DetailAsync_ZeigtGleicheAuftragsinformationNurEinmal()&#xD;
+[xUnit.net 00:00:01.49]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:01.50]   Finished:    Illig-AI-Platform.Tests&#xD;
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="DELL-MARCEL" outcome="Error" timestamp="2026-07-31T08:27:12.9482074+02:00">
+        <Text>[xUnit.net 00:00:01.48]     Illig_AI_Platform.Tests.Kunden.KundenstammServiceTests.DetailAsync_ZeigtGleicheAuftragsinformationNurEinmal [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

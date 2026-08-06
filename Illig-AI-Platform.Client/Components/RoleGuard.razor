@@ -1,0 +1,39 @@
+@* Kapselt die client-seitige Rollenprüfung (Rollen kommen aus der DB via UserProfileState,
+   nicht aus dem B2C-Token). Ersetzt das früher pro Seite kopierte
+   _authChecked/_authorized + HasAnyRoleAsync + KeineBerechtigung-Muster. *@
+@inject UserProfileState ProfileState
+
+@if (!_geprueft)
+{
+    <section class="sm-card"><p>Berechtigung wird geprüft…</p></section>
+}
+else if (!_berechtigt)
+{
+    <KeineBerechtigung />
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>Rollen, von denen der Nutzer mindestens eine haben muss (Admin dabei = „Admin darf alles").</summary>
+    [Parameter, EditorRequired] public string[] Roles { get; set; } = [];
+
+    /// <summary>Inhalt, der nur bei bestätigter Berechtigung gerendert wird.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Einmalig aufgerufen, sobald die Berechtigung bestätigt ist — zum Nachladen von Daten.</summary>
+    [Parameter] public EventCallback OnAuthorized { get; set; }
+
+    private bool _geprueft;
+    private bool _berechtigt;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _berechtigt = await ProfileState.HasAnyRoleAsync(Roles);
+        _geprueft = true;
+        if (_berechtigt && OnAuthorized.HasDelegate)
+            await OnAuthorized.InvokeAsync();
+    }
+}

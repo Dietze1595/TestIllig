@@ -1,0 +1,481 @@
+/* Platzreservierung für das rechts fixierte PdfViewerPanel (Klassennamen identisch zur
+   Stücklistenprüfung übernommen — su-main--resizing/su-review__pdf--resizing sind in
+   pdfResize.js fest verdrahtet, siehe Spec). */
+.su-layout {
+    position: relative;
+}
+
+.su-main {
+    box-sizing: border-box;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    transition: padding-right 0.2s ease, padding-left 0.2s ease;
+    overflow-wrap: anywhere;
+}
+
+.su-main--verlauf-offen {
+    padding-left: min(30vw, 360px);
+}
+
+.su-main--pdf-offen {
+    padding-right: min(30vw, 520px);
+}
+
+.su-main--resizing {
+    transition: none;
+}
+
+.aa-vertrieb-content {
+    box-sizing: border-box;
+    min-width: 0;
+    padding-inline: 4rem;
+}
+
+.aa-vertrieb-prueflayout {
+    display: grid;
+    gap: 1.5rem;
+}
+
+@media (min-width: 901px) {
+    .aa-vertrieb-prueflayout-aktiv {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        height: auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .aa-vertrieb-prueflayout-aktiv .su-layout {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .aa-vertrieb-prueflayout-aktiv .su-main {
+        height: 100%;
+        min-height: 0;
+    }
+
+    .aa-vertrieb-prueflayout-aktiv .su-main,
+    .aa-vertrieb-prueflayout-aktiv .aa-vertrieb-content,
+    .aa-vertrieb-prueflayout {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .aa-vertrieb-prueflayout-aktiv .aa-vertrieb-content,
+    .aa-vertrieb-prueflayout {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .aa-vertrieb-prueflayout {
+        display: grid;
+        grid-template-rows: max-content minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .aa-vertrieb-prueflayout__kopf {
+        flex: 0 0 auto;
+        padding-block: 1rem;
+    }
+
+    .aa-vertrieb-prueflayout__inhalt {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        height: auto;
+        margin-bottom: .5rem;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .aa-vertrieb-prueflayout__inhalt > .aa-section-head,
+    .aa-vertrieb-prueflayout__inhalt > .aa-checkliste-kopf {
+        flex: 0 0 auto;
+    }
+
+    .aa-vertrieb-prueflayout__scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-anchor: none;
+        overscroll-behavior: contain;
+        scrollbar-color: var(--color-text-muted) transparent;
+        scrollbar-gutter: stable;
+    }
+}
+
+.aa-verlauf-badge {
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(139, 157, 188, 0.16);
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.aa-vertrieb-detailkopf {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.aa-vertrieb-detailkopf__aktion {
+    flex: 0 0 auto;
+}
+
+.aa-vertrieb-abschlussaktionen {
+    margin-bottom: 1.25rem;
+    padding-bottom: .25rem;
+}
+
+.aa-pruefergebnis-card {
+    border-top: 4px solid var(--color-accent);
+}
+
+.sm-detail__head h2,
+.aa-section-head h2 {
+    margin: 0;
+}
+
+.sm-detail__sub {
+    margin: .25rem 0 1rem;
+    color: var(--color-text-muted);
+}
+
+.sm-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .75rem 1.5rem;
+    margin: 0;
+}
+
+.sm-info > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.sm-info dt {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    color: var(--color-text-muted);
+    font-size: .8rem;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.aa-info-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex: 0 0 1.05rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.sm-info dd {
+    margin: 0;
+    color: var(--color-text);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.aa-text--ok {
+    color: #9bc832 !important;
+}
+
+.aa-text--warnung {
+    color: #f7a600 !important;
+}
+
+.aa-freigabe-meta {
+    margin: 1rem 0 0;
+    padding-top: .75rem;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: .85rem;
+}
+
+.aa-freigabe-status {
+    align-self: center;
+    margin: 0;
+    padding: .45rem .75rem;
+    font-size: .85rem;
+}
+
+.aa-section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.aa-quellen-badge {
+    flex: 0 0 auto;
+    padding: .15rem .55rem;
+    border: 1px solid #00457b;
+    border-radius: 1rem;
+    background: rgba(0, 69, 123, .12);
+    color: #83c9f0;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.aa-checkliste {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0;
+}
+
+.aa-checkliste-kopf {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 32%);
+    align-items: center;
+    gap: .5rem .75rem;
+    padding: .55rem .75rem;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid #9ca9b1;
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.aa-checkliste-kopf__daten {
+    display: grid;
+    grid-template-columns: minmax(135px, .7fr) minmax(0, 1.3fr);
+    gap: .75rem;
+}
+
+.aa-status-legende {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem 1rem;
+    margin: .65rem 0 1rem;
+    color: var(--color-text-muted);
+    font-size: .78rem;
+}
+
+.aa-status-legende span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.aa-status-legende__punkt {
+    width: .55rem;
+    height: .55rem;
+    border-radius: 50%;
+    background: var(--color-border);
+}
+
+.aa-status-legende__punkt--ok {
+    background: #9bc832;
+}
+
+.aa-status-legende__punkt--abweichend {
+    background: #f7a600;
+}
+
+.aa-status-legende__punkt--fehlt {
+    background: #e5310e;
+}
+
+.aa-status-legende__stern {
+    color: #e5310e;
+    font-size: 1rem;
+    font-style: normal;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.aa-sap-pruefhinweis {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    margin-top: 1.25rem;
+    padding: .65rem .85rem;
+    border-left: 3px solid #f7a600;
+    background: color-mix(in srgb, #f7a600 8%, var(--color-bg-panel));
+}
+
+.aa-sap-pruefhinweis strong {
+    color: var(--color-text);
+    font-size: .9rem;
+}
+
+.aa-sap-pruefhinweis span {
+    color: var(--color-text-muted);
+    font-size: .8rem;
+}
+
+.aa-sap-pruefhinweis + .aa-sap-bestaetigungen {
+    margin-top: 0;
+}
+
+.sm-feature-group {
+    overflow: hidden;
+    margin-top: 1rem;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: var(--color-bg-panel);
+}
+
+.sm-feature-group--match {
+    border-left-color: #9bc832;
+}
+
+.sm-feature-group__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .7rem .85rem;
+    background: rgba(155, 200, 50, .07);
+}
+
+.sm-feature-group__head h3 {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+.sm-feature-group__head p {
+    margin: .25rem 0 0;
+    color: var(--color-text-muted);
+    font-size: .875rem;
+}
+
+.sm-feature-group__badge {
+    min-width: 2rem;
+    padding: .15rem .55rem;
+    border: 1px solid var(--color-border);
+    border-radius: .2rem;
+    background: transparent;
+    color: var(--color-text);
+    font-weight: 700;
+    text-align: center;
+}
+
+.sm-feature-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-top: 1px solid var(--color-border);
+}
+
+.sm-feature-table {
+    width: 100%;
+    min-width: 48rem;
+    border-spacing: 0;
+    border-collapse: separate;
+    text-align: left;
+}
+
+.sm-feature-table th {
+    padding: .55rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.sm-feature-table td {
+    padding: .7rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+    color: var(--color-text-soft);
+    font-size: .85rem;
+    line-height: 1.4;
+    vertical-align: top;
+}
+
+.sm-feature-table th:not(:first-child),
+.sm-feature-table td:not(:first-child) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.sm-feature-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+@media (max-width: 900px) {
+    .su-main {
+        padding-left: 0;
+    }
+
+    .aa-vertrieb-content {
+        padding-inline: 0;
+    }
+
+    .su-main--pdf-offen,
+    .su-main--pdf-eingeklappt {
+        padding-right: 0;
+    }
+
+    .su-main--verlauf-offen {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .aa-checkliste {
+        grid-template-columns: 1fr;
+    }
+
+    .aa-vertrieb-detailkopf {
+        flex-wrap: wrap;
+    }
+
+    .aa-vertrieb-detailkopf__aktion {
+        margin-left: auto;
+    }
+
+    .aa-section-head {
+        flex-direction: column;
+    }
+
+    .sm-feature-group__head p {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .aa-checkliste-kopf {
+        display: none;
+    }
+}
+.aa-adressvergleich {
+    display: grid;
+    gap: .2rem;
+    font-size: .84rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.aa-adressvergleich__label {
+    color: var(--color-text-muted);
+    font-weight: 500;
+}

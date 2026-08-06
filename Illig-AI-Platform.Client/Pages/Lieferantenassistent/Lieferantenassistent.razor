@@ -1,0 +1,349 @@
+@page "/lieferantenassistent"
+@inject LieferantenassistentClient Client
+@inject NavigationManager Navigation
+
+<PageTitle>Lieferantenassistent</PageTitle>
+
+<div class="la-page sm-page">
+    <RoleGuard Roles="@(new[] { AppClientRoles.Lieferantenassistent, AppClientRoles.Admin })" OnAuthorized="InitAsync">
+        @if (_apiError is not null)
+    {
+        <ApiFehlerHinweis Message="@_apiError.Message" OnRetry="LadenAsync" />
+    }
+    else
+    {
+        <div class="la-kopfzeile">
+            <SeitenKopf Titel="Lieferanten-Assist"
+                         Lead="Offene Bestellungen im Blick behalten und die Einhaltung vereinbarter Liefertermine direkt bestätigen lassen." />
+            <div class="la-nachfrage-aktion @(_ausgewaehlteIds.Count == 0 ? "la-nachfrage-aktion--deaktiviert" : null)"
+                 tabindex="@(_ausgewaehlteIds.Count == 0 ? "0" : null)"
+                 aria-describedby="@(_ausgewaehlteIds.Count == 0 ? "la-nachfrage-hinweis" : null)">
+                <PrimaryButton OnClick="NachfragenDialogOeffnen"
+                               Class="@(_ausgewaehlteIds.Count == 0 ? "la-nachfrage-button--unavailable" : null)"
+                               Disabled="@(_ausgewaehlteIds.Count == 0)">
+                    Termineinhaltung anfragen@(_ausgewaehlteIds.Count > 0 ? $" ({_ausgewaehlteIds.Count})" : null)
+                </PrimaryButton>
+                @if (_ausgewaehlteIds.Count == 0)
+                {
+                    <span class="la-nachfrage-aktion__popover" id="la-nachfrage-hinweis" role="tooltip">
+                        Bitte erst Lieferant auswählen.
+                    </span>
+                }
+            </div>
+        </div>
+
+        <div class="la-inhalt">
+        <div class="la-tabelle-card la-step-content sm-card">
+        <div class="la-section-head">
+            <div>
+                <h2>Ausgelesene Dispositionsliste</h2>
+                <p>@_positionen.Count offene Bestellungen erkannt</p>
+            </div>
+            <div class="la-filter">
+                <input class="form-control" placeholder="Lieferant, Material oder Einkaufsbeleg suchen…"
+                       aria-label="Lieferant, Material oder Einkaufsbeleg suchen"
+                       value="@_suche" @oninput="OnSucheGeaendert" />
+            </div>
+        </div>
+        <div class="la-tabelle-scroll">
+        <section class="la-feature-section" aria-labelledby="la-tabelle-title">
+            <header class="la-feature-section__head">
+                <div>
+                    <h3 id="la-tabelle-title">Offene Bestellpositionen</h3>
+                    <p>Bestellungen mit ausstehendem Liefertermin</p>
+                </div>
+                <span class="la-feature-section__count">@_positionen.Count</span>
+            </header>
+            <div class="la-tabelle-wrap">
+            <table class="la-tabelle table">
+                <thead>
+                    <tr>
+                        <th>
+                            <SpaltenFilterDropdown Titel="Status" Optionen="_statusFilterOptionen"
+                                                   Ausgewaehlt="_ausgewaehlteStatus"
+                                                   OnOptionUmgeschaltet="StatusFilterUmschalten" />
+                        </th>
+                        <th>Kreditor</th>
+                        <th>Lieferant</th>
+                        <th>
+                            <SpaltenFilterDropdown Titel="Einkäufergruppe" Optionen="_verfuegbareEinkaeufergruppen"
+                                                   Ausgewaehlt="_ausgewaehlteEinkaeufergruppen"
+                                                   OnOptionUmgeschaltet="EinkaeufergruppeFilterUmschalten" />
+                        </th>
+                        <th>Einkaufsbeleg/Position</th>
+                        <th>Materialnummer</th>
+                        <th>Materialbezeichnung</th>
+                        <th class="la-mengenspalte">Offen / Gesamt</th>
+                        <th>Lieferdatum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_laedt)
+                    {
+                        <tr><td colspan="9">Lädt…</td></tr>
+                    }
+                    else if (_positionen.Count == 0)
+                    {
+                        <tr><td colspan="9">Keine offenen Positionen gefunden.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var position in _positionen)
+                        {
+                            var anzeige = $"{position.Einkaufsbeleg}/{position.Position}";
+                            var deaktiviert = _ausgewaehlterKreditor is not null && _ausgewaehlterKreditor != position.LieferantKreditor;
+                            <tr class="@(deaktiviert ? "la-zeile--deaktiviert" : "")">
+                                <td class="la-statusfeld la-statusfeld--@position.Status">
+                                    <div class="la-status-zelle">
+                                        <input type="checkbox" disabled="@deaktiviert"
+                                               checked="@_ausgewaehlteIds.Contains(position.Id)"
+                                               aria-label="@($"Position {anzeige} auswählen, Status {StatusText(position.Status)}")"
+                                               title="@StatusText(position.Status)"
+                                               @onchange="e => ZeileAuswahlGeaendert(position, (bool)e.Value!)" />
+                                    </div>
+                                </td>
+                                <td>@position.LieferantKreditor</td>
+                                <td>@position.LieferantName</td>
+                                <td>@position.Einkaeufergruppe</td>
+                                <td>@anzeige</td>
+                                <td class="la-materialnummer">@position.Material</td>
+                                <td>@position.Kurztext</td>
+                                <td class="la-mengenspalte">@($"{position.NochZuLiefernMenge:0} / {position.Bestellmenge:0}")</td>
+                                <td>@position.Lieferdatum.ToString("dd.MM.yyyy")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+            </div>
+        </section>
+        </div>
+        </div>
+        </div>
+
+        <Modal Visible="_mailDialogOffen" Title="Nachricht an Lieferanten senden"
+               OnClose="() => _mailDialogOffen = false">
+            <ChildContent>
+                <div class="la-mail-kontext">
+                    <div class="la-mail-kontext__lieferant">
+                        <span>Nachricht an</span>
+                        <strong>@_ausgewaehlterLieferantName</strong>
+                    </div>
+                    <span class="la-mail-kontext__anzahl">
+                        @_ausgewaehlteIds.Count @(_ausgewaehlteIds.Count == 1 ? "Position" : "Positionen")
+                    </span>
+                </div>
+
+                <div class="la-mail-felder">
+                    <div class="la-mail-kopfdaten">
+                        <label class="la-mail-feld">
+                            <span class="la-mail-feld__label">Empfänger</span>
+                            <select class="form-select" @bind="_ausgewaehlteEmailAdresse">
+                            @foreach (var email in _verfuegbareEmailAdressen)
+                            {
+                                <option value="@email">@email</option>
+                            }
+                            </select>
+                        </label>
+
+                        <label class="la-mail-feld">
+                            <span class="la-mail-feld__label">Betreff</span>
+                            <input class="form-control" @bind="_mailBetreff" />
+                        </label>
+                    </div>
+
+                    <label class="la-mail-feld la-mail-feld--text">
+                        <span class="la-mail-feld__kopf">
+                            <span class="la-mail-feld__label">Nachricht</span>
+                            <span class="la-mail-feld__hinweis">Sie können den E-Mail-Text vor dem Senden bearbeiten.</span>
+                        </span>
+                        <textarea class="form-control" rows="14" @bind="_mailText"></textarea>
+                    </label>
+                </div>
+            </ChildContent>
+            <Actions>
+                <SecondaryButton OnClick="() => _mailDialogOffen = false">Abbrechen</SecondaryButton>
+                <PrimaryButton OnClick="MailtoOeffnen"
+                               Disabled="@string.IsNullOrWhiteSpace(_ausgewaehlteEmailAdresse)">
+                    E-Mail öffnen <span aria-hidden="true">↗</span>
+                </PrimaryButton>
+            </Actions>
+        </Modal>
+    }
+    </RoleGuard>
+</div>
+
+@code {
+    private bool _laedt = true;
+    private ApiRequestException? _apiError;
+    private List<OffenePositionAnsicht> _positionen = [];
+    private string _suche = "";
+
+    private static readonly LieferterminStatus[] _statusFilterWerte =
+    [
+        LieferterminStatus.Ueberfaellig,
+        LieferterminStatus.BaldFaellig,
+        LieferterminStatus.ImPlan,
+    ];
+    private static readonly IReadOnlyList<string> _statusFilterOptionen =
+        _statusFilterWerte.Select(StatusText).ToArray();
+    private readonly HashSet<string> _ausgewaehlteStatus = [];
+
+    private readonly HashSet<string> _ausgewaehlteEinkaeufergruppen = [];
+    private List<string> _verfuegbareEinkaeufergruppen = [];
+    private int _ladeGeneration;
+
+    private int? _ausgewaehlterKreditor;
+    private readonly HashSet<int> _ausgewaehlteIds = [];
+
+    private bool _mailDialogOffen;
+    private string _ausgewaehlterLieferantName = "";
+    private List<string> _verfuegbareEmailAdressen = [];
+    private string _ausgewaehlteEmailAdresse = "";
+    private string _mailBetreff = "";
+    private string _mailText = "";
+
+    // Wird von RoleGuard erst bei bestätigter Berechtigung aufgerufen.
+    private async Task InitAsync()
+    {
+        await LadeEinkaeufergruppenAsync();
+        await LadenAsync();
+    }
+
+    // Best-effort wie UserProfileState.ReloadAsync: ein Fehlschlag hier soll nicht die ganze
+    // Seite blockieren, das Filter-Dropdown zeigt dann eben keine Einkäufergruppen an.
+    private async Task LadeEinkaeufergruppenAsync()
+    {
+        try
+        {
+            _verfuegbareEinkaeufergruppen = (await Client.GetEinkaeufergruppenAsync()).ToList();
+        }
+        catch (ApiRequestException)
+        {
+            _verfuegbareEinkaeufergruppen = [];
+        }
+    }
+
+    private async Task LadenAsync()
+    {
+        _laedt = true;
+        _apiError = null;
+        var angefragteGeneration = ++_ladeGeneration;
+        var angefragteSuche = _suche;
+        try
+        {
+            var status = _ausgewaehlteStatus.Count > 0
+                ? _statusFilterWerte.Where(s => _ausgewaehlteStatus.Contains(StatusText(s))).ToList()
+                : null;
+            var einkaeufergruppen = _ausgewaehlteEinkaeufergruppen.Count > 0 ? _ausgewaehlteEinkaeufergruppen.ToList() : null;
+            var ergebnis = (await Client.GetPositionenAsync(angefragteSuche, status, einkaeufergruppen)).ToList();
+            if (angefragteGeneration != _ladeGeneration)
+                return; // Ein Filter hat sich während des Requests geändert — Ergebnis ist veraltet, verwerfen.
+
+            _positionen = ergebnis;
+
+            var vorhandeneIds = _positionen.Select(p => p.Id).ToHashSet();
+            _ausgewaehlteIds.RemoveWhere(id => !vorhandeneIds.Contains(id));
+            if (_ausgewaehlteIds.Count == 0)
+                _ausgewaehlterKreditor = null;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex;
+        }
+        finally
+        {
+            _laedt = false;
+        }
+    }
+
+    // Textform des Ampel-Status für Screenreader, Tooltip und Filter-Dropdown —
+    // die Farbe allein (la-ampel--*) ist für farbenblinde Nutzer nicht unterscheidbar.
+    private static string StatusText(LieferterminStatus status) => status switch
+    {
+        LieferterminStatus.Ueberfaellig => "Überfällig",
+        LieferterminStatus.BaldFaellig => "Bald fällig",
+        LieferterminStatus.ImPlan => "Im Plan",
+        _ => status.ToString(),
+    };
+
+    private async Task OnSucheGeaendert(ChangeEventArgs e)
+    {
+        _suche = e.Value?.ToString() ?? "";
+        await LadenAsync();
+    }
+
+    private async Task StatusFilterUmschalten(string status)
+    {
+        if (!_ausgewaehlteStatus.Remove(status))
+            _ausgewaehlteStatus.Add(status);
+        await LadenAsync();
+    }
+
+    private async Task EinkaeufergruppeFilterUmschalten(string gruppe)
+    {
+        if (!_ausgewaehlteEinkaeufergruppen.Remove(gruppe))
+            _ausgewaehlteEinkaeufergruppen.Add(gruppe);
+        await LadenAsync();
+    }
+
+    private void ZeileAuswahlGeaendert(OffenePositionAnsicht position, bool ausgewaehlt)
+    {
+        if (ausgewaehlt)
+        {
+            _ausgewaehlteIds.Add(position.Id);
+            _ausgewaehlterKreditor = position.LieferantKreditor;
+        }
+        else
+        {
+            _ausgewaehlteIds.Remove(position.Id);
+            if (_ausgewaehlteIds.Count == 0)
+                _ausgewaehlterKreditor = null;
+        }
+    }
+
+    private void NachfragenDialogOeffnen()
+    {
+        var ausgewaehltePositionen = _positionen
+            .Where(p => _ausgewaehlteIds.Contains(p.Id))
+            .ToList();
+        if (ausgewaehltePositionen.Count == 0)
+            return;
+
+        _ausgewaehlterLieferantName = ausgewaehltePositionen[0].LieferantName;
+        _verfuegbareEmailAdressen = ausgewaehltePositionen[0].EmailAdressen.Select(e => e.EmailAdresse).Distinct().ToList();
+        var standard = ausgewaehltePositionen[0].EmailAdressen.FirstOrDefault(e => e.IstStandard);
+        _ausgewaehlteEmailAdresse = standard?.EmailAdresse ?? _verfuegbareEmailAdressen.FirstOrDefault() ?? "";
+
+        var bestellnummern = ausgewaehltePositionen
+            .Select(p => p.Einkaufsbeleg)
+            .Distinct()
+            .ToList();
+        var bestellreferenz = string.Join(", ", bestellnummern.Take(3));
+        if (bestellnummern.Count > 3)
+            bestellreferenz += $" (+{bestellnummern.Count - 3} weitere)";
+
+        var bestellbegriff = bestellnummern.Count == 1 ? "Bestellung" : "Bestellungen";
+        _mailBetreff = $"Bitte um Bestätigung der vereinbarten Liefertermine – {bestellbegriff} {bestellreferenz}";
+        var positionenText = string.Join("\n", ausgewaehltePositionen.Select(p =>
+            $"- Einkaufsbeleg {p.Einkaufsbeleg}/{p.Position}: {p.Material} {p.Kurztext}, " +
+            $"Menge {p.NochZuLiefernMenge}, Liefertermin {p.Lieferdatum:dd.MM.yyyy}"));
+
+        _mailText =
+            "Sehr geehrte Damen und Herren,\n\n" +
+            "bitte bestätigen Sie uns, ob die vereinbarten Liefertermine für die folgenden Produkte eingehalten werden können:\n\n" +
+            positionenText +
+            "\n\nSollten Verzögerungen absehbar sein, bitten wir um Mitteilung der voraussichtlichen neuen Liefertermine.\n\n" +
+            "Vielen Dank im Voraus.\n\n" +
+            "Mit freundlichen Grüßen";
+
+        _mailDialogOffen = true;
+    }
+
+    private void MailtoOeffnen()
+    {
+        var mailto = $"mailto:{Uri.EscapeDataString(_ausgewaehlteEmailAdresse)}?subject={Uri.EscapeDataString(_mailBetreff)}&body={Uri.EscapeDataString(_mailText)}";
+        _mailDialogOffen = false;
+        Navigation.NavigateTo(mailto);
+    }
+}

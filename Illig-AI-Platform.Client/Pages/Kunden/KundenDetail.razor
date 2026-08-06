@@ -1,0 +1,270 @@
+@page "/illig-gpt/kunden/detail"
+@using Illig_AI_Platform.Client.Components.Plausibilitaetspruefung.Stuecklistenpruefung
+@inject KundenClient Client
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Kundendetails</PageTitle>
+
+<div class="sm-page">
+    <SeitenKopf Titel="Kundendetails" />
+    <RoleGuard Roles="@(new[] { AppClientRoles.SearchSystem, AppClientRoles.Admin })">
+        @if (_fehler is not null)
+        {
+            <ApiFehlerHinweis Message="@_fehler.Message" OnRetry="LadenAsync" />
+        }
+        else if (_laedt)
+        {
+            <section class="sm-card"><p class="mb-0">Lädt…</p></section>
+        }
+        else if (_kunde is null)
+        {
+            <section class="sm-card"><p>Kunde nicht gefunden.</p><a href="@AppRoutes.Kunden">← Zur Übersicht</a></section>
+        }
+        else
+        {
+            <div class="su-main kunden-detail-main @PdfPanelKlasse">
+            <section class="sm-card kunden-detail-head">
+                <div>
+                    <div class="kunden-detail-title">
+                        <h2>@_kunde.Anzeigename</h2>
+                        <span class="kunden-detail-status kunden-detail-status--@_kunde.Status.ToString().ToLowerInvariant()">
+                            @StatusText(_kunde.Status)
+                        </span>
+                    </div>
+                    <p>@StammdatenText(_kunde)</p>
+                    @if (!string.IsNullOrWhiteSpace(_kunde.Adresse)) { <p>@_kunde.Adresse</p> }
+                </div>
+                <a class="btn btn-outline-secondary" href="@AppRoutes.Kunden">← Kundenübersicht</a>
+            </section>
+
+            <div class="kunden-detail-kpis">
+                <div><strong>@_kunde.Angebotsnummern.Count</strong><span>Angebote</span></div>
+                <div><strong>@_kunde.Kundenbestellnummern.Count</strong><span>Kundenbestellungen</span></div>
+                <div><strong>@_kunde.Auftraege.Count</strong><span>Aufträge</span></div>
+                <div><strong>@_kunde.Auftraege.Sum(a => a.Positionen.Count)</strong><span>Maschinen</span></div>
+            </div>
+
+            @if (_dokumentFehler is not null)
+            {
+                <div class="alert alert-warning" role="alert">@_dokumentFehler</div>
+            }
+
+            <section class="sm-card">
+                <h2>Aufträge und Maschinen</h2>
+                @if (_kunde.Auftraege.Count == 0)
+                {
+                    <p class="text-muted mb-0">Noch keine Auftragsinformationen zugeordnet.</p>
+                }
+                else
+                {
+                    <div class="kunden-orders">
+                        @foreach (var auftrag in _kunde.Auftraege)
+                        {
+                            <details>
+                                <summary>
+                                    <strong>@auftrag.Auftragsnummer</strong>
+                                    <span>@auftrag.Positionen.Count @(auftrag.Positionen.Count == 1 ? "Maschine" : "Maschinen")</span>
+                                </summary>
+                                <div class="kunden-order-positions">
+                                    @foreach (var position in auftrag.Positionen)
+                                    {
+                                        <div>
+                                            <strong>Position @position.Positionsnummer</strong>
+                                            <span>@position.Maschinentyp</span>
+                                            <span>@(position.Datum?.ToString("dd.MM.yyyy") ?? "Datum unbekannt")</span>
+                                        </div>
+                                    }
+                                </div>
+                            </details>
+                        }
+                    </div>
+                }
+            </section>
+
+            <div class="kunden-document-columns">
+                <section class="sm-card kunden-document-section">
+                    <h2>Angebote</h2>
+                    @if (!_kunde.Dokumente.Any(d => d.Quelltyp == KundenQuelltyp.Angebot))
+                    {
+                        <p class="text-muted mb-0">Keine Angebote.</p>
+                    }
+                    else
+                    {
+                        <div class="kunden-document-list">
+                            @foreach (var dokument in _kunde.Dokumente.Where(d => d.Quelltyp == KundenQuelltyp.Angebot))
+                            {
+                                <button type="button"
+                                        class="kunden-document-link @(IstAktiv(dokument) ? "kunden-document-link--aktiv" : null)"
+                                        disabled="@_pdfLaedt"
+                                        @onclick="@(() => DokumentOeffnenAsync(dokument))">
+                                    <span>
+                                        <strong>@dokument.Titel</strong>
+                                        <small>@dokument.Dateiname · @dokument.ErfasstAm.ToLocalTime().ToString("dd.MM.yyyy")</small>
+                                    </span>
+                                    <b>@DokumentAktion(dokument)</b>
+                                </button>
+                            }
+                        </div>
+                    }
+                </section>
+                <section class="sm-card kunden-document-section">
+                    <h2>Kundenbestellungen</h2>
+                    @if (!_kunde.Dokumente.Any(d => d.Quelltyp == KundenQuelltyp.Kundenbestellung))
+                    {
+                        <p class="text-muted mb-0">Keine Kundenbestellungen.</p>
+                    }
+                    else
+                    {
+                        <div class="kunden-document-list">
+                            @foreach (var dokument in _kunde.Dokumente.Where(d => d.Quelltyp == KundenQuelltyp.Kundenbestellung))
+                            {
+                                <button type="button"
+                                        class="kunden-document-link @(IstAktiv(dokument) ? "kunden-document-link--aktiv" : null)"
+                                        disabled="@_pdfLaedt"
+                                        @onclick="@(() => DokumentOeffnenAsync(dokument))">
+                                    <span>
+                                        <strong>@dokument.Titel</strong>
+                                        <small>@dokument.Dateiname · @dokument.ErfasstAm.ToLocalTime().ToString("dd.MM.yyyy")</small>
+                                    </span>
+                                    <b>@DokumentAktion(dokument)</b>
+                                </button>
+                            }
+                        </div>
+                    }
+                </section>
+                <section class="sm-card kunden-document-section">
+                    <h2>Auftragsinformationen</h2>
+                    @if (!_kunde.Dokumente.Any(d => d.Quelltyp == KundenQuelltyp.Auftragsinformation))
+                    {
+                        <p class="text-muted mb-0">Keine Auftragsinformationen.</p>
+                    }
+                    else
+                    {
+                        <div class="kunden-document-list">
+                            @foreach (var dokument in _kunde.Dokumente.Where(d => d.Quelltyp == KundenQuelltyp.Auftragsinformation))
+                            {
+                                <button type="button"
+                                        class="kunden-document-link @(IstAktiv(dokument) ? "kunden-document-link--aktiv" : null)"
+                                        disabled="@_pdfLaedt"
+                                        @onclick="@(() => DokumentOeffnenAsync(dokument))">
+                                    <span>
+                                        <strong>@dokument.Titel</strong>
+                                        <small>@dokument.Dateiname · @dokument.ErfasstAm.ToLocalTime().ToString("dd.MM.yyyy")</small>
+                                    </span>
+                                    <b>@DokumentAktion(dokument)</b>
+                                </button>
+                            }
+                        </div>
+                    }
+                </section>
+            </div>
+
+            @if (_ausgewaehltesDokument is not null)
+            {
+                <PdfViewerPanel Eingeklappt="_pdfEingeklappt"
+                                OnToggle="TogglePdfEingeklappt"
+                                DokumentName="@_ausgewaehltesDokument.Dateiname"
+                                DataUrl="@_pdfDataUrl" />
+            }
+            </div>
+        }
+    </RoleGuard>
+</div>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public int Id { get; set; }
+    private bool _laedt = true;
+    private Illig_AI_Platform.Client.Models.Kunden.KundenDetail? _kunde;
+    private ApiRequestException? _fehler;
+    private KundenDokument? _ausgewaehltesDokument;
+    private string? _pdfDataUrl;
+    private string? _dokumentFehler;
+    private bool _pdfLaedt;
+    private bool _pdfEingeklappt;
+
+    private string PdfPanelKlasse =>
+        _ausgewaehltesDokument is null
+            ? ""
+            : _pdfEingeklappt
+                ? "kunden-detail-main--pdf-eingeklappt"
+                : "kunden-detail-main--pdf-offen";
+
+    private bool IstAktiv(KundenDokument dokument) =>
+        _ausgewaehltesDokument?.Quelltyp == dokument.Quelltyp
+        && _ausgewaehltesDokument.QuellId == dokument.QuellId;
+
+    private string DokumentAktion(KundenDokument dokument) =>
+        _pdfLaedt && IstAktiv(dokument) ? "Wird geladen…" : "PDF öffnen →";
+
+    private static string StatusText(KundeStatus status) => status switch
+    {
+        KundeStatus.Bestaetigt => "Bestätigt",
+        KundeStatus.Neukunde => "Neukunde",
+        _ => "Vorläufig",
+    };
+
+    private static string StammdatenText(Illig_AI_Platform.Client.Models.Kunden.KundenDetail kunde) =>
+        kunde.Kundennummer is not null
+            ? $"Kundennummer {kunde.Kundennummer}"
+            : kunde.Status == KundeStatus.Neukunde
+                ? "Neukunde – Kundennummer wird noch angelegt"
+                : "Vorläufiger Kunde ohne Kundennummer";
+
+    protected override async Task OnParametersSetAsync() => await LadenAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_ausgewaehltesDokument is not null && !_pdfEingeklappt)
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "suPdfResize.init",
+                ".su-review__pdf-resizer",
+                ".su-review__pdf",
+                ".su-main");
+        }
+    }
+
+    private async Task TogglePdfEingeklappt()
+    {
+        _pdfEingeklappt = !_pdfEingeklappt;
+        if (_pdfEingeklappt)
+            await JSRuntime.InvokeVoidAsync("suPdfResize.reset", ".su-review__pdf", ".su-main");
+    }
+
+    private async Task DokumentOeffnenAsync(KundenDokument dokument)
+    {
+        _ausgewaehltesDokument = dokument;
+        _pdfLaedt = true;
+        _pdfEingeklappt = false;
+        _pdfDataUrl = null;
+        _dokumentFehler = null;
+        try
+        {
+            var inhalt = await Client.DokumentAsync(Id, dokument.Quelltyp, dokument.QuellId);
+            if (inhalt is null)
+            {
+                _dokumentFehler = "Das ausgewählte Dokument wurde nicht gefunden.";
+                return;
+            }
+
+            _pdfDataUrl = $"data:application/pdf;base64,{Convert.ToBase64String(inhalt)}";
+        }
+        catch (ApiRequestException ex)
+        {
+            _dokumentFehler = ex.Message;
+        }
+        finally
+        {
+            _pdfLaedt = false;
+        }
+    }
+
+    private async Task LadenAsync()
+    {
+        _laedt = true;
+        _fehler = null;
+        try { _kunde = await Client.DetailAsync(Id); }
+        catch (ApiRequestException ex) { _fehler = ex; }
+        finally { _laedt = false; }
+    }
+}

@@ -1,0 +1,32 @@
+@using System.Globalization
+
+<tr class="su-vergleich-zeile @(Zeile.HatSichtbareKinder ? "su-vergleich-zeile--gruppenpfad" : "")"
+    data-tree-depth="@Zeile.Tiefe"
+    data-tree-group="@Zeile.HatSichtbareKinder.ToString().ToLowerInvariant()"
+    data-comparison-breadcrumb="@Breadcrumb"
+    data-comparison-group-breadcrumb="@GruppenBreadcrumb"
+    @onclick="() => OnToggle.InvokeAsync(Zeile)">
+    <td>
+        <span class="su-vergleich-cell su-vergleich-cell--tree"
+              style="padding-left: @((Zeile.Tiefe * 1.25).ToString(CultureInfo.InvariantCulture))rem"
+              title="@Zeile.Knoten.Knoten.Artikelnummer">
+            @if (Zeile.HatSichtbareKinder)
+            {
+                <span class="su-vergleich-chevron">@(Zeile.IstAufgeklappt ? "▾" : "▸")</span>
+            }
+            @Zeile.Knoten.Knoten.Artikelnummer
+        </span>
+    </td>
+    <td><span class="su-vergleich-cell" title="@Zeile.Knoten.Knoten.Bezeichnung">@Zeile.Knoten.Knoten.Bezeichnung</span></td>
+    <td><span class="su-vergleich-cell" title="@($"{VergleichsAnzeigeHelfer.FormatMenge(Zeile.Knoten.Knoten.UnsereMenge)} {Zeile.Knoten.Knoten.UnsereEinheit}")">@VergleichsAnzeigeHelfer.FormatMenge(Zeile.Knoten.Knoten.UnsereMenge) @Zeile.Knoten.Knoten.UnsereEinheit</span></td>
+    <td><span class="su-vergleich-cell" title="@($"{VergleichsAnzeigeHelfer.FormatMenge(Zeile.Knoten.Knoten.SapMenge)} {Zeile.Knoten.Knoten.SapEinheit}")">@VergleichsAnzeigeHelfer.FormatMenge(Zeile.Knoten.Knoten.SapMenge) @Zeile.Knoten.Knoten.SapEinheit</span></td>
+    <td><span class="badge @VergleichsAnzeigeHelfer.BadgeKlasse(Zeile.Knoten.Knoten.Status)">@VergleichsAnzeigeHelfer.StatusText(Zeile.Knoten.Knoten.Status)</span></td>
+    <td><span class="su-vergleich-cell" title="@Zeile.Knoten.Knoten.Hinweis">@Zeile.Knoten.Knoten.Hinweis</span></td>
+</tr>
+
+@code {
+    [Parameter, EditorRequired] public VergleichsZeileAnsicht Zeile { get; set; } = null!;
+    [Parameter] public string Breadcrumb { get; set; } = "";
+    [Parameter] public string GruppenBreadcrumb { get; set; } = "";
+    [Parameter] public EventCallback<VergleichsZeileAnsicht> OnToggle { get; set; }
+}

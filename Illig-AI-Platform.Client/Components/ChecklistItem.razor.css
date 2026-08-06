@@ -1,0 +1,220 @@
+li {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr) minmax(180px, 32%);
+    align-items: center;
+    gap: .5rem .75rem;
+    min-height: 3.75rem;
+    padding: .65rem .85rem;
+    border: 0;
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: var(--color-bg-panel);
+}
+
+li.aa-prueffeld--ohne-statussymbol {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 32%);
+}
+
+.aa-prueffeld--ok {
+    border-left-color: #9bc832;
+}
+
+.aa-prueffeld--abweichend {
+    border-left-color: #f7a600;
+}
+
+.aa-prueffeld--fehlt {
+    border-left-color: #e5310e;
+}
+
+.aa-status--ok,
+.aa-status--abweichend,
+.aa-status--fehlt {
+    display: inline-grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: .1rem;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 800;
+}
+
+.aa-status--ok {
+    background: #719b0d;
+}
+
+.aa-status--fehlt {
+    background: #e5310e;
+}
+
+.aa-status--abweichend {
+    background: #c57e00;
+}
+
+.aa-label {
+    display: grid;
+    grid-template-columns: minmax(135px, .7fr) minmax(0, 1.3fr);
+    align-items: center;
+    gap: .75rem;
+    min-width: 0;
+}
+
+.aa-label__titel {
+    color: var(--color-text-muted);
+    font-size: .8rem;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.aa-wert {
+    margin-top: 0;
+    color: var(--color-text);
+    font-weight: 600;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.aa-kommentar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+    align-self: center;
+}
+
+@media (max-width: 560px) {
+    li {
+        grid-template-columns: 1.25rem 1fr;
+    }
+
+    li.aa-prueffeld--ohne-statussymbol {
+        grid-template-columns: 1fr;
+    }
+
+    .aa-label {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        overflow: visible;
+    }
+
+    .aa-wert {
+        margin-top: .2rem;
+    }
+
+    .aa-kommentar,
+    .aa-kommentar-anzeige {
+        grid-column: 1 / -1;
+    }
+}
+
+.aa-kommentar__feld {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.aa-kommentar__stern {
+    position: absolute;
+    top: 50%;
+    right: .6rem;
+    z-index: 1;
+    color: #e5310e;
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: help;
+    transform: translateY(-50%);
+}
+
+.aa-kommentar__stern--fehlt {
+    color: #e5310e;
+}
+
+.aa-kommentar__stern--abweichend {
+    color: #c57e00;
+}
+
+.aa-kommentar__stern:focus-visible {
+    outline: 2px solid #00457b;
+    outline-offset: 2px;
+}
+
+.aa-kommentar__tooltip {
+    position: absolute;
+    z-index: 20;
+    right: 0;
+    bottom: calc(100% + .45rem);
+    width: min(280px, 70vw);
+    padding: .55rem .65rem;
+    border: 1px solid var(--color-border);
+    border-radius: .35rem;
+    background: var(--color-bg-elevated);
+    box-shadow: 0 .4rem 1rem rgba(0, 0, 0, .18);
+    color: var(--color-text);
+    font-size: .75rem;
+    font-weight: 400;
+    line-height: 1.35;
+    white-space: normal;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(.2rem);
+    transition: opacity .12s ease, transform .12s ease;
+}
+
+.aa-kommentar__stern:hover + .aa-kommentar__tooltip,
+.aa-kommentar__stern:focus + .aa-kommentar__tooltip {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.aa-kommentar__input {
+    width: 100%;
+    min-width: 0;
+    padding: .25rem .6rem;
+    font-size: .875rem;
+    line-height: 1.4;
+    border: 1px solid var(--color-control-border);
+    border-radius: .375rem;
+    background: var(--color-control-bg);
+    color: var(--color-text);
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.aa-kommentar__feld--pflicht .aa-kommentar__input {
+    padding-right: 1.8rem;
+}
+
+.aa-kommentar__input--pflicht {
+    border-color: rgba(229, 49, 14, .65);
+}
+
+.aa-kommentar__input--abweichend {
+    border-color: rgba(247, 166, 0, .7);
+}
+
+.aa-kommentar__input:hover:not(:disabled) {
+    background: var(--color-control-hover-bg);
+}
+
+.aa-kommentar__input:focus {
+    outline: none;
+    border-color: var(--color-control-focus);
+    box-shadow: 0 0 0 .15rem color-mix(in srgb, var(--color-control-focus) 24%, transparent);
+}
+
+.aa-kommentar__input:disabled {
+    background: var(--color-bg-panel);
+    color: var(--color-text-muted);
+}
+
+.aa-kommentar-anzeige {
+    align-self: center;
+    color: #f7a600;
+    font-size: .8rem;
+    font-style: italic;
+}

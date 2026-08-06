@@ -1,0 +1,13 @@
+@* Zeigt eine verständliche Meldung für einen fehlgeschlagenen API-Aufruf mit der
+   Möglichkeit, die Aktion erneut auszulösen (siehe ApiErrorHandler/ApiRequestException). *@
+<section class="sm-card">
+    <div class="alert alert-warning">
+        @Message
+    </div>
+    <button type="button" class="btn btn-outline-secondary" @onclick="OnRetry">Erneut versuchen</button>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Message { get; set; } = "";
+    [Parameter, EditorRequired] public EventCallback OnRetry { get; set; }
+}

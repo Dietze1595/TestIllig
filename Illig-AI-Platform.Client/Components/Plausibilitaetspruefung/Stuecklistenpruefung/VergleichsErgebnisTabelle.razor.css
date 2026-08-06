@@ -1,0 +1,169 @@
+.su-comparison-result {
+  --su-comparison-sticky-row-height: 3rem;
+  min-width: 0;
+}
+
+.su-comparison-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.su-comparison-head h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.05rem;
+}
+
+.su-comparison-head p {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.su-comparison-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.su-comparison-table-wrap .sm-merkmal-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 58rem;
+}
+
+/* Nur die Vergleichsbaum-Tabelle (nicht die separate "Nur in SAP"-Tabelle, die dieselbe
+   .sm-merkmal-table-Klasse teilt) bekommt table-layout: fixed, damit die Spaltenbreiten
+   nicht je nach virtualisierten Zeileninhalten wandern. */
+.su-comparison-table-wrap table[data-comparison-tree-table] {
+  table-layout: fixed;
+}
+
+.su-comparison-sap {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.su-comparison-sap h3 {
+  margin: 0 0 0.75rem;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.su-comparison-empty {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border-left: 3px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 5%, var(--color-bg-panel));
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.su-comparison-empty-cell {
+  padding: 1rem 1.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+@media (min-width: 901px) {
+  .su-comparison-result {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .su-comparison-head {
+    margin-bottom: 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+  }
+
+  .su-comparison-scroll {
+    --su-comparison-table-head-height: 3rem;
+    --su-comparison-sticky-row-height: 3rem;
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.65rem;
+    scrollbar-color: var(--color-text-muted) transparent;
+    scrollbar-gutter: stable;
+    scrollbar-width: auto;
+    touch-action: pan-x pan-y;
+  }
+
+  .su-comparison-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .su-comparison-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-muted) 65%, transparent);
+    background-clip: padding-box;
+  }
+
+  .su-comparison-scroll .su-comparison-table-wrap {
+    overflow: visible;
+  }
+
+  .su-comparison-scroll .sm-merkmal-table th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    box-sizing: border-box;
+    height: var(--su-comparison-table-head-height);
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    white-space: nowrap;
+  }
+
+  /* Die Status-Kopfzelle trägt das Filter-Dropdown. Dessen Panel ist absolut positioniert und
+     lebt im Stacking-Context dieser sticky-Zelle — ohne Anhebung würde es hinter den
+     nachfolgenden Kopfzellen (gleicher z-index, später im DOM) und dem Sticky-Breadcrumb
+     (z-index 4) verschwinden. Höherer z-index hebt Zelle samt Panel über den Rest. */
+  .su-comparison-scroll .sm-merkmal-table th.su-comparison-status-th {
+    z-index: 32;
+  }
+
+  .su-comparison-sticky-path {
+    position: sticky;
+    top: var(--su-comparison-table-head-height);
+    z-index: 4;
+    width: 100%;
+    height: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .su-comparison-sticky-path:empty {
+    display: none;
+  }
+
+  .su-comparison-breadcrumb {
+    box-sizing: border-box;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 12%, var(--color-bg-panel));
+    color: var(--color-text);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 0.2rem 0.4rem rgb(0 0 0 / 14%);
+  }
+}
+
+@media (max-width: 900px) {
+  .su-comparison-head {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,32 @@
+.sm-choice-card--illustrated {
+    grid-template-columns: minmax(0, 1fr) clamp(9.5rem, 11vw, 10.5rem);
+}
+
+.sa-choice-icon {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+    justify-self: end;
+    width: clamp(9.5rem, 11vw, 10.5rem);
+    height: auto;
+    overflow: visible;
+    transition: transform 0.2s ease;
+}
+
+.sm-choice-card--illustrated:hover .sa-choice-icon,
+.sm-choice-card--illustrated:focus-visible .sa-choice-icon {
+    transform: translateY(-2px) scale(1.025);
+}
+
+@media (max-width: 640px) {
+    .sa-choice-icon {
+        width: 8.5rem;
+        margin-bottom: 0.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sa-choice-icon {
+        transition: none;
+    }
+}

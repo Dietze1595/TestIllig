@@ -1,0 +1,128 @@
+@using Illig_AI_Platform.Client.Models.Admin
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Multi-Select-Dropdown für Rollen. Die Komponente besitzt die Auswahl nicht selbst — der Aufrufer
+   entscheidet über Ausgewaehlt/OnUmgeschaltet (gleiches Muster wie SpaltenFilterDropdown). *@
+<div class="rollenauswahl" @ref="_element">
+    <button type="button" class="rollenauswahl__trigger" @onclick="Umschalten"
+            aria-expanded="@(_offen ? "true" : "false")" aria-label="Rollen auswählen">
+        @if (GewaehlteLabels.Count == 0)
+        {
+            <span class="rollenauswahl__summary rollenauswahl__summary--leer">Keine Rolle</span>
+        }
+        else
+        {
+            <span class="rollenauswahl__summary">
+                <span class="rollenauswahl__hauptrolle">@GewaehlteLabels[0]</span>
+                @if (GewaehlteLabels.Count > 1)
+                {
+                    <span class="rollenauswahl__mehr">+@(GewaehlteLabels.Count - 1)</span>
+                }
+            </span>
+        }
+        <span class="rollenauswahl__chevron" aria-hidden="true">▼</span>
+    </button>
+    @if (_offen)
+    {
+        <div class="rollenauswahl__panel" role="group" aria-label="Rollen">
+            @foreach (var option in Optionen)
+            {
+                var gesperrt = Gesperrt.Contains(option.Id);
+                <label class="rollenauswahl__option @(gesperrt ? "rollenauswahl__option--gesperrt" : "")">
+                    <input type="checkbox"
+                           checked="@Ausgewaehlt.Contains(option.Id)"
+                           disabled="@gesperrt"
+                           @onchange="_ => OnUmgeschaltet.InvokeAsync(option.Id)" />
+                    <span>@(Label?.Invoke(option.Name) ?? option.Name)</span>
+                </label>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Verfügbare Rollen für die Checkbox-Liste.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<AdminRoleDto> Optionen { get; set; } = [];
+
+    /// <summary>Aktuell selektierte Rollen-Ids — nur zum Anzeigen des Checkbox-Zustands.</summary>
+    [Parameter, EditorRequired] public IReadOnlyCollection<int> Ausgewaehlt { get; set; } = [];
+
+    /// <summary>Wird mit der betroffenen Rollen-Id aufgerufen, wenn eine Checkbox angeklickt wird.</summary>
+    [Parameter, EditorRequired] public EventCallback<int> OnUmgeschaltet { get; set; }
+
+    /// <summary>Optional: Rollen-Ids, die nicht änderbar sind (z. B. die eigene Admin-Rolle).</summary>
+    [Parameter] public IReadOnlyCollection<int> Gesperrt { get; set; } = [];
+
+    /// <summary>Optional: übersetzt den technischen Rollennamen in ein anzeigbares Label.</summary>
+    [Parameter] public Func<string, string>? Label { get; set; }
+
+    private bool _offen;
+    private ElementReference _element;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<RollenMehrfachauswahl>? _dotNetReferenz;
+    private bool _positionierungAusstehend;
+
+    // Anzeige-Labels der aktuell gewählten Rollen (in der Reihenfolge der Optionen).
+    private List<string> GewaehlteLabels => Optionen
+        .Where(o => Ausgewaehlt.Contains(o.Id))
+        .Select(o => Label?.Invoke(o.Name) ?? o.Name)
+        .ToList();
+
+    private async Task Umschalten()
+    {
+        _offen = !_offen;
+
+        _module ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./Components/Admin/RollenMehrfachauswahl.razor.js");
+
+        if (_offen)
+        {
+            _positionierungAusstehend = true;
+            _dotNetReferenz ??= DotNetObjectReference.Create(this);
+            await _module.InvokeVoidAsync("aussenklickRegistrieren", _element, _dotNetReferenz);
+        }
+        else
+        {
+            await _module.InvokeVoidAsync("aussenklickEntfernen", _element);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_offen || !_positionierungAusstehend || _module is null)
+            return;
+
+        _positionierungAusstehend = false;
+        await _module.InvokeVoidAsync("dropdownPositionieren", _element);
+    }
+
+    [JSInvokable]
+    public Task VonAussenSchliessen()
+    {
+        if (!_offen)
+            return Task.CompletedTask;
+
+        _offen = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("aussenklickEntfernen", _element);
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Seite bereits verlassen — im Browser gibt es nichts mehr aufzuräumen.
+            }
+        }
+
+        _dotNetReferenz?.Dispose();
+    }
+}

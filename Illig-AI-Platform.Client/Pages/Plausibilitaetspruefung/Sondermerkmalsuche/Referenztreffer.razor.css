@@ -1,0 +1,429 @@
+/* Lang laufende Referenzsuche */
+.sm-search-progress { display: flex; align-items: center; gap: 1rem; }
+.sm-search-progress p { margin: .25rem 0 0; }
+
+.sm-referenztreffer-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+    margin-bottom: .5rem;
+}
+
+.sm-referenztreffer-page > .sm-page__head {
+    flex: 0 0 auto;
+}
+
+.sm-referenztreffer-page > .sm-wizard-content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.sm-referenztreffer-page > .sm-wizard-content > .sm-card {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+/* Ergebnisse */
+.sm-result-group {
+    overflow: hidden;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: var(--color-bg-panel);
+}
+
+.sm-result-group--found {
+    border-left-color: #9bc832;
+}
+
+.sm-result-group--missing {
+    border-left-color: #f7a600;
+}
+
+.sm-result-group__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .85rem 1rem;
+}
+
+.sm-result-group__copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.sm-result-group--found .sm-result-group__head {
+    background: rgba(155, 200, 50, .12);
+}
+
+.sm-result-group--missing .sm-result-group__head {
+    background: rgba(247, 166, 0, .11);
+}
+
+.sm-result-group__head h3 {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+    font-size: 1rem;
+}
+
+.sm-result-group__head p {
+    margin: .25rem 0 0 0;
+    padding: 0;
+    color: var(--color-text-muted);
+    font-size: .875rem;
+}
+
+.sm-result-group__icon {
+    display: inline-grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: 0 0 1.25rem;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.sm-result-group--found .sm-result-group__icon {
+    background: #719b0d;
+}
+
+.sm-result-group--missing .sm-result-group__icon {
+    background: #f7a600;
+    color: #372500;
+}
+
+.sm-result-group__badge {
+    min-width: 2rem;
+    flex: 0 0 auto;
+    padding: .15rem .55rem;
+    border-radius: 1rem;
+    background: rgba(87, 102, 109, .12);
+    color: var(--color-text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.sm-results-summary {
+    color: var(--color-text-muted);
+}
+
+.sm-results-legend {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin: 0;
+    padding: .65rem 1rem;
+    color: var(--color-text-muted);
+    font-size: .8rem;
+}
+
+.sm-results-legend strong { color: var(--color-text-soft); }
+
+.sm-results-legend__marker {
+    width: .75rem;
+    height: .75rem;
+    flex: 0 0 auto;
+    background: #9bc832;
+    border: 1px solid color-mix(in srgb, #9bc832 75%, #16300a);
+    border-radius: 50%;
+}
+.sm-reference-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-top: 1px solid var(--color-border);
+}
+.sm-reference-table {
+    width: 100%;
+    min-width: 70rem;
+    border-spacing: 0;
+    border-collapse: separate;
+    text-align: left;
+}
+.sm-reference-table th {
+    padding: .55rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.sm-reference-table td {
+    padding: .7rem .75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+    color: var(--color-text-soft);
+    font-size: .85rem;
+    line-height: 1.4;
+    vertical-align: top;
+}
+.sm-reference-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+.sm-reference-table__order {
+    color: var(--color-text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.sm-reference-table__customer {
+    display: flex;
+    min-width: 10rem;
+    flex-direction: column;
+    gap: .1rem;
+}
+.sm-reference-table__customer strong {
+    color: var(--color-text);
+    font-weight: 600;
+}
+.sm-reference-table__customer span {
+    color: var(--color-text-muted);
+    font-size: .75rem;
+}
+.sm-reference-table__type {
+    min-width: 9rem;
+    overflow-wrap: anywhere;
+}
+.sm-reference-table__date {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.sm-reference-table__score {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3rem;
+    min-height: 1.75rem;
+    padding: .15rem .4rem;
+    border: 1px solid var(--color-border);
+    border-radius: .2rem;
+    color: var(--color-text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
+}
+.sm-reference-table__features {
+    min-width: 20rem;
+}
+.sm-reference-table__feature-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+.sm-reference-table__feature {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.75rem;
+    padding: .22rem .55rem;
+    border: 1px solid rgba(155, 200, 50, .55);
+    border-radius: .2rem;
+    background: rgba(155, 200, 50, .14);
+    color: var(--color-text-soft);
+    font-size: .8rem;
+    font-weight: 700;
+    text-align: center;
+}
+.sm-reference-table__feature-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: .22rem .55rem;
+    background: var(--color-bg-panel);
+    border: 1px dashed color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+    border-radius: .2rem;
+    color: var(--color-accent-strong);
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.sm-reference-table__feature-toggle:hover {
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-panel));
+    border-style: solid;
+}
+.sm-reference-table__feature-toggle:focus-visible,
+.sm-reference-table__open:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+    outline-offset: 2px;
+}
+/* Kommt ein Merkmal in mehreren Referenzaufträgen vor, wird nur der aktuellste (höchstes
+   Abschlussdatum) kräftig grün hervorgehoben — ältere Treffer behalten die normale, leichte
+   Grün-Hinterlegung oben. Die Unterscheidung läuft bewusst rein über die Farbe, kein Icon. */
+.sm-reference-table__feature--aktuell {
+    background: #9bc832;
+    border-color: #9bc832;
+    color: #16300a;
+}
+.sm-reference-table__action-head,
+.sm-reference-table__action {
+    text-align: right;
+}
+.sm-reference-table__open {
+    padding: .3rem .55rem;
+    border: 1px solid #00457b;
+    border-radius: .2rem;
+    background: transparent;
+    color: var(--color-accent-strong);
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.sm-reference-table__open:hover {
+    background: color-mix(in srgb, #00457b 8%, var(--color-bg-panel));
+}
+
+.sm-missing-table-section {
+    margin-top: 1.5rem;
+}
+
+.sm-missing-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.sm-missing-table {
+    width: 100%;
+    min-width: 42rem;
+    border-spacing: 0;
+    border-collapse: separate;
+    text-align: left;
+}
+
+.sm-missing-table th {
+    padding: .55rem .85rem;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, #e3e9ec 34%, var(--color-bg-panel));
+    color: var(--color-text-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.sm-missing-table td {
+    --fehlend-zeile-bg: color-mix(in srgb, #e3e9ec 18%, var(--color-bg-panel));
+    padding: .7rem .85rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--fehlend-zeile-bg);
+    color: var(--color-text-soft);
+    font-size: .85rem;
+    line-height: 1.4;
+    vertical-align: top;
+}
+
+.sm-missing-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.sm-missing-table__position {
+    width: 7rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.sm-missing-table__number {
+    width: 11rem;
+    color: var(--color-text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.sm-merkmal-fehlend__beschreibung {
+    position: relative;
+    min-width: 0;
+}
+
+.sm-merkmal-fehlend__beschreibung p {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text-soft);
+    font-size: .88rem;
+    line-height: 1.45;
+}
+
+.sm-merkmal-fehlend__text--eingeklappt {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.sm-merkmal-fehlend__mehr {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 50%;
+    margin-left: 50%;
+    margin-top: .3rem;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--color-accent-strong);
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sm-merkmal-fehlend__beschreibung--eingeklappt .sm-merkmal-fehlend__mehr {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 50%;
+    height: 1.45em;
+    margin: 0;
+    padding-left: 2.5rem;
+    background: linear-gradient(
+        to right,
+        transparent,
+        var(--fehlend-zeile-bg) 2.5rem,
+        var(--fehlend-zeile-bg)
+    );
+}
+
+.sm-merkmal-fehlend__mehr::after {
+    content: none;
+}
+
+.sm-merkmal-fehlend__mehr:hover {
+    text-decoration: underline;
+}
+
+.sm-merkmal-fehlend__mehr:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+    outline-offset: 3px;
+    border-radius: .15rem;
+}
+
+@media (max-width: 700px) {
+    .sm-result-group__head p {
+        margin-left: 0;
+    }
+
+    .sm-merkmal-fehlend__beschreibung--eingeklappt .sm-merkmal-fehlend__mehr {
+        width: 55%;
+    }
+}

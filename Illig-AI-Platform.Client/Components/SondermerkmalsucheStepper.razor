@@ -1,0 +1,17 @@
+@using Illig_AI_Platform.Client.Layout
+
+@if (Layout is not null && Layout.SonderWizardStep > 0)
+{
+    <div class="content__steps su-stepper-wide">
+        <StepIndicator Current="Layout.SonderWizardStep"
+                       MaxErreicht="Layout.SonderWizardMaxStep"
+                       OnStepClick="SchrittWechseln" />
+    </div>
+}
+
+@code {
+    [CascadingParameter] public MainLayout? Layout { get; set; }
+
+    private Task SchrittWechseln(int schritt) =>
+        Layout?.SonderWizardStepWechseln(schritt) ?? Task.CompletedTask;
+}

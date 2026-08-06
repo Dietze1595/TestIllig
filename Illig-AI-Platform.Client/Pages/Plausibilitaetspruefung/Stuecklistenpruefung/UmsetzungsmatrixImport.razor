@@ -1,0 +1,103 @@
+@page "/admin/umsetzungsmatrix-import"
+@inject StuecklistenpruefungClient Client
+
+<PageTitle>Umsetzungsmatrix importieren</PageTitle>
+
+<div class="sm-page">
+    <SeitenKopf Titel="Umsetzungsmatrix importieren"
+                Lead="Maximalstückliste und Umsetzungsmatrix für einen Maschinentyp einmalig importieren — ersetzt einen vorherigen Import für denselben Schlüssel vollständig." />
+
+    @* Bewusst NUR Admin (nicht zusätzlich PlausibilityCheck) — einzige rein admin-gated Seite, siehe Design-Spec „Import". *@
+    <RoleGuard Roles="@(new[] { AppClientRoles.Admin })">
+        @if (_apiError is { Length: > 0 })
+        {
+            <ApiFehlerHinweis Message="@_apiError" OnRetry="@(() => _apiError = null)" />
+        }
+
+        @if (_erfolg)
+        {
+            <div class="alert alert-success">Import erfolgreich abgeschlossen.</div>
+        }
+
+        <section class="sm-card">
+            <div class="mb-3">
+                <label class="form-label" for="maschinentypSchluessel">Maschinentyp-Schlüssel</label>
+                <input id="maschinentypSchluessel" class="form-control" style="max-width: 20rem"
+                       placeholder="z. B. RDM 75Kc" @bind="_maschinentypSchluessel" @bind:event="oninput" disabled="@_importiert" />
+                <div class="form-text">
+                    Wird per Präfix-Vergleich gegen den Maschinentyp-Text aus der Auftragsinformation
+                    abgeglichen (z. B. passt „RDM 75Kc" zu „RDM 75Kc_konf_ab (877)").
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="format">Format</label>
+                <select id="format" class="form-select" style="max-width: 20rem" @bind="_format" disabled="@_importiert">
+                    @foreach (var f in Enum.GetValues<StuecklistenImportFormat>())
+                    {
+                        <option value="@f">@StuecklistenImportFormatInfo.Bezeichnung(f)</option>
+                    }
+                </select>
+                <div class="form-text">
+                    Legt fest, mit welchem Parser Maximalstückliste und Umsetzungsmatrix gelesen werden.
+                    Die Formate unterscheiden sich äußerlich kaum, daher explizite Auswahl.
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="maximalstueckliste">Maximalstückliste (SAP-Export, .txt)</label>
+                <InputFile id="maximalstueckliste" class="form-control" OnChange="@(e => _maximalstueckliste = e.File)" disabled="@_importiert" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="umsetzungsmatrix">Umsetzungsmatrix (.xlsx)</label>
+                <InputFile id="umsetzungsmatrix" class="form-control" OnChange="@(e => _umsetzungsmatrix = e.File)" disabled="@_importiert" />
+            </div>
+
+            <PrimaryButton OnClick="ImportierenAsync" Disabled="@(!KannImportieren)">
+                @(_importiert ? "Wird importiert…" : "Importieren")
+            </PrimaryButton>
+        </section>
+    </RoleGuard>
+</div>
+
+@code {
+    private bool _importiert;
+    private bool _erfolg;
+    private string? _apiError;
+
+    private string _maschinentypSchluessel = "";
+    private StuecklistenImportFormat _format = StuecklistenImportFormat.Rdm75Kc;
+    private IBrowserFile? _maximalstueckliste;
+    private IBrowserFile? _umsetzungsmatrix;
+
+    private bool KannImportieren =>
+        !_importiert && !string.IsNullOrWhiteSpace(_maschinentypSchluessel)
+        && _maximalstueckliste is not null && _umsetzungsmatrix is not null;
+
+    private async Task ImportierenAsync()
+    {
+        if (!KannImportieren) return;
+
+        _apiError = null;
+        _erfolg = false;
+        _importiert = true;
+        try
+        {
+            await Client.ImportAsync(_maximalstueckliste!, _umsetzungsmatrix!, _maschinentypSchluessel.Trim(), _format);
+            _erfolg = true;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        catch (IOException)
+        {
+            _apiError = "Eine der Dateien konnte nicht gelesen werden (max. 50 MB pro Datei).";
+        }
+        finally
+        {
+            _importiert = false;
+        }
+    }
+}

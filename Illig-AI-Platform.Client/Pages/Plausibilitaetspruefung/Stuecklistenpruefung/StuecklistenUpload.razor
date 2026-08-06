@@ -1,0 +1,1136 @@
+@page "/stuecklistenpruefung"
+@using Illig_AI_Platform.Client.Components.Plausibilitaetspruefung.Stuecklistenpruefung
+@using Illig_AI_Platform.Client.Models
+@inject StuecklistenpruefungClient Client
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Stücklistenprüfung</PageTitle>
+
+<div class="sm-page @(DokumentAktiv ? "sm-page--dokument-aktiv" : "") @(DokumentAktiv && _angezeigterSchritt == 2 ? "sm-stuecklisten-merkmale-page" : "") @(DokumentAktiv && _angezeigterSchritt == 4 ? "sm-stuecklisten-vergleich-page" : "")">
+    <RoleGuard Roles="@(new[] { AppClientRoles.PlausibilityCheck, AppClientRoles.Admin })" OnAuthorized="VerlaufLadenAsync">
+        <div class="su-layout">
+            <VerlaufSidebar Offen="_verlaufOffen" OffenChanged="v => _verlaufOffen = v"
+                             Eintraege="_verlaufEintraege" Laedt="_verlaufLaedt" Fehler="_verlaufFehler"
+                             GeoeffneterId="_geoeffneterVerlaufId" LadenderId="_ladenderVerlaufId"
+                             SharePointEintraege="_sharePointEintraege"
+                             GeoeffneteSharePointId="_geoeffneteSharePointId" LadendeSharePointId="_ladendeSharePointId"
+                             NurMeine="_nurMeine" NurMeineChanged="VerlaufFilterGeaendertAsync"
+                             OnRetry="VerlaufLadenAsync" OnEintragOeffnen="VerlaufOeffnen"
+                             OnSharePointEintragOeffnen="SharePointDokumentOeffnen" />
+
+            <div class="su-page-head su-panel-reserve @PdfPanelKlasse @VerlaufPanelKlasse">
+                <SeitenKopf Titel="Stücklistenprüfung" Lead="Auftragsinformation hochladen, Merkmale prüfen." />
+
+                <div class="su-stepper-wide">
+                    <StepIndicator Current="@_angezeigterSchritt"
+                                   MaxErreicht="@_hoechsterErreichterSchritt"
+                                   Steps="@(new[] { "Auftragsinformation hochladen", "Merkmale prüfen", "SAP-Stückliste hochladen", "Vergleich" })"
+                                   OnStepClick="SchrittWechseln" />
+                </div>
+            </div>
+
+            <div class="su-main su-panel-reserve @PdfPanelKlasse @VerlaufPanelKlasse">
+                @if (_apiError is { Length: > 0 })
+                {
+                    <ApiFehlerHinweis Message="@_apiError" OnRetry="@(() => _apiError = null)" />
+                }
+
+                @if (_ergebnis is null)
+                {
+                    <section class="sm-card">
+                        <FileDropzone OnChange="OnFileSelectedAsync" Accept="application/pdf" Busy="_analyzing"
+                                      IdleText="Auftragsinformation (PDF) hierher ziehen oder klicken zum Auswählen"
+                                      BusyText="Dokument wird analysiert…" />
+                    </section>
+                }
+                else if (_uploadKonflikt is not null)
+                {
+                    <section class="sm-card" aria-labelledby="su-upload-conflict-title">
+                        <h3 id="su-upload-conflict-title">Auftrag @_ergebnis.Auftragsnummer ist bereits vorhanden</h3>
+                        <p>
+                            Für diesen Auftrag existiert bereits ein gespeicherter Bearbeitungsstand.
+                            Wie soll das hochgeladene Dokument behandelt werden?
+                        </p>
+                        <div class="sm-actions">
+                            <PrimaryButton OnClick="DokumentNeuEinlesenAsync" Disabled="@_analyzing">
+                                @(_analyzing ? "Dokument wird neu eingelesen…" : "Dokument neu auslesen")
+                            </PrimaryButton>
+                            <SecondaryButton OnClick="BestehendenStandOeffnenAsync" Disabled="@_analyzing">
+                                Gespeicherten Stand öffnen
+                            </SecondaryButton>
+                            <button type="button" class="btn btn-link" @onclick="Zuruecksetzen" disabled="@_analyzing">
+                                Abbrechen
+                            </button>
+                        </div>
+                    </section>
+                }
+                else
+                {
+                    <section class="su-review">
+                        <div class="su-review__content">
+                            @if (ZeigeAuftragskopf)
+                            {
+                            <section class="su-order-overview sm-card @(_angezeigterSchritt == 2 ? null : "su-order-overview--compact")"
+                                     aria-labelledby="su-order-overview-title"
+                                     data-step="@_angezeigterSchritt">
+                                <header class="su-order-overview__head">
+                                    <h2 id="su-order-overview-title">
+                                        Auftragsinformation von
+                                        @(!string.IsNullOrWhiteSpace(_ergebnis.Kundenname)
+                                            ? _ergebnis.Kundenname
+                                            : !string.IsNullOrWhiteSpace(_ergebnis.Kundennummer)
+                                                ? $"Kunde {_ergebnis.Kundennummer}"
+                                                : "unbekanntem Kunden")
+                                    </h2>
+                                    <div class="su-order-overview__head-actions">
+                                        @if (_readOnly)
+                                        {
+                                            <span class="su-review__badge">Historie</span>
+                                        }
+                                            <div class="su-order-overview__build-action @(_angezeigterSchritt == 2 ? null : "su-order-overview__build-action--hidden")"
+                                                 tabindex="@(_angezeigterSchritt == 2 && !_umsetzungsmatrixVerfuegbar ? 0 : -1)"
+                                                 aria-hidden="@(_angezeigterSchritt != 2)"
+                                                 aria-describedby="@MatrixTooltipId">
+                                                <button type="button"
+                                                        class="@BuildButtonKlasse"
+                                                        @onclick="AufbauenAsync"
+                                                        aria-describedby="@MatrixTooltipId"
+                                                        tabindex="@(_angezeigterSchritt == 2 ? 0 : -1)"
+                                                        disabled="@(_angezeigterSchritt != 2 || _aufbauend || !_umsetzungsmatrixVerfuegbar)">
+                                                    @(_aufbauend ? "Wird vorbereitet…" : "SAP-Stückliste vergleichen")
+                                                </button>
+                                                @if (_angezeigterSchritt == 2 && !_umsetzungsmatrixVerfuegbar)
+                                                {
+                                                    <span>Für diesen Maschinentyp ist keine Umsetzungsmatrix hinterlegt.</span>
+                                                    <div id="su-available-matrices"
+                                                         class="su-matrix-tooltip"
+                                                         role="tooltip">
+                                                        <strong>Vorhandene Umsetzungsmatrizen</strong>
+                                                        @if (_verfuegbareUmsetzungsmatrizen.Count == 0)
+                                                        {
+                                                            <p>Aktuell sind keine Umsetzungsmatrizen hinterlegt.</p>
+                                                        }
+                                                        else
+                                                        {
+                                                            <ul>
+                                                                @foreach (var matrix in _verfuegbareUmsetzungsmatrizen)
+                                                                {
+                                                                    <li>@matrix</li>
+                                                                }
+                                                            </ul>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                    </div>
+                                </header>
+
+                                <dl class="su-order-overview__info">
+                                    <div>
+                                        <dt>
+                                            <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <rect x="3.5" y="5" width="17" height="14" rx="2" />
+                                                <circle cx="8.5" cy="10" r="2" />
+                                                <path d="M5.5 15c.75-1.35 1.75-2 3-2s2.25.65 3 2M13.5 9h4M13.5 13h4" />
+                                            </svg>
+                                            Kundennummer
+                                        </dt>
+                                        <dd class="su-order-overview__numeric">@(!string.IsNullOrWhiteSpace(_ergebnis.Kundennummer) ? _ergebnis.Kundennummer : "—")</dd>
+                                    </div>
+                                    <div>
+                                        <dt>
+                                            <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M7 3.75h7l3 3V20.25H7z" />
+                                                <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" />
+                                            </svg>
+                                            Auftrag
+                                        </dt>
+                                        <dd class="su-order-overview__numeric">@_ergebnis.Auftragsnummer</dd>
+                                    </div>
+                                    <div>
+                                        <dt>
+                                            <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z" />
+                                                <path d="M4 8.5 12 13l8-4.5M12 13v7" />
+                                            </svg>
+                                            Maschinentyp
+                                        </dt>
+                                        <dd>@_ergebnis.Maschinentyp</dd>
+                                    </div>
+                                    <div>
+                                        <dt>
+                                            <svg class="su-order-overview__icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <rect x="4" y="5.5" width="16" height="14" rx="2" />
+                                                <path d="M8 3.5v4M16 3.5v4M4 9.5h16" />
+                                            </svg>
+                                            Datum
+                                        </dt>
+                                        <dd class="su-order-overview__numeric">@(_ergebnis.Datum?.ToString("dd.MM.yyyy") ?? "—")</dd>
+                                    </div>
+                                </dl>
+
+                            </section>
+                            }
+
+                            <div @key="_angezeigterSchritt"
+                                 class="su-review__merkmale su-step-content sm-card">
+                            @switch (_angezeigterSchritt)
+                            {
+                                case 2:
+                                {
+                                    <div class="su-review__merkmale-scroll">
+                                    <div class="su-review__section-head">
+                                        <div>
+                                            <h2>Ausgelesene Merkmale</h2>
+                                            <p>@_merkmale.Count Merkmale und @_sonderoptionen.Count Sondermerkmale erkannt</p>
+                                        </div>
+                                        <button type="button"
+                                                class="btn btn-outline-secondary su-feature-jump"
+                                                @onclick="ZuSondermerkmalenScrollenAsync">
+                                            Zu den Sondermerkmalen <span aria-hidden="true">↓</span>
+                                        </button>
+                                    </div>
+
+                                    <section class="su-feature-section su-feature-section--standard" aria-labelledby="su-merkmale-title">
+                                    <header class="su-feature-section__head">
+                                        <div>
+                                            <h3 id="su-merkmale-title">Merkmale</h3>
+                                            <p>Reguläre Merkmale aus der Auftragsinformation</p>
+                                        </div>
+                                        <span class="su-feature-section__count">@_merkmale.Count</span>
+                                    </header>
+                                    <div class="su-merkmal-table-wrap">
+                                    <table class="sm-merkmal-table su-merkmal-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Position</th>
+                                                <th>Merkmalsnummer</th>
+                                                <th>Beschreibung</th>
+                                                @if (!_readOnly)
+                                                {
+                                                    <th class="su-merkmal-table__action-head"><span class="visually-hidden">Aktion</span></th>
+                                                }
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var merkmal in _merkmale)
+                                            {
+                                                <tr>
+                                                    <td class="su-merkmal-table__position">@merkmal.Position</td>
+                                                    <td class="su-merkmal-table__number">@merkmal.Merkmalsnummer</td>
+                                                    <td class="su-merkmal-table__description">
+                                                        @{
+                                                            var beschreibungKey = BeschreibungKey("merkmal", merkmal);
+                                                            var istLang = HatLangeBeschreibung(merkmal.Beschreibung);
+                                                            var istAusgeklappt = _ausgeklappteBeschreibungen.Contains(beschreibungKey);
+                                                        }
+                                                        <div class="su-merkmal-description @(istLang && !istAusgeklappt ? "su-merkmal-description--collapsed" : null)">
+                                                            <p class="@(istLang && !istAusgeklappt ? "su-merkmal-description__text--collapsed" : null)">
+                                                                @merkmal.Beschreibung
+                                                            </p>
+                                                            @if (istLang)
+                                                            {
+                                                                <button type="button"
+                                                                        class="su-merkmal-description__toggle"
+                                                                        aria-expanded="@istAusgeklappt"
+                                                                        @onclick="() => BeschreibungUmschalten(beschreibungKey)">
+                                                                    @(istAusgeklappt ? "Weniger" : "Mehr")
+                                                                </button>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                    @if (!_readOnly)
+                                                    {
+                                                        <td class="sm-merkmal__action">
+                                                            <button type="button"
+                                                                    class="sm-merkmal__remove"
+                                                                    title="Merkmal entfernen"
+                                                                    aria-label="Merkmal @merkmal.Merkmalsnummer entfernen"
+                                                                    @onclick="() => RemoveMerkmal(merkmal)">
+                                                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                                                    <path d="M4 7h16" />
+                                                                    <path d="M9 7V4h6v3" />
+                                                                    <path d="M6.5 7l1 13h9l1-13" />
+                                                                    <path d="M10 11v5M14 11v5" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    }
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                    </div>
+                                    </section>
+
+                                    <section id="su-sondermerkmale"
+                                             class="su-feature-section su-feature-section--special"
+                                             aria-labelledby="su-sondermerkmale-title">
+                                    <header class="su-feature-section__head">
+                                        <div>
+                                            <h3 id="su-sondermerkmale-title">Sondermerkmale</h3>
+                                            <p>Zusätzlich erkannte kundenspezifische Merkmale</p>
+                                        </div>
+                                        <span class="su-feature-section__count">@_sonderoptionen.Count</span>
+                                    </header>
+                                    @if (_sonderoptionen.Count == 0)
+                                    {
+                                        <p class="su-review__empty">Keine Sondermerkmale erkannt.</p>
+                                    }
+                                    else
+                                    {
+                                        <div class="su-merkmal-table-wrap">
+                                        <table class="sm-merkmal-table su-merkmal-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Position</th>
+                                                    <th>Merkmalsnummer</th>
+                                                    <th>Beschreibung</th>
+                                                    @if (!_readOnly)
+                                                    {
+                                                        <th class="su-merkmal-table__action-head"><span class="visually-hidden">Aktion</span></th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var sonderoption in _sonderoptionen)
+                                                {
+                                                    <tr>
+                                                        <td class="su-merkmal-table__position">@sonderoption.Position</td>
+                                                        <td class="su-merkmal-table__number">@sonderoption.Merkmalsnummer</td>
+                                                        <td class="su-merkmal-table__description">
+                                                            @{
+                                                                var beschreibungKey = BeschreibungKey("sonderoption", sonderoption);
+                                                                var istLang = HatLangeBeschreibung(sonderoption.Beschreibung);
+                                                                var istAusgeklappt = _ausgeklappteBeschreibungen.Contains(beschreibungKey);
+                                                            }
+                                                            <div class="su-merkmal-description @(istLang && !istAusgeklappt ? "su-merkmal-description--collapsed" : null)">
+                                                                <p class="@(istLang && !istAusgeklappt ? "su-merkmal-description__text--collapsed" : null)">
+                                                                    @sonderoption.Beschreibung
+                                                                </p>
+                                                                @if (istLang)
+                                                                {
+                                                                    <button type="button"
+                                                                            class="su-merkmal-description__toggle"
+                                                                            aria-expanded="@istAusgeklappt"
+                                                                            @onclick="() => BeschreibungUmschalten(beschreibungKey)">
+                                                                        @(istAusgeklappt ? "Weniger" : "Mehr")
+                                                                    </button>
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                        @if (!_readOnly)
+                                                        {
+                                                            <td class="sm-merkmal__action">
+                                                                <button type="button"
+                                                                        class="sm-merkmal__remove"
+                                                                        title="Sonderoption entfernen"
+                                                                        aria-label="Sonderoption @sonderoption.Merkmalsnummer entfernen"
+                                                                        @onclick="() => RemoveSonderoption(sonderoption)">
+                                                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                                                        <path d="M4 7h16" />
+                                                                        <path d="M9 7V4h6v3" />
+                                                                        <path d="M6.5 7l1 13h9l1-13" />
+                                                                        <path d="M10 11v5M14 11v5" />
+                                                                    </svg>
+                                                                </button>
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                        </div>
+                                    }
+                                    </section>
+
+                                    @if (!_readOnly)
+                                    {
+                                        <section class="su-feature-add" aria-labelledby="su-feature-add-title">
+                                            <header class="su-feature-add__head">
+                                                <h3 id="su-feature-add-title">Weiteres Merkmal hinzufügen</h3>
+                                                <p>Ergänzen Sie ein fehlendes Merkmal und ordnen Sie es dem passenden Bereich zu.</p>
+                                            </header>
+                                            <div class="su-feature-add__fields">
+                                                <label class="su-feature-add__field su-feature-add__field--position">
+                                                    <span>Position</span>
+                                                    <input class="form-control"
+                                                           placeholder="z. B. 40/100"
+                                                           @bind="_neuePosition"
+                                                           @bind:event="oninput" />
+                                                </label>
+                                                <label class="su-feature-add__field su-feature-add__field--number">
+                                                    <span>Merkmalsnummer</span>
+                                                    <input class="form-control"
+                                                           placeholder="Merkmalsnummer"
+                                                           @bind="_neueNummer"
+                                                           @bind:event="oninput" />
+                                                </label>
+                                                <label class="su-feature-add__field su-feature-add__field--description">
+                                                    <span>Beschreibung</span>
+                                                    <input class="form-control"
+                                                           placeholder="Beschreibung des Merkmals"
+                                                           @bind="_neueBeschreibung"
+                                                           @bind:event="oninput" />
+                                                </label>
+                                                <label class="su-feature-add__field su-feature-add__field--type">
+                                                    <span>Bereich</span>
+                                                    <select class="form-select" @bind="_neuesZiel">
+                                                        <option value="Merkmal">Merkmale</option>
+                                                        <option value="Sonderoption">Sondermerkmale</option>
+                                                    </select>
+                                                </label>
+                                            </div>
+                                            <footer class="su-feature-add__actions">
+                                                <button type="button"
+                                                        class="btn btn-primary"
+                                                        @onclick="AddMerkmal"
+                                                        disabled="@(!KannHinzufuegen)">
+                                                    Merkmal hinzufügen
+                                                </button>
+                                            </footer>
+                                        </section>
+                                    }
+
+                                    <div class="sm-actions">
+                                        <button type="button" class="btn btn-link px-0" @onclick="Zuruecksetzen">← Anderes Dokument hochladen</button>
+                                    </div>
+
+                                    @if (_stuecklisteGesucht && _stueckliste is null)
+                                    {
+                                        <h3>Ergebnis-Stückliste</h3>
+                                        <p class="su-review__empty">Für Maschinentyp „@_ergebnis.Maschinentyp" ist noch keine Stücklistenprüfung hinterlegt.</p>
+                                    }
+                                    </div>
+                                    break;
+                                }
+                                case 3:
+                                {
+                                    <h3>SAP-Stückliste hochladen</h3>
+                                    @if (_readOnly)
+                                    {
+                                        <p class="su-review__empty">
+                                            Dieser gespeicherte Durchlauf hat Schritt 3 erreicht.
+                                            @if (!string.IsNullOrWhiteSpace(_sapDateiname))
+                                            {
+                                                <span>Verwendete SAP-Datei: @_sapDateiname</span>
+                                            }
+                                        </p>
+                                    }
+                                    else if (_aufbauend || _stueckliste is not null)
+                                    {
+                                        @if (_wartendeSapDatei is null)
+                                        {
+                                            <FileDropzone OnChange="OnSapDateiSelectedAsync" Accept=".txt" Busy="_vergleichend" CssClass="mt-3"
+                                                          IdleText="Echte SAP-Stückliste (TXT) hierher ziehen oder klicken zum Auswählen"
+                                                          BusyText="SAP-Stückliste wird hochgeladen…" />
+                                        }
+                                        else
+                                        {
+                                            <section class="su-sap-ready" role="status" aria-live="polite">
+                                                <div>
+                                                    <strong>SAP-Stückliste hochgeladen</strong>
+                                                    <p>
+                                                        @_sapDateiname
+                                                        @if (_vergleichend)
+                                                        {
+                                                            <span> · Vergleich wird durchgeführt</span>
+                                                        }
+                                                        else if (_aufbauend)
+                                                        {
+                                                            <span> · Umsetzungsmatrix wird noch verarbeitet</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span> · Vergleich wird vorbereitet</span>
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </section>
+                                        }
+                                    }
+                                    else if (_stuecklisteGesucht)
+                                    {
+                                        <section class="su-build-message">
+                                            <strong>Keine Stücklistenprüfung gefunden</strong>
+                                            <p>Für Maschinentyp „@_ergebnis.Maschinentyp" ist noch keine Stücklistenprüfung hinterlegt.</p>
+                                            <button type="button" class="btn btn-outline-primary" @onclick="@(() => SchrittWechseln(2))">
+                                                Zurück zu den Merkmalen
+                                            </button>
+                                        </section>
+                                    }
+                                    else
+                                    {
+                                        <section class="su-build-message">
+                                            <strong>Stückliste konnte nicht aufgebaut werden</strong>
+                                            <p>Bitte starten Sie die Verarbeitung erneut.</p>
+                                            <button type="button" class="btn btn-primary" @onclick="AufbauenAsync">
+                                                Erneut versuchen
+                                            </button>
+                                        </section>
+                                    }
+                                    break;
+                                }
+                                case 4:
+                                {
+                                    @if (_vergleichsErgebnis is null)
+                                    {
+                                        <p class="su-review__empty">Für diesen Historieneintrag ist kein Vergleichsergebnis gespeichert.</p>
+                                    }
+                                    else
+                                    {
+                                        <VergleichsErgebnisTabelle Baum="_baumAnsicht" NurInSap="_vergleichsErgebnis.NurInSap" />
+                                    }
+                                    break;
+                                }
+                            }
+                        </div>
+                        </div>
+
+                        <PdfViewerPanel Eingeklappt="_pdfEingeklappt" OnToggle="TogglePdfEingeklappt"
+                                        DokumentName="@_dokumentName" DataUrl="@_pdfDataUrl" />
+                    </section>
+                }
+            </div>
+        </div>
+    </RoleGuard>
+</div>
+
+@code {
+    private bool _analyzing;
+    private string? _apiError;
+    private DokumentAnalyseErgebnis? _ergebnis;
+    private List<ErkanntesMerkmal> _merkmale = [];
+    private List<ErkanntesMerkmal> _sonderoptionen = [];
+    private string? _pdfDataUrl;
+    private string? _dokumentName;
+    private string? _sapDateiname;
+    private byte[]? _wartendeSapDatei;
+    private bool _pdfEingeklappt;
+    private StuecklistenKnoten? _stueckliste;
+    private bool _stuecklisteGesucht;
+    private bool _umsetzungsmatrixVerfuegbar;
+    private IReadOnlyList<string> _verfuegbareUmsetzungsmatrizen = [];
+    private bool _aufbauend;
+    private int _aufbauVorgangId;
+    private bool _vergleichend;
+    private VergleichsErgebnis? _vergleichsErgebnis;
+    private VergleichsKnotenAnsicht? _baumAnsicht;
+
+    // Explizit statt berechnet, damit ein Rücksprung zu einem vorherigen Schritt (Klick
+    // auf den Stepper) möglich ist, ohne bereits geladene Daten zu verlieren.
+    private int _angezeigterSchritt = 1;
+    private bool DokumentAktiv => _ergebnis is not null && _uploadKonflikt is null;
+    private bool ZeigeAuftragskopf => _ergebnis is not null && _angezeigterSchritt is >= 2 and <= 4;
+
+    // Getrennt von _angezeigterSchritt: sinkt nie durch bloße Navigation, nur durch einen
+    // kompletten Reset oder ein neues Dokument — erlaubt nach einem Rücksprung wieder
+    // vorwärts zum zuletzt erreichten Schritt zu klicken, ohne die jeweilige Aktion
+    // (Button/Upload) erneut auszulösen.
+    private int _hoechsterErreichterSchritt = 1;
+
+    private List<VerlaufEintragUebersicht> _verlaufEintraege = [];
+    private List<AuftragsdokumentUebersicht> _sharePointEintraege = [];
+    private bool _verlaufLaedt = true;
+    private bool _verlaufFehler;
+    private bool _verlaufOffen;
+    private bool _nurMeine;
+    private int? _ladenderVerlaufId;
+    private int? _geoeffneterVerlaufId;
+    private int? _aktiverVerlaufId;
+    private int? _ladendeSharePointId;
+    private int? _geoeffneteSharePointId;
+    private bool _readOnly;
+    private VerlaufDetail? _uploadKonflikt;
+    private byte[]? _auftragsinformationBytes;
+    private string? _auftragsinformationContentType;
+
+    private string _neuePosition = "";
+    private string _neueNummer = "";
+    private string _neueBeschreibung = "";
+    private string _neuesZiel = "Merkmal";
+    private const int BeschreibungVorschauSchwelle = 110;
+    private readonly HashSet<string> _ausgeklappteBeschreibungen = new(StringComparer.Ordinal);
+
+    private bool KannHinzufuegen =>
+        !string.IsNullOrWhiteSpace(_neuePosition) && !string.IsNullOrWhiteSpace(_neueNummer);
+
+    // Reserviert im Inhalt und im Stepper-Kopf Platz für die geöffnete Historie.
+    private string VerlaufPanelKlasse => _verlaufOffen ? "su-main--verlauf-offen" : "";
+
+    // Reserviert im Inhalt und im Stepper-Kopf Platz für das fixierte PDF-Panel.
+    private string PdfPanelKlasse =>
+        !DokumentAktiv ? "" : _pdfEingeklappt ? "su-main--pdf-eingeklappt" : "su-main--pdf-offen";
+
+    private string BuildButtonKlasse =>
+        _umsetzungsmatrixVerfuegbar
+            ? "btn btn-primary"
+            : "btn btn-primary su-build-button--unavailable";
+
+    private string? MatrixTooltipId =>
+        _umsetzungsmatrixVerfuegbar ? null : "su-available-matrices";
+
+    private void SchrittWechseln(int schritt)
+    {
+        if (schritt == 1)
+        {
+            Zuruecksetzen();
+            return;
+        }
+        _angezeigterSchritt = schritt;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (DokumentAktiv && !_pdfEingeklappt)
+            await JSRuntime.InvokeVoidAsync("suPdfResize.init", ".su-review__pdf-resizer", ".su-review__pdf", ".su-panel-reserve");
+    }
+
+    private async Task TogglePdfEingeklappt()
+    {
+        _pdfEingeklappt = !_pdfEingeklappt;
+        if (_pdfEingeklappt)
+            await JSRuntime.InvokeVoidAsync("suPdfResize.reset", ".su-review__pdf", ".su-panel-reserve");
+    }
+
+    private async Task ZuSondermerkmalenScrollenAsync()
+    {
+        var module = await JSRuntime.InvokeAsync<IJSObjectReference>(
+            "import",
+            "./pageScroll.js?v=1");
+        try
+        {
+            await module.InvokeVoidAsync("toId", "su-sondermerkmale");
+        }
+        finally
+        {
+            await module.DisposeAsync();
+        }
+    }
+
+    private async Task VerlaufLadenAsync()
+    {
+        _verlaufLaedt = true;
+        _verlaufFehler = false;
+        try
+        {
+            _verlaufEintraege = [.. await Client.GetVerlaufAsync(_nurMeine)];
+            _sharePointEintraege = [.. await Client.GetSharePointAuftragsdokumenteAsync()];
+        }
+        catch (ApiRequestException)
+        {
+            // Historie ist ein Zusatz — ein Fehler hier soll den Upload-Flow nicht blockieren,
+            // aber der User soll "Laden fehlgeschlagen" von "noch keine Uploads" unterscheiden können.
+            _verlaufFehler = true;
+        }
+        finally
+        {
+            _verlaufLaedt = false;
+        }
+    }
+
+    private async Task VerlaufFilterGeaendertAsync(bool nurMeine)
+    {
+        if (_nurMeine == nurMeine)
+            return;
+
+        _nurMeine = nurMeine;
+        await VerlaufLadenAsync();
+    }
+
+    private async Task VerlaufOeffnen(VerlaufEintragUebersicht eintrag)
+    {
+        AufbauVorgangVerwerfen();
+        _apiError = null;
+        _ladenderVerlaufId = eintrag.Id;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var detail = await Client.GetVerlaufDetailAsync(eintrag.Id);
+            if (detail is null)
+                return;
+
+            var pdfBytes = await Client.GetVerlaufDokumentAsync(eintrag.Id);
+
+            _ergebnis = new DokumentAnalyseErgebnis(
+                detail.Auftragsnummer, detail.Kundennummer, detail.Datum, detail.Maschinentyp,
+                detail.Merkmale, detail.Sonderoptionen);
+            _umsetzungsmatrixVerfuegbar = detail.UmsetzungsmatrixVorhanden;
+            _verfuegbareUmsetzungsmatrizen = detail.VerfuegbareUmsetzungsmatrizen ?? [];
+            _ausgeklappteBeschreibungen.Clear();
+            _merkmale = [.. detail.Merkmale];
+            _sonderoptionen = [.. detail.Sonderoptionen];
+            _pdfDataUrl = pdfBytes is null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _dokumentName = eintrag.Dateiname;
+            _geoeffneterVerlaufId = eintrag.Id;
+            _geoeffneteSharePointId = null;
+            _aktiverVerlaufId = eintrag.Id;
+            _readOnly = true;
+            _pdfEingeklappt = true;
+            _verlaufOffen = false;
+            _stueckliste = detail.Stueckliste;
+            _stuecklisteGesucht = detail.Stueckliste is not null || detail.ErreichterSchritt >= 3;
+            _vergleichsErgebnis = detail.VergleichsErgebnis;
+            _baumAnsicht = detail.VergleichsErgebnis is null
+                ? null
+                : VergleichsKnotenAnsicht.Aufbauen(detail.VergleichsErgebnis.Wurzel);
+            _sapDateiname = detail.SapDateiname;
+
+            var wiederhergestellterSchritt = detail.VergleichsErgebnis is not null
+                ? 4
+                : detail.Stueckliste is not null && detail.ErreichterSchritt >= 3
+                    ? 3
+                    : 2;
+            _angezeigterSchritt = wiederhergestellterSchritt;
+            _hoechsterErreichterSchritt = wiederhergestellterSchritt;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        finally
+        {
+            _ladenderVerlaufId = null;
+        }
+    }
+
+    private async Task SharePointDokumentOeffnen(AuftragsdokumentUebersicht eintrag)
+    {
+        AufbauVorgangVerwerfen();
+        _apiError = null;
+        _ladendeSharePointId = eintrag.Id;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var detail = await Client.GetSharePointAuftragsdokumentAsync(eintrag.Id);
+            if (detail is null)
+                return;
+
+            var pdfBytes = await Client.GetSharePointAuftragsdokumentInhaltAsync(eintrag.Id);
+            _ergebnis = new DokumentAnalyseErgebnis(
+                detail.Auftragsnummer, detail.Kundennummer, detail.Datum, detail.Maschinentyp,
+                detail.Merkmale, detail.Sonderoptionen, detail.Kundenname, detail.Kundenadresse);
+            _merkmale = [.. detail.Merkmale];
+            _sonderoptionen = [.. detail.Sonderoptionen];
+            _ausgeklappteBeschreibungen.Clear();
+            _pdfDataUrl = pdfBytes is null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _dokumentName = detail.Dateiname;
+            _geoeffneteSharePointId = eintrag.Id;
+            _geoeffneterVerlaufId = null;
+            _aktiverVerlaufId = null;
+            _readOnly = true;
+            _pdfEingeklappt = true;
+            _verlaufOffen = false;
+            _stueckliste = null;
+            _stuecklisteGesucht = false;
+            _umsetzungsmatrixVerfuegbar = false;
+            _verfuegbareUmsetzungsmatrizen = [];
+            VergleichZuruecksetzen();
+            _angezeigterSchritt = 2;
+            _hoechsterErreichterSchritt = 2;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        finally
+        {
+            _ladendeSharePointId = null;
+        }
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        AufbauVorgangVerwerfen();
+        _apiError = null;
+        _uploadKonflikt = null;
+        _analyzing = true;
+        try
+        {
+            using var stream = e.File.OpenReadStream(StuecklistenpruefungClient.MaxDateiBytes);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            _auftragsinformationBytes = ms.ToArray();
+            _auftragsinformationContentType = e.File.ContentType;
+            _pdfDataUrl = $"data:{e.File.ContentType};base64,{Convert.ToBase64String(_auftragsinformationBytes)}";
+            _dokumentName = e.File.Name;
+            // Eingeklappt starten, aber vorladen (siehe VerlaufOeffnen).
+            _pdfEingeklappt = true;
+
+            _ergebnis = await Client.AnalyzeAsync(e.File);
+            _umsetzungsmatrixVerfuegbar = _ergebnis.UmsetzungsmatrixVorhanden;
+            _verfuegbareUmsetzungsmatrizen = _ergebnis.VerfuegbareUmsetzungsmatrizen ?? [];
+            _ausgeklappteBeschreibungen.Clear();
+            _readOnly = false;
+            _geoeffneteSharePointId = null;
+            _aktiverVerlaufId = _ergebnis.VerlaufId;
+            _sapDateiname = null;
+
+            if (_ergebnis.BestehenderEintrag is { } bestehend)
+            {
+                _uploadKonflikt = bestehend;
+                _geoeffneterVerlaufId = null;
+                _angezeigterSchritt = 1;
+                _hoechsterErreichterSchritt = 1;
+            }
+            else
+            {
+                // Neuer Durchlauf: frischer Auftrag oder eigener Durchlauf eines fremd angelegten Dokuments.
+                _merkmale = [.. _ergebnis.Merkmale];
+                _sonderoptionen = [.. _ergebnis.Sonderoptionen];
+                _geoeffneterVerlaufId = null;
+                _stueckliste = null;
+                _stuecklisteGesucht = false;
+                VergleichZuruecksetzen();
+                _angezeigterSchritt = 2;
+                _hoechsterErreichterSchritt = 2;
+            }
+            await VerlaufLadenAsync();
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+            _pdfDataUrl = null;
+            _dokumentName = null;
+        }
+        catch (IOException)
+        {
+            _apiError = "Datei konnte nicht gelesen werden (max. 20 MB).";
+            _pdfDataUrl = null;
+            _dokumentName = null;
+        }
+        finally
+        {
+            _analyzing = false;
+        }
+    }
+
+    private async Task BestehendenStandOeffnenAsync()
+    {
+        if (_uploadKonflikt is not { } bestehend)
+            return;
+
+        _apiError = null;
+        _analyzing = true;
+        try
+        {
+            var pdfBytes = await Client.GetVerlaufDokumentAsync(bestehend.Id);
+            if (pdfBytes is not null)
+                _pdfDataUrl = $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _dokumentName = _verlaufEintraege.FirstOrDefault(e => e.Id == bestehend.Id)?.Dateiname
+                ?? _dokumentName;
+
+            _uploadKonflikt = null;
+            _auftragsinformationBytes = null;
+            _auftragsinformationContentType = null;
+            _merkmale = [.. bestehend.Merkmale];
+            _sonderoptionen = [.. bestehend.Sonderoptionen];
+            _geoeffneterVerlaufId = bestehend.Id;
+            _aktiverVerlaufId = bestehend.Id;
+            _stueckliste = bestehend.Stueckliste;
+            _stuecklisteGesucht = bestehend.Stueckliste is not null || bestehend.ErreichterSchritt >= 3;
+            _vergleichsErgebnis = bestehend.VergleichsErgebnis;
+            _baumAnsicht = bestehend.VergleichsErgebnis is null
+                ? null
+                : VergleichsKnotenAnsicht.Aufbauen(bestehend.VergleichsErgebnis.Wurzel);
+            _sapDateiname = bestehend.SapDateiname;
+            var schritt = bestehend.VergleichsErgebnis is not null
+                ? 4
+                : bestehend.Stueckliste is not null && bestehend.ErreichterSchritt >= 3
+                    ? 3
+                    : 2;
+            _angezeigterSchritt = schritt;
+            _hoechsterErreichterSchritt = schritt;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        finally
+        {
+            _analyzing = false;
+        }
+    }
+
+    private async Task DokumentNeuEinlesenAsync()
+    {
+        if (_ergebnis is null
+            || _uploadKonflikt is not { } bestehend
+            || _auftragsinformationBytes is null
+            || _dokumentName is null
+            || _auftragsinformationContentType is null)
+            return;
+
+        _apiError = null;
+        _analyzing = true;
+        try
+        {
+            await Client.VerlaufNeuEinlesenAsync(
+                bestehend.Id,
+                _auftragsinformationBytes,
+                _dokumentName,
+                _auftragsinformationContentType,
+                _ergebnis);
+
+            _uploadKonflikt = null;
+            _merkmale = [.. _ergebnis.Merkmale];
+            _sonderoptionen = [.. _ergebnis.Sonderoptionen];
+            _geoeffneterVerlaufId = bestehend.Id;
+            _aktiverVerlaufId = bestehend.Id;
+            _stueckliste = null;
+            _stuecklisteGesucht = false;
+            VergleichZuruecksetzen();
+            _angezeigterSchritt = 2;
+            _hoechsterErreichterSchritt = 2;
+            await VerlaufLadenAsync();
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        finally
+        {
+            _analyzing = false;
+        }
+    }
+
+    private Task AufbauenAsync()
+    {
+        if (_ergebnis is null || _aufbauend || !_umsetzungsmatrixVerfuegbar)
+            return Task.CompletedTask;
+
+        var ergebnis = _ergebnis;
+        var merkmalsnummern = _merkmale.Select(m => m.Merkmalsnummer).ToArray();
+        var vorgangId = ++_aufbauVorgangId;
+        _apiError = null;
+        VergleichZuruecksetzen();
+        _stueckliste = null;
+        _stuecklisteGesucht = false;
+        _aufbauend = true;
+
+        _angezeigterSchritt = 3;
+        _hoechsterErreichterSchritt = Math.Max(_hoechsterErreichterSchritt, 3);
+
+        _ = StuecklisteImHintergrundAufbauenAsync(ergebnis, merkmalsnummern, vorgangId);
+        return Task.CompletedTask;
+    }
+
+    private async Task StuecklisteImHintergrundAufbauenAsync(
+        DokumentAnalyseErgebnis ergebnis,
+        IReadOnlyList<string> merkmalsnummern,
+        int vorgangId)
+    {
+        try
+        {
+            var stueckliste = await Client.AufbauenAsync(ergebnis.Maschinentyp, merkmalsnummern);
+            if (vorgangId != _aufbauVorgangId || !ReferenceEquals(_ergebnis, ergebnis))
+                return;
+
+            _stueckliste = stueckliste;
+            _stuecklisteGesucht = true;
+            if (_stueckliste is null)
+            {
+                _umsetzungsmatrixVerfuegbar = false;
+                VorgemerkteSapDateiVerwerfen();
+            }
+            if (_stueckliste is not null)
+                await VerlaufStandSpeichernAsync(3);
+        }
+        catch (ApiRequestException ex)
+        {
+            if (vorgangId == _aufbauVorgangId)
+            {
+                _apiError = ex.Message;
+                VorgemerkteSapDateiVerwerfen();
+            }
+        }
+        finally
+        {
+            if (vorgangId == _aufbauVorgangId)
+            {
+                _aufbauend = false;
+                await InvokeAsync(StateHasChanged);
+                await VergleichStartenWennBereitAsync();
+            }
+        }
+    }
+
+    private async Task OnSapDateiSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _apiError = null;
+        _vergleichend = true;
+        _vergleichsErgebnis = null;
+        _baumAnsicht = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(StuecklistenpruefungClient.MaxDateiBytes);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            _wartendeSapDatei = ms.ToArray();
+            _sapDateiname = e.File.Name;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+            VorgemerkteSapDateiVerwerfen();
+        }
+        catch (IOException)
+        {
+            _apiError = "Datei konnte nicht gelesen werden (max. 20 MB).";
+            VorgemerkteSapDateiVerwerfen();
+        }
+        finally
+        {
+            _vergleichend = false;
+            await InvokeAsync(StateHasChanged);
+        }
+
+        await VergleichStartenWennBereitAsync();
+    }
+
+    private async Task VergleichStartenWennBereitAsync()
+    {
+        if (_wartendeSapDatei is null ||
+            string.IsNullOrWhiteSpace(_sapDateiname) ||
+            _stueckliste is null ||
+            _aufbauend ||
+            _vergleichend)
+        {
+            return;
+        }
+
+        await SapDateiVergleichenAsync(_wartendeSapDatei, _sapDateiname, _stueckliste);
+    }
+
+    private async Task SapDateiVergleichenAsync(
+        byte[] sapDatei,
+        string dateiname,
+        StuecklistenKnoten stueckliste)
+    {
+        _vergleichend = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            _vergleichsErgebnis = await Client.VergleichenAsync(sapDatei, dateiname, stueckliste);
+            _baumAnsicht = VergleichsKnotenAnsicht.Aufbauen(_vergleichsErgebnis.Wurzel);
+            _angezeigterSchritt = 4;
+            _hoechsterErreichterSchritt = Math.Max(_hoechsterErreichterSchritt, 4);
+            await VerlaufStandSpeichernAsync(4, dateiname);
+            _wartendeSapDatei = null;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+            VorgemerkteSapDateiVerwerfen();
+        }
+        finally
+        {
+            _vergleichend = false;
+        }
+    }
+
+    private static bool HatLangeBeschreibung(string? beschreibung) =>
+        !string.IsNullOrWhiteSpace(beschreibung) && beschreibung.Length > BeschreibungVorschauSchwelle;
+
+    private static string BeschreibungKey(string gruppe, ErkanntesMerkmal merkmal) =>
+        $"{gruppe}|{merkmal.Position}|{merkmal.Merkmalsnummer}";
+
+    private void BeschreibungUmschalten(string key)
+    {
+        if (!_ausgeklappteBeschreibungen.Remove(key))
+            _ausgeklappteBeschreibungen.Add(key);
+    }
+
+    private void RemoveMerkmal(ErkanntesMerkmal merkmal)
+    {
+        _ausgeklappteBeschreibungen.Remove(BeschreibungKey("merkmal", merkmal));
+        _merkmale.Remove(merkmal);
+    }
+
+    private void RemoveSonderoption(ErkanntesMerkmal sonderoption)
+    {
+        _ausgeklappteBeschreibungen.Remove(BeschreibungKey("sonderoption", sonderoption));
+        _sonderoptionen.Remove(sonderoption);
+    }
+
+    private void AddMerkmal()
+    {
+        if (!KannHinzufuegen) return;
+        var merkmal = new ErkanntesMerkmal(_neuePosition.Trim(), _neueNummer.Trim(), _neueBeschreibung.Trim());
+        (_neuesZiel == "Sonderoption" ? _sonderoptionen : _merkmale).Add(merkmal);
+        _neuePosition = "";
+        _neueNummer = "";
+        _neueBeschreibung = "";
+    }
+
+    private void Zuruecksetzen()
+    {
+        AufbauVorgangVerwerfen();
+        _ergebnis = null;
+        _uploadKonflikt = null;
+        _merkmale = [];
+        _sonderoptionen = [];
+        _ausgeklappteBeschreibungen.Clear();
+        _pdfDataUrl = null;
+        _dokumentName = null;
+        _auftragsinformationBytes = null;
+        _auftragsinformationContentType = null;
+        _sapDateiname = null;
+        _pdfEingeklappt = false;
+        _apiError = null;
+        _geoeffneterVerlaufId = null;
+        _geoeffneteSharePointId = null;
+        _aktiverVerlaufId = null;
+        _readOnly = false;
+        _stueckliste = null;
+        _stuecklisteGesucht = false;
+        _umsetzungsmatrixVerfuegbar = false;
+        _verfuegbareUmsetzungsmatrizen = [];
+        VergleichZuruecksetzen();
+        _angezeigterSchritt = 1;
+        _hoechsterErreichterSchritt = 1;
+    }
+
+    private void AufbauVorgangVerwerfen()
+    {
+        _aufbauVorgangId++;
+        _aufbauend = false;
+    }
+
+    private void VergleichZuruecksetzen()
+    {
+        _vergleichsErgebnis = null;
+        _baumAnsicht = null;
+        VorgemerkteSapDateiVerwerfen();
+    }
+
+    private void VorgemerkteSapDateiVerwerfen()
+    {
+        _wartendeSapDatei = null;
+        _sapDateiname = null;
+    }
+
+    private async Task VerlaufStandSpeichernAsync(int schritt, string? sapDateiname = null)
+    {
+        if (_aktiverVerlaufId is not int verlaufId)
+            return;
+
+        try
+        {
+            await Client.VerlaufStandAktualisierenAsync(
+                verlaufId,
+                schritt,
+                _merkmale,
+                _sonderoptionen,
+                _stueckliste,
+                _vergleichsErgebnis,
+                sapDateiname);
+            await VerlaufLadenAsync();
+        }
+        catch (ApiRequestException)
+        {
+            _apiError = "Das Ergebnis ist verfügbar, konnte aber nicht in der Historie gespeichert werden.";
+        }
+    }
+}

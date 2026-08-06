@@ -1,0 +1,11 @@
+@page "/illig-gpt"
+@inject NavigationManager Nav
+
+<PageTitle>Unternehmensweites Suchsystem</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo(AppRoutes.Kunden, forceLoad: false, replace: true);
+    }
+}

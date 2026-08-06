@@ -1,0 +1,35 @@
+@* Zeigt den aktuellen Schritt des Wizards (1-basiert). Bereits abgeschlossene Schritte
+   werden anklickbar, wenn ein Aufrufer OnStepClick bindet (opt-in — ohne Bindung bleibt
+   die Komponente rein informativ wie bisher). MaxErreicht (optional) erlaubt es einem
+   Aufrufer, Schritte über den aktuell angezeigten hinaus als "done"/klickbar zu markieren
+   (z. B. nach einem Rücksprung im eigenen Ablauf) — ohne Bindung identisch zum bisherigen
+   Verhalten, da MaxErreicht dann auf Current zurückfällt. *@
+
+<ol class="sm-stepper">
+    @for (var i = 0; i < Steps.Length; i++)
+    {
+        var nummer = i + 1;
+        var status = nummer == Current ? "active" : nummer <= (MaxErreicht ?? Current) ? "done" : "todo";
+        var klickbar = status == "done" && OnStepClick.HasDelegate;
+        <li class="sm-stepper__item sm-stepper__item--@status @(klickbar ? "sm-stepper__item--clickable" : "")"
+            @onclick="() => HandleClick(nummer, status)">
+            <span class="sm-stepper__badge">@nummer</span>
+            <span class="sm-stepper__label">@Steps[i]</span>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter] public int Current { get; set; } = 1;
+    [Parameter] public int? MaxErreicht { get; set; }
+    [Parameter] public string[] Steps { get; set; } =
+        ["Suche", "Merkmale", "Referenzen", "Details"];
+    [Parameter] public EventCallback<int> OnStepClick { get; set; }
+
+    private Task HandleClick(int nummer, string status)
+    {
+        if (status == "done" && OnStepClick.HasDelegate)
+            return OnStepClick.InvokeAsync(nummer);
+        return Task.CompletedTask;
+    }
+}

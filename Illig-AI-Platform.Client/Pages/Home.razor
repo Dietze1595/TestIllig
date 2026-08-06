@@ -1,0 +1,151 @@
+@page "/"
+@inject UserProfileState ProfileState
+
+<PageTitle>ILLIG KI-Plattform</PageTitle>
+
+<div class="landing-shell">
+    <section class="landing-hero">
+        <div class="landing-hero__visual" aria-hidden="true">
+            <img class="landing-hero__machine"
+                 src="/images/hero-industrial-dark.png"
+                 alt="" />
+        </div>
+        <div class="landing-hero__overlay"></div>
+
+        <div class="landing-hero__content">
+            <h1>
+                Willkommen auf der <span class="marker-underline">ILLIG AI Platform</span>.
+            </h1>
+
+            <p class="landing-hero__lead">
+                Die ILLIG AI Platform verbindet SAP, SharePoint und Azure AI zu einer intelligenten Arbeitsumgebung.
+                Vier spezialisierte Assistenten automatisieren <span class="marker-underline">wiederkehrende Aufgaben</span> erkennen Abweichungen und
+                <span class="marker-underline">unterstützen</span> Ihr Team genau dort, wo Entscheidungen getroffen werden.
+            </p>
+
+            <div class="landing-hero__facts">
+                <a class="landing-hero__fact landing-hero__fact--link"
+                   href="#usecases"
+                   aria-label="Zu den vier KI-Assistenten scrollen"
+                   style="--fact-delay: 0s">
+                    <span class="landing-hero__fact-number"><span class="landing-hero__fact-value">4</span></span>
+                    <span class="landing-hero__fact-label">KI-Assistenten</span>
+                </a>
+                <div style="--fact-delay: 0.13s">
+                    <span class="landing-hero__fact-number"><span class="landing-hero__fact-value">1</span></span>
+                    <span class="landing-hero__fact-label">Zentrale Plattform</span>
+                </div>
+                <div style="--fact-delay: 0.26s">
+                    <span class="landing-hero__fact-number"><span class="landing-hero__fact-value">100 %</span></span>
+                    <span class="landing-hero__fact-label">Auf ILLIG zugeschnitten</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="usecase-section" id="usecases">
+        <div class="section-heading">
+            <h2>
+                <span class="marker-underline">Qualität steigern.</span> Fristgerecht beschaffen. Effizienz erhöhen. </h2>
+
+            <p>
+                Dokumente, SAP-Daten und Unternehmenswissen verschmelzen zu einer intelligenten Plattform, die Informationen versteht, Zusammenhänge erkennt und Ihr Team aktiv unterstützt.
+            </p>
+        </div>
+
+        <div class="usecase-grid">
+            @foreach (var tile in Tiles)
+            {
+                <div class="usecase-card-reveal">
+                    @if (HatBerechtigung(tile))
+                    {
+                        <a class="usecase-card" href="@tile.Href">
+                            <div class="usecase-card__topline">
+                                <div class="usecase-card__heading">
+                                    <UseCaseIcon Name="@tile.Icon" />
+                                    <h3>@tile.Title</h3>
+                                </div>
+                                <span class="usecase-card__number" aria-hidden="true">@tile.Number</span>
+                            </div>
+
+                            <p>@tile.Description</p>
+
+                            <span class="usecase-card__cta">Assistent öffnen</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <div class="usecase-card usecase-card--disabled"
+                             aria-disabled="true"
+                             title="Für diesen Use-Case fehlt die Berechtigung">
+                            <div class="usecase-card__topline">
+                                <div class="usecase-card__heading">
+                                    <UseCaseIcon Name="@tile.Icon" />
+                                    <h3>@tile.Title</h3>
+                                </div>
+                                <span class="usecase-card__number" aria-hidden="true">@tile.Number</span>
+                            </div>
+
+                            <p>@tile.Description</p>
+
+                            <span class="usecase-card__badge">Keine Berechtigung</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    private record Tile(
+        string Title,
+        string Description,
+        string Href,
+        string Icon,
+        string Number,
+        params string[] Rollen);
+
+    private static readonly Tile[] Tiles =
+    [
+        new(
+            "Intelligente Plausibilitätsprüfung",
+            "Die KI prüft automatisch, ob Auftrag, Stückliste und Kundenwunsch zusammenpassen – bevor die Fertigung beginnt.",
+            AppRoutes.Plausibilitaetspruefung,
+            "plausibility",
+            "01",
+            AppClientRoles.PlausibilityCheck),
+
+        new(
+            "Prüfung der Auftragsanlage",
+            "Die KI vergleicht Angebot und Auftragsbestätigung automatisch und macht fehlende oder fehlerhafte Angaben sofort sichtbar.",
+            AppRoutes.Auftragsanlage,
+            "order",
+            "02",
+            AppClientRoles.OrderCreationSales,
+            AppClientRoles.OrderCreationBackoffice),
+
+        new(
+            "Lieferanten-Assist",
+            "Statt Informationen manuell zusammenzusuchen, liefert die KI Preise, Lieferzeiten und vorbereiteten Schriftverkehr auf Knopfdruck.",
+            AppRoutes.Lieferantenassistent,
+            "supplier",
+            "03",
+            AppClientRoles.Lieferantenassistent),
+
+        new(
+            "Unternehmensweites Suchsystem",
+            "Erhalten Sie Antworten aus SharePoint, SAP und Unternehmensdokumenten in Sekunden – verständlich zusammengefasst und mit Quellen belegt.",
+            AppRoutes.Kunden,
+            "search",
+            "04",
+            AppClientRoles.SearchSystem)
+    ];
+
+    private bool HatBerechtigung(Tile tile)
+    {
+        var rollen = ProfileState.Profile?.Roles;
+        return ProfileState.HatAdminBerechtigungen
+            || rollen?.Any(tile.Rollen.Contains) == true;
+    }
+}

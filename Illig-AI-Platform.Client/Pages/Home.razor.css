@@ -1,0 +1,568 @@
+.landing-shell {
+    display: grid;
+    gap: 0;
+    margin-top: -1.35rem;
+    padding: 0 0 3rem;
+}
+
+.landing-hero {
+    --color-text: #f5f8ff;
+    --color-text-soft: #c5d1e8;
+    --color-text-muted: #ebedf0;
+    position: relative;
+    min-height: min(84vh, 840px);
+    margin-inline: -1.5rem;
+    overflow: hidden;
+    border-radius: 0;
+    /* Die gesamte Hero-Fläche löst sich unten in den tatsächlichen Seitenhintergrund auf.
+       So entsteht auch über dem technischen Grundmuster kein sichtbarer Farbschnitt. */
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 78%,
+        rgba(0, 0, 0, .96) 84%,
+        rgba(0, 0, 0, .68) 91%,
+        rgba(0, 0, 0, .2) 97%,
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 78%,
+        rgba(0, 0, 0, .96) 84%,
+        rgba(0, 0, 0, .68) 91%,
+        rgba(0, 0, 0, .2) 97%,
+        transparent 100%
+    );
+    /* Freigestellte Maschine vollständig zeigen (contain, unten zentriert) über dem dunklen
+       Verlauf; der transparente PNG-Hintergrund verschmilzt mit dem Background. */
+    background:
+        radial-gradient(56% 46% at 70% 74%, rgba(64, 122, 255, 0.44), transparent 70%),
+        radial-gradient(40% 34% at 88% 66%, rgba(126, 92, 255, 0.26), transparent 72%),
+        radial-gradient(40% 30% at 52% 80%, rgba(38, 190, 220, 0.14), transparent 72%),
+        radial-gradient(75% 55% at 28% 8%, rgba(47, 103, 255, 0.16), transparent 62%),
+        linear-gradient(180deg, #0a1626 0%, #070f1e 58%, var(--color-bg) 100%);
+    box-shadow: 0 42px 90px -42px rgba(0, 0, 0, 0.22);
+}
+
+.landing-hero__visual {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+}
+
+.landing-hero__machine {
+    position: absolute;
+    z-index: 0;
+    right: 0;
+    bottom: 10%;
+    width: min(1060px, 88%);
+    height: auto;
+    opacity: 0;
+    transform: perspective(1400px) translate3d(11%, -2%, -260px) scale(0.82) rotateY(-7deg);
+    transform-origin: 70% 55%;
+    filter: blur(10px) saturate(0.72) brightness(0.72);
+    pointer-events: none;
+    user-select: none;
+    animation: machine-fly-in 1.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards;
+    will-change: transform, opacity, filter;
+}
+
+.landing-hero__overlay {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    /* Links Text-Scrim, rechts löst sich die Maschinen-Kante in den Rand auf
+       (weg vom „aufgeklebt"-Look), unten weicher Übergang in die Seitenfarbe. */
+    background:
+        linear-gradient(90deg, rgba(4, 9, 18, 0.62) 0%, transparent 46%),
+        linear-gradient(90deg, transparent 60%, rgba(6, 13, 26, 0.55) 100%),
+        linear-gradient(
+            180deg,
+            transparent 48%,
+            rgba(5, 11, 22, 0.18) 62%,
+            rgba(5, 11, 22, 0.72) 82%,
+            var(--color-bg) 100%
+        );
+    pointer-events: none;
+}
+
+html[data-bs-theme="light"] .landing-hero {
+    --color-text: #24343c;
+    --color-text-soft: #57666d;
+    --color-text-muted: #71808a;
+    background:
+        radial-gradient(56% 46% at 70% 74%, rgba(0, 116, 178, 0.18), transparent 70%),
+        radial-gradient(40% 34% at 88% 66%, rgba(155, 200, 50, 0.14), transparent 72%),
+        radial-gradient(40% 30% at 52% 80%, rgba(0, 170, 228, 0.1), transparent 72%),
+        radial-gradient(75% 55% at 28% 8%, rgba(0, 69, 123, 0.08), transparent 62%),
+        linear-gradient(180deg, #ffffff 0%, #f1f6f8 58%, var(--color-bg) 100%);
+    box-shadow: 0 42px 90px -42px rgba(0, 69, 123, 0.16);
+}
+
+html[data-bs-theme="light"] .landing-hero__overlay {
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.78) 0%, transparent 48%),
+        linear-gradient(90deg, transparent 62%, rgba(241, 246, 248, 0.42) 100%),
+        linear-gradient(
+            180deg,
+            transparent 48%,
+            rgba(241, 246, 248, 0.12) 62%,
+            rgba(227, 233, 236, 0.58) 84%,
+            var(--color-bg) 100%
+        );
+}
+
+html[data-bs-theme="light"] .landing-hero__eyebrow {
+    border-color: rgba(0, 69, 123, 0.2);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+html[data-bs-theme="light"] .landing-hero__facts > div,
+html[data-bs-theme="light"] .landing-hero__facts > a {
+    border-color: rgba(0, 69, 123, 0.16);
+    background: rgba(255, 255, 255, 0.76);
+    box-shadow: 0 14px 32px rgba(0, 69, 123, 0.1);
+}
+
+html[data-bs-theme="light"] .landing-hero__fact--link:hover,
+html[data-bs-theme="light"] .landing-hero__fact--link:focus-visible {
+    border-color: rgba(155, 200, 50, 0.72);
+    background: rgba(255, 255, 255, 0.94);
+}
+
+.landing-hero__content {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: 1.4rem;
+    align-content: start;
+    max-width: 51rem;
+    padding: clamp(2rem, 5vw, 4rem);
+}
+
+.landing-hero__eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid rgba(144, 168, 209, 0.24);
+    border-radius: 999px;
+    background: rgba(8, 15, 31, 0.58);
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    backdrop-filter: blur(12px);
+}
+
+.landing-hero h1 {
+    max-width: 50vw;
+    margin: 0;
+    font-size: clamp(2.7rem, 6vw, 5rem);
+    line-height: 0.96;
+    letter-spacing: -0.04em;
+}
+
+.landing-hero__lead,
+.section-heading p {
+    max-width: 45vw;
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: clamp(1rem, 1.4vw, 1rem);
+    line-height: 1.8;
+}
+
+.landing-hero__facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+    max-width: 42rem;
+    margin: 0;
+    padding: 0;
+}
+
+    .landing-hero__facts > div,
+    .landing-hero__facts > a {
+        display: grid;
+        align-content: center;
+        opacity: 0;
+        padding: 1rem 1rem 0.9rem;
+        border: 1px solid rgba(138, 157, 190, 0.16);
+        border-radius: 1.2rem;
+        background: rgba(5, 12, 24, 0.6);
+        backdrop-filter: blur(14px);
+        transform: translateY(14px);
+        animation: fact-card-in 0.65s cubic-bezier(0.22, 1, 0.36, 1)
+            calc(0.72s + var(--fact-delay)) forwards;
+    }
+
+    .landing-hero__fact--link {
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .landing-hero__fact--link:hover,
+    .landing-hero__fact--link:focus-visible {
+        border-color: rgba(155, 200, 50, 0.62);
+        background: rgba(10, 24, 38, 0.78);
+        box-shadow: 0 0 0 3px rgba(155, 200, 50, 0.12);
+        outline: none;
+    }
+
+    .landing-hero__fact-number {
+        margin: 0 0 0.15rem;
+        color: var(--color-text);
+        font-size: 1.4rem;
+        font-weight: 800;
+        perspective: 420px;
+    }
+
+    .landing-hero__fact-value {
+        display: inline-block;
+        opacity: 0;
+        transform: rotateX(-105deg) translateY(0.35em);
+        transform-origin: center bottom;
+        backface-visibility: hidden;
+        animation: fact-value-flip 0.82s cubic-bezier(0.2, 0.85, 0.25, 1.18)
+            calc(0.84s + var(--fact-delay)) forwards;
+    }
+
+    .landing-hero__fact-label {
+        margin: 0;
+        color: var(--color-text-muted);
+        font-size: 0.92rem;
+    }
+
+@keyframes machine-fly-in {
+    0% {
+        opacity: 0;
+        transform: perspective(1400px) translate3d(11%, -2%, -260px) scale(0.82) rotateY(-7deg);
+        filter: blur(10px) saturate(0.72) brightness(0.72);
+    }
+
+    58% {
+        opacity: 0.88;
+    }
+
+    100% {
+        opacity: 1;
+        transform: perspective(1400px) translate3d(0, 0, 0) scale(1) rotateY(0);
+        filter: blur(0) saturate(1) brightness(1);
+    }
+}
+
+@keyframes fact-card-in {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fact-value-flip {
+    0% {
+        opacity: 0;
+        transform: rotateX(-105deg) translateY(0.35em);
+    }
+
+    62% {
+        opacity: 1;
+        transform: rotateX(12deg) translateY(0);
+    }
+
+    100% {
+        opacity: 1;
+        transform: rotateX(0) translateY(0);
+    }
+}
+
+.marker-underline {
+    position: relative;
+    z-index: 0;
+    white-space: nowrap;
+}
+
+    .marker-underline::after {
+        position: absolute;
+        z-index: -1;
+        right: -0.08em;
+        bottom: 0.02em;
+        left: -0.08em;
+        height: 0.42em;
+        content: "";
+        background: linear-gradient(90deg, var(--color-marker-start), var(--color-marker-end));
+        border-radius: 12px 20px 14px 18px;
+        transform: rotate(-1.2deg) skewX(-14deg);
+        clip-path: polygon(0 18%, 100% 0, 100% 84%, 0 100%);
+        box-shadow: 0 8px 20px var(--color-marker-shadow);
+    }
+
+.usecase-section {
+    position: relative;
+    z-index: 1;
+    margin-top: clamp(-10rem, -9vw, -4.5rem);
+    display: grid;
+    gap: 1.5rem;
+}
+
+.section-heading {
+    display: grid;
+    gap: 0.8rem;
+}
+
+    .section-heading h2 {
+        margin: 0;
+        font-size: clamp(1.9rem, 3vw, 3rem);
+        line-height: 1.05;
+    }
+
+.usecase-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.2rem;
+}
+
+.usecase-card-reveal {
+    display: grid;
+}
+
+.usecase-card {
+    display: grid;
+    gap: 1.1rem;
+    min-height: 17rem;
+    padding: 1.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 1.6rem;
+    background: var(--color-bg-panel);
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 18px 40px var(--color-shadow);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+@keyframes hero-visual-hold {
+    to {
+        transform: translateY(28vh) scale(1.025);
+    }
+}
+
+@keyframes hero-content-out {
+    to {
+        opacity: 0;
+        transform: translateY(-1.5rem) scale(0.985);
+        filter: blur(3px);
+    }
+}
+
+@keyframes usecase-card-rise {
+    from {
+        opacity: 0;
+        transform: translateY(4.5rem) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@supports (animation-timeline: view()) {
+    .landing-hero {
+        view-timeline-name: --hero-scroll;
+        view-timeline-axis: block;
+    }
+
+    .landing-hero__visual {
+        animation: hero-visual-hold 1ms linear both;
+        animation-timeline: --hero-scroll;
+        animation-range: exit 0% exit 100%;
+        will-change: transform;
+    }
+
+    .landing-hero__content {
+        animation: hero-content-out 1ms linear both;
+        animation-timeline: --hero-scroll;
+        animation-range: exit 0% exit 68%;
+        will-change: transform, opacity, filter;
+    }
+
+    .usecase-card-reveal {
+        animation: usecase-card-rise 1ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-timeline: view(block);
+        animation-range: entry 4% cover 36%;
+    }
+}
+
+    .usecase-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(98, 144, 255, 0.42);
+        box-shadow: 0 24px 54px rgba(0, 0, 0, 0.3);
+    }
+
+.usecase-card__topline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.usecase-card__heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.usecase-card__number {
+    flex: 0 0 auto;
+    padding-top: 0.35rem;
+    color: var(--color-accent-strong);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+}
+
+.usecase-card h3 {
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.usecase-card p {
+    margin: 0;
+    color: var(--color-text-soft);
+    line-height: 1.75;
+}
+
+.usecase-card__cta {
+    position: relative;
+    z-index: 0;
+    width: fit-content;
+    justify-self: start;
+    margin-top: auto;
+    color: var(--color-accent-strong);
+    font-weight: 700;
+    transition: transform 0.25s ease;
+}
+
+    .usecase-card__cta::after {
+        content: " →";
+    }
+
+    /* Highlighter behind the CTA, wiped from left to right on card hover. */
+    .usecase-card__cta::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        right: -0.12em;
+        bottom: 0.02em;
+        left: -0.12em;
+        height: 0.42em;
+        background: linear-gradient(90deg, var(--color-marker-start), var(--color-marker-end));
+        border-radius: 12px 20px 14px 18px;
+        transform: rotate(-1.2deg) skewX(-14deg) scaleX(0);
+        transform-origin: left center;
+        transition: transform 0.3s ease;
+    }
+
+.usecase-card:hover .usecase-card__cta {
+    transform: translateX(8px);
+}
+
+.usecase-card:hover .usecase-card__cta::before {
+    transform: rotate(-1.2deg) skewX(-14deg) scaleX(1);
+}
+
+.usecase-card--disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+    .usecase-card--disabled:hover {
+        transform: none;
+        border-color: rgba(139, 157, 188, 0.15);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+    }
+
+.usecase-card__badge {
+    align-self: flex-start;
+    width: fit-content;
+    padding: 0.1rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(139, 157, 188, 0.16);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 960px) {
+    .landing-hero__facts,
+    .usecase-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-hero h1 {
+        max-width: 10ch;
+    }
+}
+
+@media (max-width: 640px) {
+    .landing-shell {
+        gap: 1.8rem;
+    }
+
+    .usecase-section {
+        margin-top: 0;
+    }
+
+    .landing-hero,
+    .landing-hero__content {
+        min-height: 39rem;
+    }
+
+    .landing-hero__content {
+        align-content: start;
+        padding: 1.35rem;
+    }
+
+    .landing-hero__facts {
+        gap: 0.7rem;
+    }
+
+        .landing-hero__facts > div,
+        .landing-hero__facts > a {
+            padding: 0.85rem;
+        }
+
+    .landing-hero__machine {
+        right: -18%;
+        bottom: 13%;
+        width: 132%;
+    }
+}
+
+@media (min-width: 641px) {
+    .landing-hero {
+        margin-inline: -4rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-hero__visual,
+    .landing-hero__content,
+    .landing-hero__machine,
+    .landing-hero__facts > div,
+    .landing-hero__facts > a,
+    .landing-hero__fact-value,
+    .usecase-card-reveal {
+        opacity: 1;
+        transform: none;
+        filter: none;
+        animation: none;
+    }
+}

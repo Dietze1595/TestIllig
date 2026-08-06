@@ -1,0 +1,115 @@
+<li class="aa-prueffeld @StatusFeldKlasse @(!StatusSymbolAnzeigen ? "aa-prueffeld--ohne-statussymbol" : "")">
+    @if (StatusSymbolAnzeigen)
+    {
+        <span class="@StatusSymbolKlasse" title="@StatusText" aria-label="@StatusText">@StatusSymbol</span>
+    }
+    <span class="aa-label" title="@(Wert is not null ? $"{Label} — {Wert}" : Label)">
+        <span class="aa-label__titel">@Label</span>
+        @if (WertInhalt is not null)
+        {
+            <span class="aa-wert">@WertInhalt</span>
+        }
+        else if (Wert is not null)
+        {
+            <span class="aa-wert">@Wert</span>
+        }
+        else
+        {
+            <span class="aa-wert">Nicht erkannt</span>
+        }
+    </span>
+    @if (KommentarId is not null)
+    {
+        <div class="aa-kommentar">
+            <div class="aa-kommentar__feld @(!Ok ? "aa-kommentar__feld--pflicht" : "")">
+                <input type="text" id="@KommentarId"
+                       class="aa-kommentar__input @(!Ok ? Abweichend ? "aa-kommentar__input--abweichend" : "aa-kommentar__input--pflicht" : "")"
+                       value="@Kommentar" @oninput="OnKommentarInput" disabled="@KommentarDisabled"
+                       required="@(!Ok)" aria-required="@(!Ok)" aria-label="@($"Kommentar zu {Label}")" />
+                @if (!Ok)
+                {
+                    <span class="aa-kommentar__stern @(Abweichend ? "aa-kommentar__stern--abweichend" : "aa-kommentar__stern--fehlt")"
+                          tabindex="0" aria-label="@PflichtfeldHinweis"
+                          aria-describedby="@($"{KommentarId}-pflicht-hinweis")">*</span>
+                    <span class="aa-kommentar__tooltip" id="@($"{KommentarId}-pflicht-hinweis")" role="tooltip">
+                        @PflichtfeldHinweis
+                    </span>
+                }
+            </div>
+        </div>
+    }
+    else if (KommentarAnzeige is not null)
+    {
+        <div class="aa-kommentar-anzeige">@(string.IsNullOrWhiteSpace(KommentarAnzeige) ? "Kein Kommentar hinterlegt" : KommentarAnzeige)</div>
+    }
+</li>
+
+@code {
+    /// <summary>Ob die Checkliste diesen Punkt als erfüllt erkennt (grüner Haken vs. rotes Kreuz).</summary>
+    [Parameter, EditorRequired]
+    public bool Ok { get; set; }
+
+    /// <summary>Ein Wert wurde erkannt, entspricht aber nicht der erwarteten Vorgabe.</summary>
+    [Parameter]
+    public bool Abweichend { get; set; }
+
+    /// <summary>Beschriftung des Checklistenpunkts, z. B. "Kunde mit Adresse".</summary>
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    /// <summary>
+    /// Anzuzeigender Wert (z. B. der erkannte Kundenname). Wird immer angezeigt wenn gesetzt —
+    /// ob das vom Erfüllt-Status abhängt (meist ja) entscheidet der Aufrufer per Ternary, nicht
+    /// diese Komponente (z. B. beim Liefertermin-Vergleich soll der Wert gerade bei Ok=false
+    /// sichtbar bleiben, um die Abweichung zu zeigen).
+    /// </summary>
+    [Parameter]
+    public string? Wert { get; set; }
+
+    /// <summary>Optionaler strukturierter Inhalt für kompaktere oder mehrzeilige Werte.</summary>
+    [Parameter]
+    public RenderFragment? WertInhalt { get; set; }
+
+    // Bearbeitbarer Kommentar (Vertrieb-Seite: Nutzer trägt hier bei Bedarf einen Kommentar ein).
+    // Gesetzt = editierbares Textfeld wird gerendert statt der reinen Anzeige unten.
+    [Parameter]
+    public string? KommentarId { get; set; }
+
+    [Parameter]
+    public string? Kommentar { get; set; }
+
+    [Parameter]
+    public EventCallback<string> KommentarChanged { get; set; }
+
+    [Parameter]
+    public bool KommentarDisabled { get; set; }
+
+    /// <summary>Blendet das Statuszeichen aus, ohne die farbliche Statuskennzeichnung der Zeile zu entfernen.</summary>
+    [Parameter]
+    public bool StatusSymbolAnzeigen { get; set; } = true;
+
+    // Nur-Anzeige-Kommentar (Innendienst-Seite: zeigt den vom Vertrieb hinterlegten Kommentar an).
+    // Wird ignoriert, wenn KommentarId gesetzt ist (editierbarer Modus hat Vorrang).
+    [Parameter]
+    public string? KommentarAnzeige { get; set; }
+
+    private string StatusFeldKlasse => Ok
+        ? "aa-prueffeld--ok"
+        : Abweichend
+            ? "aa-prueffeld--abweichend"
+            : "aa-prueffeld--fehlt";
+
+    private string StatusSymbolKlasse => Ok
+        ? "aa-status--ok"
+        : Abweichend
+            ? "aa-status--abweichend"
+            : "aa-status--fehlt";
+
+    private string StatusText => Ok ? "Vollständig" : Abweichend ? "Abweichend" : "Fehlt";
+    private string StatusSymbol => Ok ? "✓" : Abweichend ? "!" : "×";
+    private string PflichtfeldHinweis => Abweichend
+        ? "Kommentar erforderlich: Der erkannte Wert weicht von der Vorgabe ab."
+        : "Kommentar erforderlich: Ein benötigter Wert wurde nicht erkannt.";
+
+    private Task OnKommentarInput(ChangeEventArgs e) => KommentarChanged.InvokeAsync(e.Value?.ToString() ?? "");
+}

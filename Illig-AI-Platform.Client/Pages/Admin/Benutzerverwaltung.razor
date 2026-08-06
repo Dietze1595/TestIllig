@@ -1,0 +1,259 @@
+@page "/admin/benutzer"
+@using Illig_AI_Platform.Client.Components.Admin
+@using Illig_AI_Platform.Client.Models.Admin
+@inject AdminUsersClient Client
+@inject UserProfileState ProfileState
+
+<PageTitle>Benutzerverwaltung</PageTitle>
+
+<div class="sm-page benutzer-page">
+    <SeitenKopf Titel="Benutzerverwaltung"
+                Lead="Weise Nutzern App-Berechtigungen zu. Änderungen greifen, sobald sie gespeichert wurden." />
+
+    <RoleGuard Roles="@(new[] { AppClientRoles.Admin })" OnAuthorized="LadenAsync">
+        @if (_fehler is not null)
+        {
+            <ApiFehlerHinweis Message="@_fehler.Message" OnRetry="LadenAsync" />
+        }
+        else if (_laedt)
+        {
+            <section class="sm-card"><p class="mb-0">Nutzer werden geladen…</p></section>
+        }
+        else
+        {
+            <div class="benutzer-toolbar">
+                <input class="form-control benutzer-suche" placeholder="Name oder E-Mail suchen"
+                       @bind="_suche" @bind:event="oninput" />
+                <span class="benutzer-anzahl">@GefilterteZeilen.Count von @_zeilen.Count Nutzern</span>
+            </div>
+
+            @if (GefilterteZeilen.Count == 0)
+            {
+                <section class="sm-card"><p class="mb-0">Keine passenden Nutzer gefunden.</p></section>
+            }
+            else
+            {
+                <section class="sm-card benutzer-tabelle-card">
+                    <table class="benutzer-tabelle">
+                        <thead>
+                            <tr>
+                                <th>Nutzer</th>
+                                <th>Rollen</th>
+                                <th class="benutzer-tabelle__aktion-spalte">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var zeile in GefilterteZeilen)
+                            {
+                                <tr @key="zeile.User.Id">
+                                    <td>
+                                        <div class="benutzer-identitaet">
+                                            <div class="benutzer-name">@AnzeigeName(zeile.User)</div>
+                                            @if (IstEntwickler(zeile))
+                                            {
+                                                <span class="benutzer-dev-badge">DEV</span>
+                                            }
+                                        </div>
+                                        <div class="benutzer-mail">@zeile.User.Email</div>
+                                    </td>
+                                    <td>
+                                        <RollenMehrfachauswahl Optionen="_rollen"
+                                                               Ausgewaehlt="zeile.Auswahl"
+                                                               Gesperrt="GesperrteRollen(zeile)"
+                                                               Label="RollenLabel"
+                                                               OnUmgeschaltet="id => RolleUmschalten(zeile, id)" />
+                                    </td>
+                                    <td class="benutzer-tabelle__aktion-spalte">
+                                        @if (IstGeschuetzt(zeile))
+                                        {
+                                            <span class="benutzer-geschuetzt"
+                                                  title="Nur Novazoon-Mitarbeitende dürfen die Rollen von Novazoon-Nutzern ändern.">
+                                                Von Novazoon geschützt
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <div class="benutzer-aktion">
+                                                @if (zeile.Speichert)
+                                                {
+                                                    <span class="benutzer-status">Speichern…</span>
+                                                }
+                                                else if (zeile.Fehler is not null)
+                                                {
+                                                    <span class="benutzer-status benutzer-status--fehler">@zeile.Fehler</span>
+                                                }
+                                                else if (zeile.Gespeichert)
+                                                {
+                                                    <span class="benutzer-status benutzer-status--ok">✓ Gespeichert</span>
+                                                }
+                                                <PrimaryButton Class="btn-sm"
+                                                               Disabled="@(!zeile.Geaendert || zeile.Speichert)"
+                                                               OnClick="() => SpeichernAsync(zeile)">
+                                                    Speichern
+                                                </PrimaryButton>
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </section>
+            }
+        }
+    </RoleGuard>
+</div>
+
+@code {
+    // Deutsche Anzeigenamen für die technischen Rollennamen (Server ist Single Source of Truth für die
+    // verfügbaren Rollen; die Beschriftung ist eine reine UI-Angelegenheit).
+    private static readonly Dictionary<string, string> RollenLabels = new()
+    {
+        ["Admin"] = "Administrator",
+        ["DEV"] = "Entwickler (DEV)",
+        ["PlausibilityCheck"] = "Plausibilitätsprüfung",
+        ["SearchSystem"] = "Unternehmensweites Suchsystem",
+        ["OrderCreationSales"] = "Auftragsanlage – Vertrieb",
+        ["OrderCreationBackoffice"] = "Auftragsanlage – Innendienst",
+        ["Lieferantenassistent"] = "Lieferanten-Assist",
+    };
+
+    private bool _laedt = true;
+    private ApiRequestException? _fehler;
+    private string _suche = "";
+    private IReadOnlyList<AdminRoleDto> _rollen = [];
+    private List<Zeile> _zeilen = [];
+    private Guid? _aktuellerNutzer;
+    private bool _aktuellerNutzerIstNovazoon;
+    private HashSet<int> _privilegierteRollenIds = [];
+    private int _devRolleId;
+
+    private const string NovazoonMailDomain = "novazoon.de";
+
+    private List<Zeile> GefilterteZeilen =>
+        string.IsNullOrWhiteSpace(_suche)
+            ? _zeilen
+            : _zeilen.Where(z =>
+                Enthaelt(z.User.DisplayName) || Enthaelt(z.User.FullName) || Enthaelt(z.User.Email)).ToList();
+
+    private bool Enthaelt(string? wert) =>
+        !string.IsNullOrEmpty(wert) && wert.Contains(_suche, StringComparison.OrdinalIgnoreCase);
+
+    private async Task LadenAsync()
+    {
+        _laedt = true;
+        _fehler = null;
+        try
+        {
+            _aktuellerNutzer = ProfileState.Profile?.Id;
+            _aktuellerNutzerIstNovazoon = IstNovazoon(ProfileState.Profile?.Email);
+            _rollen = await Client.RollenAsync();
+            _privilegierteRollenIds = _rollen
+                .Where(r => r.Name is AppClientRoles.Admin or AppClientRoles.Dev)
+                .Select(r => r.Id)
+                .ToHashSet();
+            _devRolleId = _rollen.FirstOrDefault(r => r.Name == AppClientRoles.Dev)?.Id ?? 0;
+
+            var idNachName = _rollen.ToDictionary(r => r.Name, r => r.Id);
+            var nutzer = await Client.ListeAsync();
+
+            _zeilen = nutzer.Select(u =>
+            {
+                var ids = u.Roles.Where(idNachName.ContainsKey).Select(n => idNachName[n]).ToHashSet();
+                return new Zeile
+                {
+                    User = u,
+                    Original = new HashSet<int>(ids),
+                    Auswahl = new HashSet<int>(ids)
+                };
+            }).ToList();
+        }
+        catch (ApiRequestException ex)
+        {
+            _fehler = ex;
+        }
+        finally
+        {
+            _laedt = false;
+        }
+    }
+
+    private void RolleUmschalten(Zeile zeile, int rolleId)
+    {
+        if (!zeile.Auswahl.Remove(rolleId))
+            zeile.Auswahl.Add(rolleId);
+
+        // Sobald sich wieder etwas ändert, altes Speicher-Feedback zurücksetzen.
+        zeile.Gespeichert = false;
+        zeile.Fehler = null;
+    }
+
+    
+    private IReadOnlyCollection<int> GesperrteRollen(Zeile zeile) =>
+        IstGeschuetzt(zeile)
+            ? _rollen.Select(r => r.Id).ToArray()
+            : IstEigeneZeile(zeile)
+                ? zeile.Original.Intersect(_privilegierteRollenIds).ToArray()
+                : [];
+
+    private bool IstEigeneZeile(Zeile zeile) => zeile.User.Id == _aktuellerNutzer;
+
+    private bool IstGeschuetzt(Zeile zeile) =>
+        !_aktuellerNutzerIstNovazoon && IstNovazoon(zeile.User.Email);
+
+    private static bool IstNovazoon(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+        var at = email.LastIndexOf('@');
+        return at >= 0 && at < email.Length - 1
+            && string.Equals(email[(at + 1)..].Trim(), NovazoonMailDomain, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IstEntwickler(Zeile zeile) =>
+        _devRolleId != 0 && zeile.Auswahl.Contains(_devRolleId);
+
+    private async Task SpeichernAsync(Zeile zeile)
+    {
+        zeile.Speichert = true;
+        zeile.Fehler = null;
+        zeile.Gespeichert = false;
+        try
+        {
+            await Client.RollenSpeichernAsync(zeile.User.Id, zeile.Auswahl);
+            zeile.Original = new HashSet<int>(zeile.Auswahl);
+            zeile.Gespeichert = true;
+
+            // Hat der Admin seine eigenen Rollen geändert, das zentrale Profil neu laden (Header/Menü).
+            if (IstEigeneZeile(zeile))
+                await ProfileState.ReloadAsync();
+        }
+        catch (ApiRequestException ex)
+        {
+            zeile.Fehler = ex.Message;
+        }
+        finally
+        {
+            zeile.Speichert = false;
+        }
+    }
+
+    private static string AnzeigeName(AdminUserDto u) =>
+        !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName
+        : !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName
+        : u.Email;
+
+    private static string RollenLabel(string name) => RollenLabels.GetValueOrDefault(name, name);
+
+    private sealed class Zeile
+    {
+        public required AdminUserDto User { get; init; }
+        public HashSet<int> Original { get; set; } = [];
+        public HashSet<int> Auswahl { get; init; } = [];
+        public bool Speichert { get; set; }
+        public bool Gespeichert { get; set; }
+        public string? Fehler { get; set; }
+
+        public bool Geaendert => !Auswahl.SetEquals(Original);
+    }
+}

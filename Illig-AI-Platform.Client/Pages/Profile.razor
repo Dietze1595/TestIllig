@@ -1,0 +1,218 @@
+@page "/profile"
+@inject UserProfileState ProfileState
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Profil</PageTitle>
+
+<div class="profile-shell">
+    <section class="profile-hero">
+        <h1>Profil bearbeiten</h1>
+        <p class="profile-hero__lead">
+            Passe deinen Anzeigenamen und dein Profilbild an. Die Änderungen erscheinen
+            sofort oben rechts im Header.
+        </p>
+    </section>
+
+    <section class="profile-card">
+        <div class="profile-card__avatar">
+            @if (CurrentImage is { Length: > 0 } image)
+            {
+                <img src="@image" alt="Profilbild" />
+            }
+            else
+            {
+                <span class="profile-card__initials">@Initials()</span>
+            }
+        </div>
+
+        <div class="profile-card__fields">
+            <label class="profile-field">
+                <span class="profile-field__label">Profilbild</span>
+                <InputFile id="profile-image-input" OnChange="OnFileSelectedAsync" accept="image/png,image/jpeg,image/webp" class="profile-field__file" />
+                <span class="profile-field__hint">PNG oder JPG, max. 4 MB.</span>
+            </label>
+
+            @if (_selectedFile is not null)
+            {
+                <div class="profile-cropper" aria-label="Profilbild zuschneiden">
+                    <div class="profile-cropper__stage">
+                        <canvas id="profile-crop-canvas"
+                                class="profile-cropper__canvas"
+                                width="420"
+                                height="420"
+                                tabindex="0"
+                                aria-label="Bildausschnitt. Mit Maus oder Touch verschieben; mit Pfeiltasten fein ausrichten."></canvas>
+                        <span class="profile-cropper__ring" aria-hidden="true"></span>
+                    </div>
+                    <p class="profile-cropper__hint">Bild ziehen, um den Ausschnitt festzulegen. Der Kreis zeigt das spätere Profilbild.</p>
+                    <div class="profile-cropper__controls">
+                        <label class="profile-cropper__zoom">
+                            <span>Zoom</span>
+                            <input type="range" min="1" max="3" step="0.01" value="@_zoom" @oninput="OnZoomChangedAsync" />
+                        </label>
+                        <button type="button" class="profile-cropper__reset" @onclick="ResetCropAsync">Zentrieren</button>
+                    </div>
+                </div>
+            }
+
+            <label class="profile-field">
+                <span class="profile-field__label">Anzeigename</span>
+                <input class="profile-field__input" @bind="_displayName" @bind:event="oninput" maxlength="120" />
+            </label>
+
+            <div class="profile-field">
+                <span class="profile-field__label">E-Mail</span>
+                <span class="profile-field__readonly">@(string.IsNullOrEmpty(ProfileState.Profile?.Email) ? "—" : ProfileState.Profile!.Email)</span>
+            </div>
+        </div>
+
+        <div class="profile-card__actions">
+            @if (_status is { Length: > 0 })
+            {
+                <span class="profile-card__status @(_ok ? "is-ok" : "is-error")">@_status</span>
+            }
+            <button class="profile-save" @onclick="SaveAsync" disabled="@_saving">
+                @(_saving ? "Speichert…" : "Speichern")
+            </button>
+        </div>
+    </section>
+</div>
+
+@code {
+    private string _displayName = "";
+    private IBrowserFile? _selectedFile;
+    private string? _status;
+    private bool _ok;
+    private bool _saving;
+    private bool _initializeCropper;
+    private double _zoom = 1;
+    private string? _cropSourceUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ProfileState.EnsureLoadedAsync();
+        _displayName = ProfileState.Profile?.DisplayName ?? "";
+    }
+
+    private string? CurrentImage => ProfileState.Profile?.ProfileImageBase64;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_initializeCropper)
+            return;
+
+        _initializeCropper = false;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("profileImageCropper.initialize", "profile-crop-canvas", _cropSourceUrl);
+        }
+        catch (Exception ex)
+        {
+            _selectedFile = null;
+            _cropSourceUrl = null;
+            _ok = false;
+            _status = ex.Message.Contains("decoded", StringComparison.OrdinalIgnoreCase)
+                ? "Diese Bilddatei kann nicht angezeigt werden. Sie ist evtl. beschädigt oder in einem nicht unterstützten Format (z. B. HEIC von einem iPhone). Bitte als JPG oder PNG speichern und erneut hochladen."
+                : "Bild konnte nicht geladen werden. Bitte versuche es erneut.";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _status = null;
+        var file = e.File;
+        if (file.Size <= 0 || file.Size > 4 * 1024 * 1024 ||
+            !new[] { "image/jpeg", "image/png", "image/webp" }.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
+            _selectedFile = null;
+            _ok = false;
+            _status = "Bitte ein PNG-, JPG- oder WebP-Bild mit maximal 4 MB auswählen.";
+            return;
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream(4 * 1024 * 1024);
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            _cropSourceUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(memory.ToArray())}";
+            _selectedFile = file;
+            _zoom = 1;
+            _initializeCropper = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            _selectedFile = null;
+            _cropSourceUrl = null;
+            _ok = false;
+            _status = "Bild konnte nicht gelesen werden. Bitte versuche eine andere Bilddatei.";
+        }
+    }
+
+    private async Task OnZoomChangedAsync(ChangeEventArgs e)
+    {
+        if (!double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var zoom))
+            return;
+
+        _zoom = zoom;
+        await JSRuntime.InvokeVoidAsync("profileImageCropper.setZoom", "profile-crop-canvas", zoom);
+    }
+
+    private async Task ResetCropAsync()
+    {
+        _zoom = 1;
+        await JSRuntime.InvokeVoidAsync("profileImageCropper.reset", "profile-crop-canvas");
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _status = null;
+        var ok = true;
+
+        var name = _displayName?.Trim();
+        if (!string.IsNullOrWhiteSpace(name) && name != ProfileState.Profile?.DisplayName)
+            ok &= await ProfileState.SaveDisplayNameAsync(name);
+
+        if (_selectedFile is not null)
+        {
+            try
+            {
+                var dataUrl = await JSRuntime.InvokeAsync<string>("profileImageCropper.exportImage", "profile-crop-canvas");
+                var comma = dataUrl.IndexOf(',');
+                var imageBytes = Convert.FromBase64String(dataUrl[(comma + 1)..]);
+                ok &= await ProfileState.UploadPhotoAsync(imageBytes, "image/jpeg", "profilbild.jpg");
+            }
+            catch
+            {
+                ok = false;
+            }
+        }
+
+        _saving = false;
+        _ok = ok;
+        _status = ok ? "Gespeichert." : "Beim Speichern ist ein Fehler aufgetreten.";
+
+        if (ok)
+        {
+            _selectedFile = null;
+            _cropSourceUrl = null;
+            _displayName = ProfileState.Profile?.DisplayName ?? string.Empty;
+        }
+    }
+
+    private string Initials()
+    {
+        var n = ProfileState.Profile?.DisplayName;
+        if (string.IsNullOrWhiteSpace(n))
+            return "?";
+
+        var parts = n.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[^1][0])}"
+            : char.ToUpperInvariant(parts[0][0]).ToString();
+    }
+}

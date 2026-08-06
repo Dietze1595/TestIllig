@@ -1,0 +1,1 @@
+AzureAdB2C__SignUpSignInPolicyId: B2C_1A_IlligMultiTenantSignUpSignIn

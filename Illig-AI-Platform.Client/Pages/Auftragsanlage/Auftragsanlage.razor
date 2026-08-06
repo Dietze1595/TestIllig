@@ -1,0 +1,133 @@
+@page "/auftragsanlage"
+@inject NavigationManager Nav
+@inject UserProfileState ProfileState
+
+<PageTitle>Prüfung der Auftragsanlage</PageTitle>
+
+<div class="sm-page sm-choice-page">
+    <RoleGuard Roles="@(new[] { AppClientRoles.OrderCreationSales, AppClientRoles.OrderCreationBackoffice, AppClientRoles.Admin })">
+        <SeitenKopf Titel="Prüfung der Auftragsanlage" Lead="Wähle einen Assistenten." />
+
+        <div class="sm-choice-grid">
+            @if (_darfVertrieb)
+            {
+                <button type="button" class="sm-choice-card sm-choice-card--illustrated" @onclick="@(() => Nav.NavigateTo(AppRoutes.AuftragsanlageVertrieb))">
+                    <svg class="sa-choice-icon" viewBox="0 0 220 180" aria-hidden="true" focusable="false">
+                        <defs>
+                            <linearGradient id="saAngebotDoc" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#1a2b4a" />
+                                <stop offset="100%" stop-color="#0d1830" />
+                            </linearGradient>
+                            <radialGradient id="saAngebotBadge" cx="38%" cy="32%" r="75%">
+                                <stop offset="0%" stop-color="#eaf4ff" />
+                                <stop offset="35%" stop-color="#4f9bdb" />
+                                <stop offset="75%" stop-color="#0a5da0" />
+                                <stop offset="100%" stop-color="#00457b" />
+                            </radialGradient>
+                            <filter id="saAngebotGlow" x="-60%" y="-60%" width="220%" height="220%">
+                                <feGaussianBlur stdDeviation="4.5" result="blur" />
+                                <feMerge>
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                        </defs>
+
+                        <ellipse cx="100" cy="152" rx="70" ry="14" fill="#00457b" opacity="0.14" filter="url(#saAngebotGlow)" />
+
+                        <g transform="rotate(-6 90 95)">
+                            <rect x="45" y="45" width="95" height="100" rx="10" fill="url(#saAngebotDoc)" stroke="#3a5a86" stroke-width="1" />
+                            <g stroke="#5f89c4" stroke-width="2.4" stroke-linecap="round" opacity="0.8">
+                                <line x1="58" y1="65" x2="118" y2="65" />
+                                <line x1="58" y1="80" x2="118" y2="80" />
+                                <line x1="58" y1="95" x2="100" y2="95" />
+                                <line x1="58" y1="110" x2="118" y2="110" />
+                                <line x1="58" y1="125" x2="94" y2="125" />
+                            </g>
+                            <g fill="#7ea8e0" opacity="0.85">
+                                <circle cx="60" cy="52" r="2" />
+                                <circle cx="68" cy="52" r="2" />
+                            </g>
+                        </g>
+
+                        <circle cx="150" cy="72" r="34" fill="#00457b" opacity="0.25" filter="url(#saAngebotGlow)" />
+                        <circle cx="150" cy="72" r="28" fill="url(#saAngebotBadge)" />
+                        <path d="M137,73 L146,82 L165,59" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <h3>Vertrieb — Angebotsprüfung</h3>
+                    <p>Angebot hochladen und automatisch prüfen: Kunde mit Adresse, Auftragsnummer, Zahlungsbedingungen.</p>
+                    <span class="sm-choice-card__cta">Starten →</span>
+                </button>
+            }
+            @if (_darfInnendienst)
+            {
+                <button type="button" class="sm-choice-card sm-choice-card--illustrated" @onclick="@(() => Nav.NavigateTo(AppRoutes.AuftragsanlageInnendienst))">
+                    <svg class="sa-choice-icon" viewBox="0 0 220 180" aria-hidden="true" focusable="false">
+                        <defs>
+                            <linearGradient id="saAbgleichDocBack" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#233a2a" />
+                                <stop offset="100%" stop-color="#101c14" />
+                            </linearGradient>
+                            <linearGradient id="saAbgleichDocFront" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#1a2b4a" />
+                                <stop offset="100%" stop-color="#0d1830" />
+                            </linearGradient>
+                            <radialGradient id="saAbgleichBadge" cx="38%" cy="32%" r="75%">
+                                <stop offset="0%" stop-color="#f1ffe0" />
+                                <stop offset="35%" stop-color="#bde05a" />
+                                <stop offset="75%" stop-color="#8ab52a" />
+                                <stop offset="100%" stop-color="#6f9420" />
+                            </radialGradient>
+                            <filter id="saAbgleichGlow" x="-60%" y="-60%" width="220%" height="220%">
+                                <feGaussianBlur stdDeviation="4.5" result="blur" />
+                                <feMerge>
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                        </defs>
+
+                        <ellipse cx="100" cy="152" rx="70" ry="14" fill="#9bc832" opacity="0.14" filter="url(#saAbgleichGlow)" />
+
+                        <g transform="rotate(-10 85 95)">
+                            <rect x="38" y="50" width="88" height="95" rx="10" fill="url(#saAbgleichDocBack)" stroke="#3a5a4a" stroke-width="1" />
+                            <g stroke="#6fae7a" stroke-width="2.2" stroke-linecap="round" opacity="0.7">
+                                <line x1="50" y1="70" x2="104" y2="70" />
+                                <line x1="50" y1="84" x2="104" y2="84" />
+                                <line x1="50" y1="98" x2="90" y2="98" />
+                            </g>
+                        </g>
+
+                        <g transform="rotate(7 110 100)">
+                            <rect x="70" y="45" width="88" height="100" rx="10" fill="url(#saAbgleichDocFront)" stroke="#3a5a86" stroke-width="1" />
+                            <g stroke="#5f89c4" stroke-width="2.4" stroke-linecap="round" opacity="0.85">
+                                <line x1="83" y1="66" x2="137" y2="66" />
+                                <line x1="83" y1="80" x2="137" y2="80" />
+                                <line x1="83" y1="94" x2="120" y2="94" />
+                                <line x1="83" y1="108" x2="137" y2="108" />
+                            </g>
+                        </g>
+
+                        <circle cx="150" cy="132" r="30" fill="#9bc832" opacity="0.25" filter="url(#saAbgleichGlow)" />
+                        <circle cx="150" cy="132" r="26" fill="url(#saAbgleichBadge)" />
+                        <path d="M137,133 L146,142 L165,119" fill="none" stroke="#1a2b12" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <h3>Innendienst — Bestätigungsabgleich</h3>
+                    <p>Auftragsbestätigung hochladen und automatisch mit dem Angebot des Vertriebs vergleichen.</p>
+                    <span class="sm-choice-card__cta">Starten →</span>
+                </button>
+            }
+        </div>
+    </RoleGuard>
+</div>
+
+@code {
+    private bool _darfVertrieb;
+    private bool _darfInnendienst;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _darfVertrieb = await ProfileState.HasAnyRoleAsync(AppClientRoles.OrderCreationSales, AppClientRoles.Admin);
+        _darfInnendienst = await ProfileState.HasAnyRoleAsync(AppClientRoles.OrderCreationBackoffice, AppClientRoles.Admin);
+    }
+}

@@ -1,0 +1,381 @@
+@page "/referenztreffer"
+@using Illig_AI_Platform.Client.Models
+@inject SondermerkmalClient Client
+@inject NavigationManager Nav
+
+<PageTitle>Referenz-Stücklisten</PageTitle>
+
+<div class="sm-page sm-referenztreffer-page">
+    <header class="sm-page__head">
+        @if (string.IsNullOrWhiteSpace(Auftragsnummer))
+        {
+            <h1>Aufträge mit diesem Sondermerkmal</h1>
+            <p class="lead">Alle Aufträge, die dieses Merkmal enthalten, neueste zuerst.</p>
+        }
+        else
+        {
+            <h1>Referenz-Stücklisten</h1>
+            <p class="lead">Stücklisten mit der größten Überschneidung der Sondermerkmale.</p>
+        }
+    </header>
+
+    <SondermerkmalsucheStepper />
+
+    <div class="sm-wizard-content">
+    <RoleGuard Roles="@(new[] { AppClientRoles.PlausibilityCheck, AppClientRoles.Admin })">
+        @if (_apiError is not null)
+    {
+        <ApiFehlerHinweis Message="@_apiError.Message" OnRetry="LoadAsync" />
+    }
+    else if (_merkmalsnummern.Count == 0)
+    {
+        <section class="sm-card">
+            <div class="alert alert-warning">Keine Sondermerkmale übergeben.</div>
+        </section>
+    }
+    else if (_searching)
+    {
+        <section class="sm-card">
+            <div class="sm-search-progress">
+                <div class="spinner-border" role="status" aria-hidden="true"></div>
+                <div>
+                    <strong>Referenzsuche läuft …</strong>
+                    <p class="sm-add__hint">Der Abgleich mit allen Stücklisten kann einige Minuten dauern. Bitte das Fenster geöffnet lassen.</p>
+                </div>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="sm-card">
+            @if (_treffer.Count == 0)
+            {
+                <div class="alert alert-info">Keine Stückliste mit Überschneidung gefunden.</div>
+            }
+            else
+            {
+                <section class="sm-result-group sm-result-group--found"
+                         aria-labelledby="gefundene-sondermerkmale">
+                    <header class="sm-result-group__head">
+                        <div class="sm-result-group__copy">
+                            <h3 id="gefundene-sondermerkmale">
+                                In Referenzaufträgen gefunden
+                            </h3>
+                            <p class="sm-results-summary" role="status">
+                                @GefundeneMerkmalsnummernAnzahl von @_merkmalsnummern.Count Sondermerkmalen
+                                in den angezeigten Referenzaufträgen gefunden.
+                            </p>
+                        </div>
+                        <span class="sm-result-group__badge"
+                              aria-label="@GefundeneMerkmalsnummernAnzahl gefundene Sondermerkmale">
+                            @GefundeneMerkmalsnummernAnzahl
+                        </span>
+                    </header>
+                    <div class="sm-results-legend" role="note">
+                        <span class="sm-results-legend__marker" aria-hidden="true"></span>
+                        <span>
+                            <strong>Grüne Merkmalsnummer:</strong>
+                            Dies ist die aktuellste Stückliste, in der das jeweilige Merkmal zuletzt vorkam.
+                        </span>
+                    </div>
+                    <div class="sm-reference-table-wrap">
+                        <table class="sm-reference-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Auftrag</th>
+                                    <th scope="col">Kunde</th>
+                                    <th scope="col">Maschinentyp</th>
+                                    <th scope="col">Stückliste</th>
+                                    <th scope="col">Treffer</th>
+                                    <th scope="col">Enthaltene Sondermerkmale</th>
+                                    <th scope="col" class="sm-reference-table__action-head"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in _treffer)
+                                {
+                                    <tr>
+                                        <td class="sm-reference-table__order">@t.Auftragsnummer</td>
+                                        <td class="sm-reference-table__customer">
+                                            @if (!string.IsNullOrWhiteSpace(t.Kundenname))
+                                            {
+                                                <strong>@t.Kundenname</strong>
+                                            }
+                                            else
+                                            {
+                                                <span>—</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(t.Kundennummer))
+                                            {
+                                                <span>Kd.Nr. @t.Kundennummer</span>
+                                            }
+                                        </td>
+                                        <td class="sm-reference-table__type">@t.Maschinentyp</td>
+                                        <td class="sm-reference-table__date">@t.Abschlussdatum.ToString("dd.MM.yyyy")</td>
+                                        <td>
+                                            <span class="sm-reference-table__score"
+                                                  title="@($"{t.TrefferAnzahl} von {t.Gesamtanzahl} gesuchten Sondermerkmalen enthalten")">
+                                                @t.TrefferAnzahl/@t.Gesamtanzahl
+                                            </span>
+                                        </td>
+                                        <td class="sm-reference-table__features">
+                                            <div class="sm-reference-table__feature-list">
+                                                @foreach (var merkmalsnummer in SichtbareUeberschneidungen(t))
+                                                {
+                                                    var istAktuellsterTreffer = IstAktuellsterTrefferFuerMerkmal(merkmalsnummer, t);
+                                                    <span class="sm-reference-table__feature @(istAktuellsterTreffer ? "sm-reference-table__feature--aktuell" : "")"
+                                                          title="@(istAktuellsterTreffer ? "Aktuellste Stückliste, in der dieses Merkmal zuletzt vorkam" : null)">
+                                                        @merkmalsnummer
+                                                    </span>
+                                                }
+                                                @if (HatVerborgeneUeberschneidungen(t))
+                                                {
+                                                    var istAusgeklappt = _ausgeklappteTrefferMerkmale.Contains(t.Auftragsnummer);
+                                                    <button type="button"
+                                                            class="sm-reference-table__feature-toggle"
+                                                            aria-expanded="@istAusgeklappt"
+                                                            @onclick="() => TrefferMerkmaleUmschalten(t.Auftragsnummer)">
+                                                        @(istAusgeklappt
+                                                            ? "Weniger"
+                                                            : $"+ {VerborgeneUeberschneidungen(t)} weitere")
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="sm-reference-table__action">
+                                            <button type="button"
+                                                    class="sm-reference-table__open"
+                                                    aria-label="Auftrag @t.Auftragsnummer öffnen"
+                                                    @onclick="() => OpenDetail(t)">
+                                                Details <span aria-hidden="true">→</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            }
+            @{ var nichtGefunden = NichtGefundeneMerkmalsnummern(); }
+            @if (nichtGefunden.Count > 0)
+            {
+                <section class="sm-result-group sm-result-group--missing sm-missing-table-section"
+                         aria-labelledby="fehlende-sondermerkmale">
+                    <header class="sm-result-group__head">
+                        <div class="sm-result-group__copy">
+                            <h3 id="fehlende-sondermerkmale">
+                                Nicht in Referenzaufträgen gefunden
+                            </h3>
+                            <p>Für diese Sondermerkmale wurde in den angezeigten Referenzaufträgen kein Treffer ermittelt.</p>
+                        </div>
+                        <span class="sm-result-group__badge"
+                              aria-label="@nichtGefunden.Count nicht gefundene Sondermerkmale">
+                            @nichtGefunden.Count
+                        </span>
+                    </header>
+                    <div class="sm-missing-table-wrap">
+                        <table class="sm-missing-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Position</th>
+                                    <th scope="col">Merkmalsnummer</th>
+                                    <th scope="col">Beschreibung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var nr in nichtGefunden)
+                                {
+                                    var position = PositionZu(nr);
+                                    var beschreibung = BeschreibungZu(nr);
+                                    <tr>
+                                        <td class="sm-missing-table__position">
+                                            @(string.IsNullOrWhiteSpace(position) ? "—" : position)
+                                        </td>
+                                        <td class="sm-missing-table__number">@nr</td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(beschreibung))
+                                            {
+                                                var istLang = HatLangeBeschreibung(beschreibung);
+                                                var istAusgeklappt = _ausgeklappteFehlendeMerkmale.Contains(nr);
+                                                <div class="sm-merkmal-fehlend__beschreibung @(istLang && !istAusgeklappt ? "sm-merkmal-fehlend__beschreibung--eingeklappt" : null)">
+                                                    <p id="fehlendes-merkmal-@nr"
+                                                       class="@(istLang && !istAusgeklappt ? "sm-merkmal-fehlend__text--eingeklappt" : null)">
+                                                        @beschreibung
+                                                    </p>
+                                                    @if (istLang)
+                                                    {
+                                                        <button type="button"
+                                                                class="sm-merkmal-fehlend__mehr"
+                                                                aria-expanded="@istAusgeklappt"
+                                                                aria-controls="fehlendes-merkmal-@nr"
+                                                                @onclick="() => FehlendUmschalten(nr)">
+                                                            @(istAusgeklappt ? "Weniger" : "Mehr")
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span>Keine Beschreibung vorhanden</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            }
+        </section>
+    }
+    </RoleGuard>
+    </div>
+</div>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public string? Auftragsnummer { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Merkmale { get; set; }
+
+    private bool _searching;
+    private List<string> _merkmalsnummern = [];
+    private IReadOnlyList<ReferenzTreffer> _treffer = [];
+
+    private int GefundeneMerkmalsnummernAnzahl => _treffer
+        .SelectMany(t => t.UeberschneidendeMerkmalsnummern)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Count();
+
+    // Beschreibungen der gesuchten Sondermerkmale (für den "Nicht gefunden"-Hinweis) — kommen
+    // nicht mit den Suchtreffern zurück, deshalb hier per Auftragsnummer separat nachgeladen
+    // (derselbe Analyze-Aufruf, den auch Schritt 2 nutzt; rein lesende DB-Abfrage, kein PDF-Reparsing).
+    private StuecklisteAnalyse? _quellAnalyse;
+    private readonly HashSet<string> _ausgeklappteFehlendeMerkmale = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _ausgeklappteTrefferMerkmale = new(StringComparer.OrdinalIgnoreCase);
+    private const int SichtbareMerkmaleProTreffer = 6;
+
+    private string BackHref => string.IsNullOrWhiteSpace(Auftragsnummer)
+        ? "/plausibilitaetspruefung"
+        : $"/sondermerkmale?auftragsnummer={Uri.EscapeDataString(Auftragsnummer)}";
+
+    private ApiRequestException? _apiError;
+
+    // RoleGuard gated die Ansicht; das Laden bleibt reaktiv an die Query-Parameter gebunden.
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _apiError = null;
+
+        // Reihenfolge der Merkmalsnummern = Suchpriorität (so von der Sondermerkmale-Seite übergeben).
+        _merkmalsnummern = (Merkmale ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        _treffer = [];
+        _quellAnalyse = null;
+        if (_merkmalsnummern.Count == 0) return;
+
+        _searching = true;
+        StateHasChanged();
+        try
+        {
+            var request = new SearchRequest(Auftragsnummer?.Trim(), _merkmalsnummern);
+            _treffer = await Client.SearchAsync(request);
+
+            if (!string.IsNullOrWhiteSpace(Auftragsnummer))
+                _quellAnalyse = await Client.AnalyzeAsync(Auftragsnummer.Trim());
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex;
+        }
+        finally
+        {
+            _searching = false;
+        }
+    }
+
+    private IReadOnlyList<string> NichtGefundeneMerkmalsnummern()
+    {
+        if (_searching || _apiError is not null || _merkmalsnummern.Count == 0)
+            return [];
+
+        var gefunden = new HashSet<string>(
+            _treffer.SelectMany(t => t.UeberschneidendeMerkmalsnummern),
+            StringComparer.OrdinalIgnoreCase);
+
+        return _merkmalsnummern.Where(nr => !gefunden.Contains(nr)).ToList();
+    }
+
+    private string? BeschreibungZu(string merkmalsnummer) =>
+        _quellAnalyse?.Sondermerkmale
+            .FirstOrDefault(m => string.Equals(m.Merkmalsnummer, merkmalsnummer, StringComparison.OrdinalIgnoreCase))
+            ?.Beschreibung;
+
+    private string? PositionZu(string merkmalsnummer)
+    {
+        var position = _quellAnalyse?.Sondermerkmale
+            .FirstOrDefault(m => string.Equals(m.Merkmalsnummer, merkmalsnummer, StringComparison.OrdinalIgnoreCase))
+            ?.Position;
+        return string.IsNullOrWhiteSpace(position) ? null : position;
+    }
+
+    private void FehlendUmschalten(string merkmalsnummer)
+    {
+        if (!_ausgeklappteFehlendeMerkmale.Remove(merkmalsnummer))
+            _ausgeklappteFehlendeMerkmale.Add(merkmalsnummer);
+    }
+
+    private const int FehlendVorschauZeichen = 110;
+
+    private static bool HatLangeBeschreibung(string text) =>
+        text.Length > FehlendVorschauZeichen;
+
+    private void OpenDetail(ReferenzTreffer treffer)
+    {
+        var aktuellsteMerkmale = string.Join(',', treffer.AktuellsteMerkmalsnummern);
+        Nav.NavigateTo(
+            $"/auftragsdetails?auftragsnummer={Uri.EscapeDataString(treffer.Auftragsnummer)}" +
+            $"&quelle={Uri.EscapeDataString(Auftragsnummer ?? "")}" +
+            $"&merkmale={Uri.EscapeDataString(Merkmale ?? "")}" +
+            $"&aktuellste={Uri.EscapeDataString(aktuellsteMerkmale)}");
+    }
+
+    private IReadOnlyList<string> UeberschneidungenSortiert(ReferenzTreffer treffer)
+    {
+        var enthalten = new HashSet<string>(
+            treffer.UeberschneidendeMerkmalsnummern,
+            StringComparer.OrdinalIgnoreCase);
+
+        return _merkmalsnummern.Where(enthalten.Contains).ToList();
+    }
+
+    private IReadOnlyList<string> SichtbareUeberschneidungen(ReferenzTreffer treffer)
+    {
+        var sortiert = UeberschneidungenSortiert(treffer);
+        return _ausgeklappteTrefferMerkmale.Contains(treffer.Auftragsnummer)
+            ? sortiert
+            : sortiert.Take(SichtbareMerkmaleProTreffer).ToList();
+    }
+
+    private bool HatVerborgeneUeberschneidungen(ReferenzTreffer treffer) =>
+        treffer.UeberschneidendeMerkmalsnummern.Count > SichtbareMerkmaleProTreffer;
+
+    private int VerborgeneUeberschneidungen(ReferenzTreffer treffer) =>
+        Math.Max(0, treffer.UeberschneidendeMerkmalsnummern.Count - SichtbareMerkmaleProTreffer);
+
+    private void TrefferMerkmaleUmschalten(string auftragsnummer)
+    {
+        if (!_ausgeklappteTrefferMerkmale.Remove(auftragsnummer))
+            _ausgeklappteTrefferMerkmale.Add(auftragsnummer);
+    }
+
+    // Wird serverseitig vor der Top-5-Begrenzung über alle Referenzaufträge berechnet.
+    private static bool IstAktuellsterTrefferFuerMerkmal(
+        string merkmalsnummer,
+        ReferenzTreffer treffer) =>
+        treffer.AktuellsteMerkmalsnummern.Contains(
+            merkmalsnummer,
+            StringComparer.OrdinalIgnoreCase);
+}

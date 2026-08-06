@@ -1,0 +1,796 @@
+@page "/auftragsanlage/vertrieb"
+@using Illig_AI_Platform.Client.Models
+@using Illig_AI_Platform.Client.Components.Plausibilitaetspruefung.Stuecklistenpruefung
+@using Illig_AI_Platform.Client.Components.Auftragsanlage
+@inject AuftragsanlageClient Client
+@inject IJSRuntime JSRuntime
+@inject UserProfileState UserProfileState
+
+<PageTitle>Auftragsanlage · Vertrieb</PageTitle>
+
+<div class="sm-page @(DokumentAktiv ? "sm-page--dokument-aktiv" : "") @(PrueflayoutAktiv ? "aa-vertrieb-prueflayout-aktiv" : "")">
+    <RoleGuard Roles="@(new[] { AppClientRoles.OrderCreationSales, AppClientRoles.Admin })" OnAuthorized="VerlaufLadenAsync">
+        <div class="su-layout">
+            <AngebotVerlaufSidebar Offen="_verlaufOffen" OffenChanged="v => _verlaufOffen = v"
+                                    Eintraege="_verlaufEintraege" Laedt="_verlaufLaedt" Fehler="_verlaufFehler"
+                                    GeoeffneterId="_geoeffneterId" NurMeine="_nurMeine" NurMeineChanged="NurMeineGeaendertAsync"
+                                    OnRetry="VerlaufLadenAsync" OnEintragOeffnen="VerlaufOeffnenAsync" />
+
+            <div class="su-main @PdfPanelKlasse @VerlaufPanelKlasse">
+        <SeitenKopf Titel="Angebotsprüfung"
+                    Lead="Angebot (PDF) hochladen — Kunde, Auftragsnummer, Zahlungsbedingungen, Incoterm und Versandart werden automatisch geprüft." />
+
+        <div class="aa-vertrieb-content">
+        @if (_apiError is { Length: > 0 })
+        {
+            <ApiFehlerHinweis Message="@_apiError" OnRetry="@(() => _apiError = null)" />
+        }
+
+        @if (_readOnly && _detail is not null)
+        {
+            <div class="aa-vertrieb-prueflayout">
+            <section class="sm-card aa-vertrieb-prueflayout__kopf">
+                <div class="aa-vertrieb-detailkopf">
+                    <div class="sm-detail__head">
+                        <h2>Angebot @_detail.Angebotsnummer <span class="aa-verlauf-badge">Historie</span></h2>
+                        <p class="sm-detail__sub">Gespeichertes Prüfergebnis · Version @_detail.Version</p>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary aa-vertrieb-detailkopf__aktion" @onclick="Zuruecksetzen">
+                        ← Neues Angebot
+                    </button>
+                </div>
+
+                <dl class="sm-info">
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 3.75h7l3 3V20.25H7z" />
+                                <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" />
+                            </svg>
+                            Angebotsnummer
+                        </dt>
+                        <dd>@_detail.Angebotsnummer</dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+                            </svg>
+                            Version
+                        </dt>
+                        <dd>@_detail.Version</dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3.5 18 6v5c0 4.1-2.55 7.45-6 9-3.45-1.55-6-4.9-6-9V6z" />
+                                <path d="m9.1 11.8 1.8 1.8 4-4" />
+                            </svg>
+                            Status
+                        </dt>
+                        <dd class="@(_detail.Freigegeben ? "aa-text--ok" : "aa-text--warnung")">
+                            @(_detail.Freigegeben ? "Freigegeben" : "Freigabe ausstehend")
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="8.25" />
+                                <path d="M15.25 8.25a4.3 4.3 0 0 0-2.5-.8c-2.3 0-4.15 2.05-4.15 4.55s1.85 4.55 4.15 4.55c.95 0 1.8-.3 2.5-.8M7.75 10.5h5.5M7.75 13.5h5.5" />
+                            </svg>
+                            Gesamtpreis
+                        </dt>
+                        <dd>@(_detail.Daten.Gesamtpreis ?? "Nicht erkannt")</dd>
+                    </div>
+                </dl>
+
+                @if (_detail.Freigegeben && _detail.FreigegebenAm is { } fa)
+                {
+                    <p class="aa-freigabe-meta">Freigegeben am @fa.ToLocalTime().ToString("dd.MM.yyyy 'um' HH:mm 'Uhr'").</p>
+                }
+            </section>
+
+            <section class="sm-card aa-vertrieb-prueflayout__inhalt">
+                <div class="aa-section-head">
+                    <div>
+                        <h2>Aus dem Angebot ausgelesene Daten</h2>
+                        <p class="sm-detail__sub">Originalwerte aus dem gespeicherten Angebotsdokument</p>
+                    </div>
+                </div>
+                <div class="aa-checkliste-kopf" aria-hidden="true">
+                    <span class="aa-checkliste-kopf__daten">
+                        <span>Prüfpunkt</span>
+                        <span>Ausgelesener Wert</span>
+                    </span>
+                    <span>Kommentar</span>
+                </div>
+                <div class="aa-vertrieb-prueflayout__scroll">
+                <ul class="aa-checkliste">
+                    <ChecklistItem Ok="_detail.Checkliste.NummerVorhanden" Label="Angebotsnummer" StatusSymbolAnzeigen="false"
+                                   Wert="@(_detail.Checkliste.NummerVorhanden ? _detail.Daten.Nummer : null)" />
+                    <ChecklistItem Ok="_detail.Checkliste.KundeVorhanden" Label="Kunde mit Adresse" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_detail.Checkliste.KundeVorhanden && (!string.IsNullOrWhiteSpace(_detail.Daten.Kundenname) || !string.IsNullOrWhiteSpace(_detail.Daten.Kundenadresse)))"
+                                   Wert="@((!string.IsNullOrWhiteSpace(_detail.Daten.Kundenname) || !string.IsNullOrWhiteSpace(_detail.Daten.Kundenadresse)) ? $"{_detail.Daten.Kundenname ?? "Kundenname nicht erkannt"}, {_detail.Daten.Kundenadresse ?? "Adresse nicht erkannt"}" : null)"
+                                   KommentarAnzeige="@_detail.KundeKommentar" />
+                    <ChecklistItem Ok="_detail.Checkliste.KundenUndLieferadresseIdentisch" Label="Adressvergleich" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_detail.Checkliste.KundenUndLieferadresseIdentisch && !string.IsNullOrWhiteSpace(_detail.Daten.Lieferadresse))"
+                                   Wert="@FormatAdressvergleich(_detail.Daten.Kundenadresse, _detail.Daten.Lieferadresse)"
+                                   KommentarAnzeige="@_detail.LieferadresseKommentar">
+                        <WertInhalt>
+                            <span class="aa-adressvergleich">
+                                <span><span class="aa-adressvergleich__label">Kundenadresse:</span> @FormatKurzadresse(_detail.Daten.Kundenadresse)</span>
+                                <span><span class="aa-adressvergleich__label">Lieferadresse:</span> @FormatKurzadresse(_detail.Daten.Lieferadresse)</span>
+                            </span>
+                        </WertInhalt>
+                    </ChecklistItem>
+                    <ChecklistItem Ok="_detail.Checkliste.VerkaeuferVorhanden" Label="Verkäuferinformation" StatusSymbolAnzeigen="false"
+                                   Wert="@_detail.Daten.Verkaeufer" KommentarAnzeige="@_detail.VerkaeuferKommentar" />
+                    <ChecklistItem Ok="_detail.Checkliste.GueltigkeitsdatumGueltig" Label="Gültigkeitsdatum" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_detail.Checkliste.GueltigkeitsdatumGueltig && _detail.Daten.GueltigBis is not null)"
+                                   Wert="@FormatDatum(_detail.Daten.GueltigBis)" KommentarAnzeige="@_detail.GueltigkeitsdatumKommentar" />
+                    <ChecklistItem Ok="_detail.Checkliste.LieferterminVorhanden" Label="Liefertermin bzw. Lieferdauer" StatusSymbolAnzeigen="false"
+                                   Wert="@_detail.Daten.Liefertermin" KommentarAnzeige="@_detail.LieferterminKommentar" />
+                    <ChecklistItem Ok="@(_detail.Checkliste.ZahlungsbedingungenVorhanden && _detail.Checkliste.ZahlungsbedingungStandardErkannt)" Label="Zahlungsbedingung"
+                                   StatusSymbolAnzeigen="false"
+                                   Abweichend="@(_detail.Checkliste.ZahlungsbedingungenVorhanden && !_detail.Checkliste.ZahlungsbedingungStandardErkannt)"
+                                   Wert="@_detail.Daten.Zahlungsbedingungen"
+                                   KommentarAnzeige="@_detail.ZahlungsbedingungenKommentar" />
+                    <ChecklistItem Ok="_detail.Checkliste.ZahlungsplanStandardErkannt" Label="Standard-Zahlungsplan (Maschine 30/30/30/10, Werkzeug 50/50)" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_detail.Checkliste.ZahlungsplanStandardErkannt && !string.IsNullOrWhiteSpace(_detail.Daten.Zahlungsplan))"
+                                   Wert="@_detail.Daten.Zahlungsplan" KommentarAnzeige="@_detail.ZahlungsplanKommentar" />
+                    <ChecklistItem Ok="_detail.Checkliste.IncotermGueltig" Label="Incoterm" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_detail.Checkliste.IncotermGueltig && !string.IsNullOrWhiteSpace(_detail.Incoterm))"
+                                   Wert="@(!string.IsNullOrWhiteSpace(_detail.Incoterm) ? $"{_detail.Incoterm}{(string.IsNullOrWhiteSpace(_detail.IncotermOrt) ? "" : $" ({_detail.IncotermOrt})")}" : null)"
+                                   KommentarAnzeige="@_detail.IncotermKommentar" />
+                    <ChecklistItem Ok="_detail.Checkliste.VersandbedingungErkannt" Label="Versandart" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_detail.Checkliste.VersandbedingungErkannt && !string.IsNullOrWhiteSpace(_detail.Versandbedingung))"
+                                   Wert="@_detail.Versandbedingung"
+                                   KommentarAnzeige="@_detail.VersandbedingungKommentar" />
+                </ul>
+                <div class="aa-sap-pruefhinweis" role="note">
+                    <strong>Manuelle Prüfung erforderlich</strong>
+                    <span>Bitte vergleichen Sie die folgenden Angaben mit den in SAP hinterlegten Daten.</span>
+                </div>
+                <SapBestaetigungen Sparte="@(_detail.SapSparteBestaetigt == true)"
+                                  Fuehrend="@(_detail.SapFuehrendBestaetigt == true)"
+                                  SparteKommentar="@_detail.SapSparteKommentar"
+                                  FuehrendKommentar="@_detail.SapFuehrendKommentar"
+                                  Disabled="true" />
+                <div class="aa-status-legende" aria-label="Legende der Prüfzustände">
+                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--ok"></i>Vollständig</span>
+                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--abweichend"></i>Abweichend</span>
+                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--fehlt"></i>Fehlt</span>
+                    <span><i class="aa-status-legende__stern">*</i>Pflichtfeld</span>
+                </div>
+
+                @if (_detail.Daten.Positionen.Count > 0)
+                {
+                    <section class="sm-feature-group sm-feature-group--match">
+                        <header class="sm-feature-group__head">
+                            <div>
+                                <h3>Erkannte Positionen</h3>
+                                <p>Aus dem Angebot extrahierte Mengen und Preise</p>
+                            </div>
+                            <span class="sm-feature-group__badge">@_detail.Daten.Positionen.Count</span>
+                        </header>
+                        <div class="sm-feature-table-wrap">
+                    <table class="sm-feature-table">
+                        <thead>
+                            <tr>
+                                <th>Beschreibung</th>
+                                <th>Menge</th>
+                                <th>Einzelpreis</th>
+                                <th>Gesamtbetrag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var position in _detail.Daten.Positionen)
+                            {
+                                <tr>
+                                    <td>@position.Beschreibung</td>
+                                    <td>@FormatZahl(position.Menge)</td>
+                                    <td>@FormatZahl(position.Einzelpreis)</td>
+                                    <td>@FormatZahl(position.Gesamtbetrag)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                        </div>
+                    </section>
+                }
+
+                </div>
+            </section>
+            </div>
+        }
+        else if (_laedt || (_analyse is null && _gespeichert is null))
+        {
+            <section class="sm-card">
+                <FileDropzone OnChange="OnFileSelectedAsync" Accept="application/pdf" Busy="_laedt"
+                              IdleText="Angebot (PDF) hierher ziehen oder klicken zum Auswählen" BusyText="Angebot wird analysiert…" />
+            </section>
+        }
+        else if (KonfliktOffen)
+        {
+            <section class="sm-card">
+                <h3>Angebot @_analyse!.Daten.Nummer ist bereits abgelegt</h3>
+                <p>
+                    Für diese Angebotsnummer @(_analyse.VorhandeneVersionen.Count == 1
+                        ? "existiert bereits eine Version"
+                        : $"existieren bereits {_analyse.VorhandeneVersionen.Count} Versionen").
+                    Wie soll das neue Angebot behandelt werden?
+                </p>
+                <div class="sm-actions">
+                    <PrimaryButton OnClick="@(() => SpeichernAsync("ueberschreiben"))" Disabled="@_laedt">
+                        Neueste Version überschreiben
+                    </PrimaryButton>
+                    <SecondaryButton OnClick="@(() => SpeichernAsync("neueversion"))" Disabled="@_laedt">
+                        Als neue Version ablegen
+                    </SecondaryButton>
+                    <button type="button" class="btn btn-link" @onclick="Zuruecksetzen" disabled="@_laedt">Abbrechen</button>
+                </div>
+            </section>
+        }
+        else if (ZeigeErgebnis)
+        {
+            <div class="aa-vertrieb-prueflayout">
+            <section class="sm-card aa-pruefergebnis-card aa-vertrieb-prueflayout__kopf">
+                <div class="sm-detail__head">
+                    <h2>
+                        Prüfergebnis für @(!string.IsNullOrWhiteSpace(_analyse!.Daten.Kundenname) ? _analyse.Daten.Kundenname : "unbekannten Kunden")
+                    </h2>
+                </div>
+
+                <dl class="sm-info">
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 3.75h7l3 3V20.25H7z" />
+                                <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" />
+                            </svg>
+                            Angebotsnummer
+                        </dt>
+                        <dd>@(_analyse.Daten.Nummer ?? "Nicht erkannt")</dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+                            </svg>
+                            Ablagestatus
+                        </dt>
+                        <dd class="@(_gespeichert is { Gespeichert: true } ? "aa-text--ok" : "aa-text--warnung")">
+                            @(_gespeichert is { Gespeichert: true } ? $"Version {_gespeichert.Version} abgelegt" : "Nicht abgelegt")
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3.5 18 6v5c0 4.1-2.55 7.45-6 9-3.45-1.55-6-4.9-6-9V6z" />
+                                <path d="m9.1 11.8 1.8 1.8 4-4" />
+                            </svg>
+                            Freigabestatus
+                        </dt>
+                        <dd class="@(_freigegebenAm is not null ? "aa-text--ok" : "aa-text--warnung")">
+                            @(_freigegebenAm is not null ? "Freigegeben" : "Prüfung erforderlich")
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="8.25" />
+                                <path d="M15.25 8.25a4.3 4.3 0 0 0-2.5-.8c-2.3 0-4.15 2.05-4.15 4.55s1.85 4.55 4.15 4.55c.95 0 1.8-.3 2.5-.8M7.75 10.5h5.5M7.75 13.5h5.5" />
+                            </svg>
+                            Gesamtpreis
+                        </dt>
+                        <dd>@(_analyse.Daten.Gesamtpreis ?? "Nicht erkannt")</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="sm-card aa-vertrieb-prueflayout__inhalt">
+                <div class="aa-section-head">
+                    <div>
+                        <h2>Aus dem Angebot ausgelesene Daten</h2>
+                    </div>
+                </div>
+                <div class="aa-checkliste-kopf" aria-hidden="true">
+                    <span class="aa-checkliste-kopf__daten">
+                        <span>Prüfpunkt</span>
+                        <span>Ausgelesener Wert</span>
+                    </span>
+                    <span>Kommentar</span>
+                </div>
+                <div class="aa-vertrieb-prueflayout__scroll">
+                <ul class="aa-checkliste">
+                    <ChecklistItem Ok="_analyse!.Checkliste.NummerVorhanden" Label="Angebotsnummer" StatusSymbolAnzeigen="false"
+                                   Wert="@(_analyse.Checkliste.NummerVorhanden ? _analyse.Daten.Nummer : null)" />
+                    <ChecklistItem Ok="_analyse!.Checkliste.KundeVorhanden" Label="Kunde mit Adresse" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_analyse.Checkliste.KundeVorhanden && (!string.IsNullOrWhiteSpace(_analyse.Daten.Kundenname) || !string.IsNullOrWhiteSpace(_analyse.Daten.Kundenadresse)))"
+                                   Wert="@((!string.IsNullOrWhiteSpace(_analyse.Daten.Kundenname) || !string.IsNullOrWhiteSpace(_analyse.Daten.Kundenadresse)) ? $"{_analyse.Daten.Kundenname ?? "Kundenname nicht erkannt"}, {_analyse.Daten.Kundenadresse ?? "Adresse nicht erkannt"}" : null)"
+                                   KommentarId="kundeKommentar" @bind-Kommentar="_kundeKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                    <ChecklistItem Ok="_analyse.Checkliste.KundenUndLieferadresseIdentisch" Label="Adressvergleich" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_analyse.Checkliste.KundenUndLieferadresseIdentisch && !string.IsNullOrWhiteSpace(_analyse.Daten.Lieferadresse))"
+                                   Wert="@FormatAdressvergleich(_analyse.Daten.Kundenadresse, _analyse.Daten.Lieferadresse)"
+                                   KommentarId="lieferadresseKommentar" @bind-Kommentar="_lieferadresseKommentar" KommentarDisabled="@(_freigegebenAm is not null)">
+                        <WertInhalt>
+                            <span class="aa-adressvergleich">
+                                <span><span class="aa-adressvergleich__label">Kundenadresse:</span> @FormatKurzadresse(_analyse.Daten.Kundenadresse)</span>
+                                <span><span class="aa-adressvergleich__label">Lieferadresse:</span> @FormatKurzadresse(_analyse.Daten.Lieferadresse)</span>
+                            </span>
+                        </WertInhalt>
+                    </ChecklistItem>
+                    <ChecklistItem Ok="_analyse.Checkliste.VerkaeuferVorhanden" Label="Verkäuferinformation" StatusSymbolAnzeigen="false"
+                                   Wert="@_analyse.Daten.Verkaeufer"
+                                   KommentarId="verkaeuferKommentar" @bind-Kommentar="_verkaeuferKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                    <ChecklistItem Ok="_analyse.Checkliste.GueltigkeitsdatumGueltig" Label="Gültigkeitsdatum" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_analyse.Checkliste.GueltigkeitsdatumGueltig && _analyse.Daten.GueltigBis is not null)"
+                                   Wert="@FormatDatum(_analyse.Daten.GueltigBis)"
+                                   KommentarId="gueltigkeitsdatumKommentar" @bind-Kommentar="_gueltigkeitsdatumKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                    <ChecklistItem Ok="_analyse.Checkliste.LieferterminVorhanden" Label="Liefertermin bzw. Lieferdauer" StatusSymbolAnzeigen="false"
+                                   Wert="@_analyse.Daten.Liefertermin"
+                                   KommentarId="lieferterminKommentar" @bind-Kommentar="_lieferterminKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                    <ChecklistItem Ok="@(_analyse.Checkliste.ZahlungsbedingungenVorhanden && _analyse.Checkliste.ZahlungsbedingungStandardErkannt)" Label="Zahlungsbedingung"
+                                   StatusSymbolAnzeigen="false"
+                                   Abweichend="@(_analyse.Checkliste.ZahlungsbedingungenVorhanden && !_analyse.Checkliste.ZahlungsbedingungStandardErkannt)"
+                                   Wert="@_analyse.Daten.Zahlungsbedingungen"
+                                   KommentarId="zahlungsbedingungenKommentar" @bind-Kommentar="_zahlungsbedingungenKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                    <ChecklistItem Ok="_analyse.Checkliste.ZahlungsplanStandardErkannt" Label="Standard-Zahlungsplan (Maschine 30/30/30/10, Werkzeug 50/50)" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_analyse.Checkliste.ZahlungsplanStandardErkannt && !string.IsNullOrWhiteSpace(_analyse.Daten.Zahlungsplan))"
+                                   Wert="@_analyse.Daten.Zahlungsplan"
+                                   KommentarId="zahlungsplanKommentar" @bind-Kommentar="_zahlungsplanKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                    <ChecklistItem Ok="_analyse.Checkliste.IncotermGueltig" Label="Incoterm" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_analyse.Checkliste.IncotermGueltig && !string.IsNullOrWhiteSpace(_analyse.Incoterm))"
+                                   Wert="@(!string.IsNullOrWhiteSpace(_analyse.Incoterm) ? $"{_analyse.Incoterm}{(string.IsNullOrWhiteSpace(_analyse.IncotermOrt) ? "" : $" ({_analyse.IncotermOrt})")}" : null)"
+                                   KommentarId="incotermKommentar" @bind-Kommentar="_incotermKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                    <ChecklistItem Ok="_analyse.Checkliste.VersandbedingungErkannt" Label="Versandart" StatusSymbolAnzeigen="false"
+                                   Abweichend="@(!_analyse.Checkliste.VersandbedingungErkannt && !string.IsNullOrWhiteSpace(_analyse.Versandbedingung))"
+                                   Wert="@_analyse.Versandbedingung"
+                                   KommentarId="versandbedingungKommentar" @bind-Kommentar="_versandbedingungKommentar" KommentarDisabled="@(_freigegebenAm is not null)" />
+                </ul>
+                @if (_gespeichert is { Gespeichert: true })
+                {
+                    <div class="aa-sap-pruefhinweis" role="note">
+                        <strong>Manuelle Prüfung erforderlich</strong>
+                        <span>Bitte vergleichen Sie die folgenden Angaben mit den in SAP hinterlegten Daten.</span>
+                    </div>
+                    <SapBestaetigungen @bind-Sparte="_sapSparteBestaetigt"
+                                      @bind-Fuehrend="_sapFuehrendBestaetigt"
+                                      @bind-SparteKommentar="_sapSparteKommentar"
+                                      @bind-FuehrendKommentar="_sapFuehrendKommentar"
+                                      Pflichtfelder="true"
+                                      Disabled="@(_freigegebenAm is not null)" />
+                }
+                else
+                {
+                    <div class="aa-hinweis--warnung">
+                        Das Angebot wurde <strong>nicht abgelegt</strong>, weil keine Auftragsnummer ausgelesen werden konnte.
+                        Ohne Nummer kann der Innendienst die Auftragsbestätigung später nicht zuordnen.
+                    </div>
+                }
+
+                <div class="aa-status-legende" aria-label="Legende der Prüfzustände">
+                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--ok"></i>Vollständig</span>
+                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--abweichend"></i>Abweichend</span>
+                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--fehlt"></i>Fehlt</span>
+                    <span><i class="aa-status-legende__stern">*</i>Pflichtfeld</span>
+                </div>
+
+                @if (_analyse.Daten.Positionen.Count > 0)
+                {
+                    <section class="sm-feature-group sm-feature-group--match">
+                        <header class="sm-feature-group__head">
+                            <div>
+                                <h3>Erkannte Positionen</h3>
+                                <p>Aus dem Angebot extrahierte Mengen und Preise</p>
+                            </div>
+                            <span class="sm-feature-group__badge">@_analyse.Daten.Positionen.Count</span>
+                        </header>
+                        <div class="sm-feature-table-wrap">
+                    <table class="sm-feature-table">
+                        <thead>
+                            <tr>
+                                <th>Beschreibung</th>
+                                <th>Menge</th>
+                                <th>Einzelpreis</th>
+                                <th>Gesamtbetrag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var position in _analyse.Daten.Positionen)
+                            {
+                                <tr>
+                                    <td>@position.Beschreibung</td>
+                                    <td>@FormatZahl(position.Menge)</td>
+                                    <td>@FormatZahl(position.Einzelpreis)</td>
+                                    <td>@FormatZahl(position.Gesamtbetrag)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                        </div>
+                    </section>
+                }
+
+                <div class="sm-actions aa-vertrieb-abschlussaktionen">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Zuruecksetzen">
+                        Anderes Angebot hochladen
+                    </button>
+                    @if (_gespeichert is { Gespeichert: true })
+                    {
+                        @if (_freigegebenAm is null)
+                        {
+                            <PrimaryButton OnClick="FreigebenAsync"
+                                           Disabled="@(!SapSparteErfuellt || !SapFuehrendErfuellt || _freigebeLaedt || !AlleErforderlichenKommentareVorhanden())">
+                                Angebot freigeben
+                            </PrimaryButton>
+                        }
+                        else
+                        {
+                            <div class="aa-hinweis--erfolg aa-freigabe-status" role="status">
+                                Angebot freigegeben am @_freigegebenAm.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm").
+                            </div>
+                        }
+                    }
+                </div>
+                </div>
+            </section>
+            </div>
+        }
+        else
+        {
+            <section class="sm-card"><p>Angebot wird verarbeitet…</p></section>
+        }
+        </div>
+
+                @if (DokumentAktiv)
+                {
+                    <PdfViewerPanel Eingeklappt="_pdfEingeklappt" OnToggle="TogglePdfEingeklappt"
+                                    DokumentName="@_pdfDokumentName" DataUrl="@_pdfDataUrl" />
+                }
+            </div>
+        </div>
+    </RoleGuard>
+</div>
+
+@code {
+    private bool _laedt;
+    private string? _apiError;
+    private AngebotAnalyseAntwort? _analyse;
+    private AngebotSpeichernAntwort? _gespeichert;
+    private bool _sapSparteBestaetigt;
+    private bool _sapFuehrendBestaetigt;
+    private bool _freigebeLaedt;
+    private DateTime? _freigegebenAm;
+    private string? _pdfDataUrl;
+    private bool _pdfEingeklappt;
+    private bool _verlaufOffen;
+    private List<AngebotUebersicht> _verlaufEintraege = [];
+    private bool _verlaufLaedt = true;
+    private bool _verlaufFehler;
+    private int? _geoeffneterId;
+    private bool _nurMeine;
+    private bool _readOnly;
+    private AngebotDetailAntwort? _detail;
+
+    private bool DokumentAktiv => _analyse is not null || (_readOnly && _detail is not null);
+
+    private string PdfPanelKlasse =>
+        !DokumentAktiv ? "" : _pdfEingeklappt ? "su-main--pdf-eingeklappt" : "su-main--pdf-offen";
+
+    private string VerlaufPanelKlasse => _verlaufOffen ? "su-main--verlauf-offen" : "";
+    private string _kundeKommentar = "";
+    private string _lieferadresseKommentar = "";
+    private string _zahlungsbedingungenKommentar = "";
+    private string _incotermKommentar = "";
+    private string _versandbedingungKommentar = "";
+    private string _zahlungsplanKommentar = "";
+    private string _verkaeuferKommentar = "";
+    private string _lieferterminKommentar = "";
+    private string _gueltigkeitsdatumKommentar = "";
+    private string _sapSparteKommentar = "";
+    private string _sapFuehrendKommentar = "";
+
+    // Ein SAP-Punkt gilt als erfüllt, sobald er bestätigt (Haken) ODER kommentiert ist.
+    private bool SapSparteErfuellt => _sapSparteBestaetigt || !string.IsNullOrWhiteSpace(_sapSparteKommentar);
+    private bool SapFuehrendErfuellt => _sapFuehrendBestaetigt || !string.IsNullOrWhiteSpace(_sapFuehrendKommentar);
+
+    // Datei für den Speichern-Schritt (und Konflikt-Rückfrage) aufheben — IBrowserFile-Streams
+    // sind nur einmal lesbar. Die Analyse läuft nur einmal; Speichern reicht die Daten zurück.
+    private byte[]? _dateiBytes;
+    private string? _dateiName;
+    private string? _dateiContentType;
+    private string? _pdfDokumentName;
+
+    private bool KonfliktOffen => _analyse is { VorhandeneVersionen.Count: > 0 } && _gespeichert is null;
+    private bool ZeigeErgebnis => _gespeichert is not null || _analyse is { Checkliste.NummerVorhanden: false };
+    private bool PrueflayoutAktiv => (_readOnly && _detail is not null) || ZeigeErgebnis;
+    private static string FormatDatum(DateTime? wert) => wert?.ToString("dd.MM.yyyy") ?? "—";
+
+    private static string FormatZahl(decimal? wert) => wert?.ToString("N2") ?? "—";
+
+    private void KommentareZuruecksetzen()
+    {
+        _sapSparteBestaetigt = false;
+        _sapFuehrendBestaetigt = false;
+        _freigegebenAm = null;
+        _kundeKommentar = "";
+        _lieferadresseKommentar = "";
+        _zahlungsbedingungenKommentar = "";
+        _incotermKommentar = "";
+        _versandbedingungKommentar = "";
+        _zahlungsplanKommentar = "";
+        _verkaeuferKommentar = "";
+        _lieferterminKommentar = "";
+        _gueltigkeitsdatumKommentar = "";
+        _sapSparteKommentar = "";
+        _sapFuehrendKommentar = "";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (DokumentAktiv && !_pdfEingeklappt)
+            await JSRuntime.InvokeVoidAsync("suPdfResize.init", ".su-review__pdf-resizer", ".su-review__pdf", ".su-main");
+    }
+
+    private async Task TogglePdfEingeklappt()
+    {
+        _pdfEingeklappt = !_pdfEingeklappt;
+        if (_pdfEingeklappt)
+            await JSRuntime.InvokeVoidAsync("suPdfResize.reset", ".su-review__pdf", ".su-main");
+    }
+
+    private async Task VerlaufLadenAsync()
+    {
+        _verlaufLaedt = true;
+        _verlaufFehler = false;
+        try
+        {
+            _verlaufEintraege = await Client.GetAngeboteAsync(_nurMeine);
+        }
+        catch (ApiRequestException)
+        {
+            // Historie ist ein Zusatz — Fehler hier blockiert den Upload-Flow nicht.
+            _verlaufFehler = true;
+        }
+        finally
+        {
+            _verlaufLaedt = false;
+        }
+    }
+
+    private async Task NurMeineGeaendertAsync(bool nurMeine)
+    {
+        _nurMeine = nurMeine;
+        await VerlaufLadenAsync();
+    }
+
+    private async Task VerlaufOeffnenAsync(AngebotUebersicht eintrag)
+    {
+        _apiError = null;
+        try
+        {
+            var detail = await Client.GetAngebotDetailAsync(eintrag.Id);
+            if (detail is null)
+                return;
+
+            var pdfBytes = await Client.GetAngebotDokumentAsync(eintrag.Id);
+            _pdfDataUrl = pdfBytes is null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _pdfDokumentName = detail.Dateiname;
+            _geoeffneterId = eintrag.Id;
+            _pdfEingeklappt = true;
+            _verlaufOffen = false;
+
+            // Nur der Owner (Uploader) darf ein noch nicht freigegebenes Angebot bearbeiten.
+            await UserProfileState.EnsureLoadedAsync();
+            var darfBearbeiten = detail.UserProfileId is { } owner
+                && owner == UserProfileState.Profile?.Id
+                && !detail.Freigegeben;
+
+            if (darfBearbeiten)
+                HistorienBearbeitungStarten(detail);
+            else
+            {
+                _detail = detail;
+                _readOnly = true;
+                // Live-Upload-Zustand verwerfen, damit die Zweige eindeutig bleiben.
+                _analyse = null;
+                _gespeichert = null;
+            }
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+    }
+
+    // Speist den bereits getesteten editierbaren Freigabe-Zweig aus einem gespeicherten
+    // Angebot, statt es schreibgeschützt anzuzeigen — so kann der Owner die Freigabe aus
+    // der Historie heraus fortsetzen. Kein neues Markup; dieselbe Validierung/Freigabe wie
+    // direkt nach dem Upload greift. Positionen werden nicht gespeichert (bleiben leer).
+    private void HistorienBearbeitungStarten(AngebotDetailAntwort detail)
+    {
+        _readOnly = false;
+        _detail = null;
+
+        _analyse = new AngebotAnalyseAntwort(
+            detail.Checkliste, detail.Daten,
+            detail.Incoterm, detail.IncotermOrt, detail.Versandbedingung, []);
+        _gespeichert = new AngebotSpeichernAntwort(
+            Gespeichert: true, Konflikt: false,
+            detail.Angebotsnummer, detail.Version, [], detail.Id);
+
+        _kundeKommentar = detail.KundeKommentar ?? "";
+        _lieferadresseKommentar = detail.LieferadresseKommentar ?? "";
+        _zahlungsbedingungenKommentar = detail.ZahlungsbedingungenKommentar ?? "";
+        _incotermKommentar = detail.IncotermKommentar ?? "";
+        _versandbedingungKommentar = detail.VersandbedingungKommentar ?? "";
+        _zahlungsplanKommentar = detail.ZahlungsplanKommentar ?? "";
+        _verkaeuferKommentar = detail.VerkaeuferKommentar ?? "";
+        _lieferterminKommentar = detail.LieferterminKommentar ?? "";
+        _gueltigkeitsdatumKommentar = detail.GueltigkeitsdatumKommentar ?? "";
+        _sapSparteBestaetigt = detail.SapSparteBestaetigt == true;
+        _sapFuehrendBestaetigt = detail.SapFuehrendBestaetigt == true;
+        _sapSparteKommentar = detail.SapSparteKommentar ?? "";
+        _sapFuehrendKommentar = detail.SapFuehrendKommentar ?? "";
+        // Nicht freigegeben (Bedingung von darfBearbeiten) → Felder bleiben editierbar.
+        _freigegebenAm = detail.FreigegebenAm;
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _apiError = null;
+        _analyse = null;
+        _gespeichert = null;
+        KommentareZuruecksetzen();
+        _laedt = true;
+        try
+        {
+            using var stream = e.File.OpenReadStream(AuftragsanlageClient.MaxDateiBytes);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            _dateiBytes = ms.ToArray();
+            _dateiName = e.File.Name;
+            _pdfDokumentName = e.File.Name;
+            _dateiContentType = e.File.ContentType;
+            _pdfDataUrl = $"data:{_dateiContentType};base64,{Convert.ToBase64String(_dateiBytes)}";
+            // Eingeklappt starten, aber vorladen (siehe VerlaufOeffnenAsync).
+            _pdfEingeklappt = true;
+
+            _analyse = await Client.AnalyseAsync(_dateiBytes, _dateiName, _dateiContentType);
+
+            // Ohne Nummer wird nicht gespeichert; bei vorhandenen Versionen erst Rückfrage.
+            if (_analyse.Checkliste.NummerVorhanden && _analyse.VorhandeneVersionen.Count == 0)
+                await SpeichernAsync(null);
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+            _pdfDataUrl = null;
+        }
+        catch (IOException)
+        {
+            _apiError = "Datei konnte nicht gelesen werden (max. 20 MB).";
+            _pdfDataUrl = null;
+        }
+        finally
+        {
+            _laedt = false;
+        }
+    }
+
+    private async Task SpeichernAsync(string? konfliktStrategie)
+    {
+        if (_dateiBytes is null || _dateiName is null || _dateiContentType is null || _analyse is null)
+            return;
+
+        _apiError = null;
+        KommentareZuruecksetzen();
+        _laedt = true;
+        try
+        {
+            _gespeichert = await Client.SpeichernAsync(
+                _dateiBytes, _dateiName, _dateiContentType, _analyse.Daten, konfliktStrategie);
+            await VerlaufLadenAsync();
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        finally
+        {
+            _laedt = false;
+        }
+    }
+
+    private async Task FreigebenAsync()
+    {
+        if (_gespeichert?.Id is not { } id)
+            return;
+
+        _apiError = null;
+        _freigebeLaedt = true;
+        try
+        {
+            var antwort = await Client.AngebotFreigebenAsync(
+                id, Leer(_kundeKommentar), Leer(_zahlungsbedingungenKommentar),
+                Leer(_incotermKommentar), Leer(_versandbedingungKommentar),
+                Leer(_zahlungsplanKommentar), Leer(_verkaeuferKommentar),
+                Leer(_lieferterminKommentar), Leer(_gueltigkeitsdatumKommentar),
+                _sapFuehrendBestaetigt, _sapSparteBestaetigt,
+                Leer(_lieferadresseKommentar),
+                Leer(_sapSparteKommentar), Leer(_sapFuehrendKommentar));
+            _freigegebenAm = antwort.FreigegebenAm;
+            // Historie aktualisieren, damit das „Freigegeben"-Badge sofort stimmt — sowohl
+            // beim Live-Upload als auch bei der Freigabe eines aus der Historie geöffneten Angebots.
+            await VerlaufLadenAsync();
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        finally
+        {
+            _freigebeLaedt = false;
+        }
+    }
+
+    private static string? Leer(string wert) => string.IsNullOrWhiteSpace(wert) ? null : wert;
+
+    private bool AlleErforderlichenKommentareVorhanden() =>
+        _analyse is null ||
+        (_analyse.Checkliste.KundeVorhanden || !string.IsNullOrWhiteSpace(_kundeKommentar)) &&
+        (_analyse.Checkliste.KundenUndLieferadresseIdentisch || !string.IsNullOrWhiteSpace(_lieferadresseKommentar)) &&
+        ((_analyse.Checkliste.ZahlungsbedingungenVorhanden && _analyse.Checkliste.ZahlungsbedingungStandardErkannt) || !string.IsNullOrWhiteSpace(_zahlungsbedingungenKommentar)) &&
+        (_analyse.Checkliste.ZahlungsplanStandardErkannt || !string.IsNullOrWhiteSpace(_zahlungsplanKommentar)) &&
+        (_analyse.Checkliste.IncotermGueltig || !string.IsNullOrWhiteSpace(_incotermKommentar)) &&
+        (_analyse.Checkliste.VersandbedingungErkannt || !string.IsNullOrWhiteSpace(_versandbedingungKommentar)) &&
+        (_analyse.Checkliste.VerkaeuferVorhanden || !string.IsNullOrWhiteSpace(_verkaeuferKommentar)) &&
+        (_analyse.Checkliste.LieferterminVorhanden || !string.IsNullOrWhiteSpace(_lieferterminKommentar)) &&
+        (_analyse.Checkliste.GueltigkeitsdatumGueltig || !string.IsNullOrWhiteSpace(_gueltigkeitsdatumKommentar));
+
+    private static string? FormatAdressvergleich(string? kundenadresse, string? lieferadresse)
+    {
+        if (string.IsNullOrWhiteSpace(kundenadresse) && string.IsNullOrWhiteSpace(lieferadresse))
+            return null;
+
+        return $"Kundenadresse: {kundenadresse ?? "Nicht erkannt"} · Lieferadresse: {lieferadresse ?? "Nicht erkannt"}";
+    }
+
+    private static string FormatKurzadresse(string? adresse)
+    {
+        if (string.IsNullOrWhiteSpace(adresse))
+            return "Nicht erkannt";
+
+        var normalisiert = System.Text.RegularExpressions.Regex.Replace(adresse, @"\s+", " ").Trim();
+        var plz = System.Text.RegularExpressions.Regex.Match(
+            normalisiert, @"(?<!\d)(?<plz>\d{4,6}(?:-\d{4})?)(?!\d)");
+        if (!plz.Success)
+            return normalisiert;
+
+        var vorPlz = normalisiert[..plz.Index].Trim(' ', ',', '-', ';');
+        var strassenSegmente = vorPlz.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var strasse = strassenSegmente.LastOrDefault() ?? vorPlz;
+        return string.IsNullOrWhiteSpace(strasse)
+            ? plz.Groups["plz"].Value
+            : $"{strasse} - {plz.Groups["plz"].Value}";
+    }
+
+    private void Zuruecksetzen()
+    {
+        _analyse = null;
+        _gespeichert = null;
+        _apiError = null;
+        _freigebeLaedt = false;
+        KommentareZuruecksetzen();
+        _dateiBytes = null;
+        _dateiName = null;
+        _dateiContentType = null;
+        _pdfDataUrl = null;
+        _pdfEingeklappt = false;
+        _readOnly = false;
+        _detail = null;
+        _geoeffneterId = null;
+        _pdfDokumentName = null;
+    }
+}

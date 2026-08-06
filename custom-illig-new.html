@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"
+        type="text/css" />
+    <style>
+        /* =========================================================
+           ILLIG KI-Plattform – B2C Custom UI (SignUpSignIn)
+           Farbwelt aus app.css der Blazor-App übernommen.
+           ========================================================= */
+        :root {
+            --ill-bg: #050b16;
+            --ill-panel: #101a31;
+            --ill-elevated: #0d1527;
+            --ill-border: rgba(136, 157, 194, 0.16);
+            --ill-border-strong: rgba(136, 157, 194, 0.28);
+            --ill-text: #f5f8ff;
+            --ill-soft: #c5d1e8;
+            --ill-muted: #91a3c4;
+            --ill-accent: #2f67ff;
+            --ill-accent-strong: #5b8fff;
+            --ill-link: #8db4ff;
+            --ill-error: #ff7d7d;
+            --ill-radius: 0.6rem;
+        }
+
+        html {
+            background: 0 0;
+            height: 100%;
+        }
+
+        body {
+            font-family: Bahnschrift, "Segoe UI Variable Display", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-attachment: fixed;
+            background-color: var(--ill-bg);
+            background-image:
+                radial-gradient(circle at top, rgba(37, 74, 158, 0.28), transparent 38%),
+                linear-gradient(180deg, #07101f 0%, #050b16 100%);
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            color: var(--ill-text);
+            text-align: left;
+        }
+
+        /* Maschinen-Freisteller (transparentes PNG): rechts verankert,
+           unbeschnitten (object-fit:contain) statt formatfüllend über
+           die ganze Fläche gecovert – sonst würde "cover" den Freisteller
+           hochskalieren und an den Rändern beschneiden. Drop-Shadow +
+           Reflexion geben ihm Bodenhaftung, statt frei zu schweben. */
+        .hero-bg {
+            position: fixed;
+            right: 1%;
+            top: 50%;
+            left: auto;
+            bottom: auto;
+            transform: translateY(-50%);
+            width: min(50vw, 820px);
+            height: auto;
+            object-fit: contain;
+            z-index: 0;
+            filter: drop-shadow(0 26px 46px rgba(2, 6, 14, .55)) drop-shadow(0 0 60px rgba(47, 103, 255, .2));
+            -webkit-box-reflect: below 2px linear-gradient(transparent, transparent 55%, rgba(255, 255, 255, .22));
+        }
+
+        /* Weicher Bodenglow hinter der Maschine, damit sie in der Szene
+           verankert wirkt statt auf schwarzem Grund zu schweben. */
+        .hero-glow {
+            position: fixed;
+            right: 4%;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 42vw;
+            height: 42vw;
+            max-width: 540px;
+            max-height: 540px;
+            background: radial-gradient(circle, rgba(91, 143, 255, .32), transparent 70%);
+            filter: blur(70px);
+            z-index: 0;
+            pointer-events: none
+        }
+
+        /* Navy-Verlauf: dunkelt die linke Seite (Karte) ab, blendet aber
+           nach rechts hin aus, damit der Freisteller seine eigenen Farben
+           behält statt vom Overlay grau überlagert zu werden. */
+        .hero-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            background:
+                radial-gradient(circle at top, rgba(37, 74, 158, 0.12), transparent 45%),
+                linear-gradient(180deg, rgba(5, 11, 22, 0.18) 0%, rgba(5, 11, 22, 0.30) 100%),
+                linear-gradient(90deg, rgba(5, 11, 22, .30) 0%, rgba(5, 11, 22, .30) 40%, transparent 68%)
+        }
+
+        .container {
+            position: relative;
+            z-index: 2
+        }
+
+        p {
+            margin: 0
+        }
+
+        a {
+            color: var(--ill-link);
+        }
+
+        a:hover {
+            color: #dce9ff;
+        }
+
+        a:focus {
+            outline: 0
+        }
+
+        input,
+        select {
+            border: 1px solid var(--ill-border);
+        }
+
+        input::placeholder {
+            color: var(--ill-muted);
+            opacity: 1
+        }
+
+        img[data-tenant-branding-background=true] {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            position: fixed;
+            left: 0;
+            overflow: hidden;
+            top: 0
+        }
+
+        div[data-tenant-branding-background-color=true] {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            z-index: 0
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            display: table;
+            height: 100vh;
+            padding: 0
+        }
+
+        #api {
+            margin: 0 auto
+        }
+
+        .heading h1 {
+            margin-bottom: 20px
+        }
+
+        .col-lg-6 {
+            max-width: 620px;
+            width: 100%;
+            float: none;
+            display: inline-block;
+            vertical-align: top;
+            padding: 0
+        }
+
+        .row {
+            width: 100%;
+            margin: 0;
+            display: table-cell;
+            vertical-align: middle
+        }
+
+        ul {
+            padding: 0
+        }
+
+        #simplemodal-container .simplemodal-data {
+            padding: 5px 8px;
+            overflow: hidden;
+            background-color: var(--ill-elevated);
+            border-radius: 3px;
+            font-style: italic
+        }
+
+        #LocalAccountSigninEmailExchange,
+        #LocalAccountSigninUsernameExchange,
+        #SignInWithLogonEmailExchange,
+        #SignInWithLogonNameExchange,
+        #SignUpWithLogonEmailExchange,
+        #SignUpWithLogonNameExchange {
+            background-color: var(--ill-accent);
+            background-size: 10%;
+            background-position-x: 95%;
+            background-position-y: 50%;
+            background-repeat: no-repeat;
+            border-radius: var(--ill-radius);
+            width: 100%;
+            font-size: 1em;
+            margin-left: auto
+        }
+
+        #LocalAccountSigninEmailExchange:hover,
+        #LocalAccountSigninUsernameExchange:hover,
+        #SignInWithLogonEmailExchange:hover,
+        #SignInWithLogonNameExchange:hover,
+        #SignUpWithLogonEmailExchange:hover,
+        #SignUpWithLogonNameExchange:hover {
+            background-color: var(--ill-accent-strong) !important
+        }
+
+        .buttons button {
+            margin: 0 auto;
+            width: 60%;
+            height: 50px;
+            background-color: var(--ill-accent);
+            border-radius: var(--ill-radius);
+            border: none;
+            color: #fff;
+            font-size: 1em;
+            margin-top: 10px
+        }
+
+        .buttons button:hover {
+            background-color: var(--ill-accent-strong);
+            border-color: var(--ill-border-strong)
+        }
+
+        .buttons button[aria-disabled=true] {
+            opacity: .3
+        }
+
+        .buttons button:not([aria-disabled=true]) {
+            opacity: 1
+        }
+
+        .buttons {
+            text-align: center
+        }
+
+        .buttons #cancel {
+            padding: 0;
+            margin: 1.25rem auto 0;
+            background: 0 0;
+            border: 0;
+            width: auto;
+            display: table;
+            position: static;
+            background-color: transparent;
+            background-image: none !important;
+            box-shadow: none !important;
+            font-size: .95em;
+            color: var(--ill-soft);
+            text-align: center
+        }
+
+        .buttons #cancel::after {
+            content: none !important
+        }
+
+        .buttons #cancel:hover {
+            color: #fff !important;
+            transform: none !important
+        }
+
+        .buttons #cancel:before {
+            padding: 10px;
+            vertical-align: sub;
+            zoom: 90%;
+            display: inline-block
+        }
+
+        #attributeList ul {
+            padding: 0
+        }
+
+        #attributeList ul li {
+            list-style: none;
+            margin: 1rem 0
+        }
+
+        label {
+            font-weight: 600
+        }
+
+        #attributeList ul li label {
+            display: block;
+            text-align: left;
+            float: none
+        }
+
+        #attributeList ul li.EmailBox label,
+        #attributeList ul li.Password label,
+        #attributeList ul li.TextBox label {
+            display: none !important
+        }
+
+        #attributeList ul li label[for=country] {
+            float: left;
+            display: inline-block !important;
+            margin-bottom: .5rem
+        }
+
+        #attributeList ul li label[for=cpiminternal_legalCountry] {
+            float: none;
+            display: block !important;
+            text-align: left;
+            margin-bottom: .5rem
+        }
+
+        #attributeList ul li label[for=cpiminternal_dateOfBirth] {
+            float: none;
+            text-align: left;
+            display: block !important;
+            margin-bottom: .5rem
+        }
+
+        #attributeList ul li input {
+            height: 50px;
+            width: 70%;
+            border-radius: var(--ill-radius);
+            text-indent: 20px;
+            background-color: var(--ill-elevated);
+            color: var(--ill-text)
+        }
+
+        #attributeList ul li input::-webkit-input-placeholder {
+            text-indent: 20px
+        }
+
+        #attributeList ul li .attrEntry.validate input.invalid,
+        #attributeList ul li .attrEntry.validate input:invalid {
+            border: 1px solid var(--ill-error)
+        }
+
+        #attributeList ul li .attrEntry .verify {
+            margin-top: 2rem;
+            padding-bottom: 10px;
+            position: relative
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .buttons {
+            margin-top: 1.25rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0;
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem
+        }
+
+        #attributeList ul li .attrEntry .verify .sendButton[id$=ver_but_send] {
+            width: 60%;
+            height: 50px;
+            background-color: var(--ill-accent);
+            color: #fff;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .sendCode {
+            width: auto;
+            min-width: 160px;
+            padding: 0 24px;
+            height: 50px;
+            background-color: var(--ill-accent);
+            color: #fff;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verify .sendButton[id$=ver_but_send]:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .sendCode:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        @media screen and (-ms-high-contrast:active) {
+
+            #attributeList ul li .attrEntry .verify button,
+            .buttons #continue {
+                border: 1px dashed var(--ill-border-strong) !important
+            }
+
+            #attributeList ul li .attrEntry .verify button:hover,
+            .buttons #continue:hover {
+                border: 1px solid var(--ill-border-strong) !important
+            }
+        }
+
+        #attributeList ul li .attrEntry .verify .verifyButton {
+            width: auto;
+            min-width: 160px;
+            padding: 0 24px;
+            height: 50px;
+            background-color: var(--ill-accent);
+            color: #fff;
+            margin-right: 10px;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .verifyCode {
+            width: auto;
+            min-width: 160px;
+            padding: 0 24px;
+            height: 50px;
+            background-color: var(--ill-accent);
+            color: #fff;
+            margin-right: 0;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verify .verifyButton:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .verifyCode:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        #attributeList ul li .attrEntry .verify .sendButton[id$=ver_but_resend] {
+            width: auto;
+            min-width: 160px;
+            padding: 0 24px;
+            border: 0;
+            font-size: 1em;
+            height: 50px;
+            margin-top: 10px;
+            background-color: var(--ill-accent);
+            color: #fff;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .sendNewCode {
+            width: auto;
+            min-width: 160px;
+            padding: 0 24px;
+            border: 0;
+            font-size: 1em;
+            height: 50px;
+            background-color: var(--ill-accent);
+            color: #fff;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verify .sendButton[id$=ver_but_resend]:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .sendNewCode:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        #attributeList ul li .attrEntry .verify .editButton {
+            border: none;
+            color: #fff;
+            background-color: var(--ill-accent);
+            width: 60%;
+            height: 50px;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .changeClaims {
+            border: none;
+            color: #fff;
+            background-color: var(--ill-accent);
+            width: 60%;
+            height: 50px;
+            border-radius: var(--ill-radius)
+        }
+
+        #attributeList ul li .attrEntry .verify .editButton:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        #attributeList ul li .attrEntry .verificationControlContent .changeClaims:hover {
+            background-color: var(--ill-accent-strong)
+        }
+
+        #attributeList ul li .attrEntry .verify #email_ver_input_label {
+            display: none !important
+        }
+
+        #api .working {
+            background: url(data:image/gif;base64,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) no-repeat;
+            height: 30px;
+            width: auto;
+            background-position: center bottom
+        }
+
+        #attributeList ul li .attrEntry .itemLevel {
+            display: none
+        }
+
+        input[type=email],
+        input[type=password],
+        input[type=text] {
+            -webkit-appearance: none
+        }
+
+        #attributeList ul li .attrEntry .dropdown_single {
+            height: 45px;
+            border-radius: var(--ill-radius);
+            width: 100%;
+            padding-left: 15px;
+            background-color: var(--ill-elevated);
+            color: var(--ill-text)
+        }
+
+        #attributeList ul li .attrEntry div#cpiminternal_dateOfBirth.date {
+            display: table;
+            width: 100%
+        }
+
+        #attributeList ul li .attrEntry div#cpiminternal_dateOfBirth.date select {
+            border-radius: var(--ill-radius);
+            display: inline-block;
+            height: 50px;
+            padding-left: 15px;
+            background-color: var(--ill-elevated);
+            color: var(--ill-text)
+        }
+
+        #attributeList ul li .attrEntry div#cpiminternal_dateOfBirth select#cpiminternal_dateOfBirth_day.day {
+            margin-right: 3%;
+            width: 23%
+        }
+
+        #attributeList ul li .attrEntry div#cpiminternal_dateOfBirth select#cpiminternal_dateOfBirth_month.month {
+            margin-right: 3%;
+            width: 38%
+        }
+
+        #attributeList ul li .attrEntry div#cpiminternal_dateOfBirth select#cpiminternal_dateOfBirth_year.year {
+            width: 33%
+        }
+
+        #attributeList ul li .helpLink {
+            display: none
+        }
+
+        #attributeVerification .buttons {
+            margin-top: 30px
+        }
+
+        @media screen and (max-width:100%) {
+            .row .panel-default .panel-body {
+                margin-top: 40px
+            }
+
+            .row .panel-default .panel-body .branding img {
+                display: block;
+                height: 80px;
+                width: auto;
+                margin: 0 auto
+            }
+
+            .row .panel-default .panel-body .branding h1 {
+                display: none
+            }
+
+            .row .panel-default .panel-body h3 {
+                font-size: 1.5em;
+                margin-top: 15px
+            }
+
+            #attributeVerification #attributeList ul li input {
+                width: 60%;
+                height: 40px;
+                border-radius: var(--ill-radius);
+                border: 1px solid var(--ill-border);
+                text-indent: 10px
+            }
+
+            #attributeVerification #attributeList ul li input::-webkit-input-placeholder {
+                text-indent: 10px
+            }
+
+            #attributeVerification #attributeList ul li #email {
+                width: 65%;
+                float: left;
+                position: relative;
+                z-index: 2
+            }
+
+            #attributeVerification #attributeList ul li #email_ver_but_verify {
+                background: 0 0;
+                border: 0;
+                color: var(--ill-accent-strong);
+                position: relative;
+                right: 0;
+                top: 60px;
+                font-size: 1.1em;
+                width: auto;
+                z-index: 1;
+                height: 20px
+            }
+
+            #attributeVerification #attributeList ul li #email_ver_input {
+                min-width: 50%;
+                width: 60%;
+                float: left
+            }
+
+            #attributeVerification #attributeList ul li #email_ver_but_resend {
+                top: 10px;
+                font-size: 1.1em;
+                height: 20px
+            }
+
+            #attributeVerification #attributeList ul li .attrEntry #email {
+                height: 40px
+            }
+
+            #attributeVerification #attributeList ul li .attrEntry .verify #email_ver_but_send:after {
+                content: " Bestätigen";
+                font-size: 1.1em;
+                font-style: bold;
+                margin-left: 40%
+            }
+
+            #attributeVerification #attributeList ul li .attrEntry .verify #email_ver_but_send {
+                height: 40px;
+                width: auto;
+                float: right;
+                overflow: hidden;
+                text-indent: -200px
+            }
+
+            #attributeVerification #attributeList ul li .attrEntry .verify #email_ver_but_edit {
+                margin-bottom: 15px;
+                border: none;
+                color: #fff;
+                background-color: var(--ill-accent);
+                border-radius: var(--ill-radius);
+                font-size: 1em;
+                box-shadow: 0 0 40px 2px rgba(47, 103, 255, .25);
+                width: 30%;
+                height: 40px;
+                overflow: hidden;
+                padding-top: 6px;
+                margin-left: 40%
+            }
+
+            #attributeVerification #attributeList ul li .attrEntry .verify:after {
+                content: " ";
+                display: block;
+                clear: both
+            }
+
+            #attributeVerification #attributeList #verifying_blurb {
+                margin-top: 15px
+            }
+
+            #attributeVerification .buttons #continue {
+                height: 40px
+            }
+
+            #attributeVerification .buttons #cancel {
+                font-size: 1em;
+                left: 40%
+            }
+        }
+
+        .panel,
+        .panel_layout,
+        .panel_layout_row,
+        body,
+        html {
+            height: 100%
+        }
+
+        @media only screen and (max-width:600px) {
+            img[data-tenant-branding-background=true] {
+                display: none
+            }
+
+            .hero-bg,
+            .hero-glow {
+                display: none
+            }
+
+            .container {
+                background-color: var(--ill-bg)
+            }
+
+            .container .row .panel-default {
+                border-radius: 0;
+                border: none;
+                box-shadow: none
+            }
+        }
+    </style>
+
+
+    <style>
+        /* ---- Unified container (SignUpSignIn) ---- */
+        .unified_container .row .panel-default {
+            padding: 40px 40px;
+            margin-top: auto;
+            margin-bottom: auto;
+            height: 100%;
+            border: 1px solid var(--ill-border-strong);
+            border-radius: 0.9rem;
+            background-color: rgba(16, 26, 49, 0.82);
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 24px 60px rgba(3, 9, 20, 0.55)
+        }
+
+        .unified_container .row .panel-default .panel-body {
+            max-width: 500px;
+            width: auto;
+            margin: 0 auto;
+            padding: 0
+        }
+
+        /* Branding-Block über dem Formular */
+        .unified_container .row .panel-default .panel-body .companyName {
+            font-size: 1.5em;
+            margin-bottom: 45px
+        }
+
+        .unified_container .row .panel-default .panel-body .companyLogo {
+            display: block
+        }
+
+        .unified_container .row .panel-default .panel-body img {
+            max-width: 100%;
+            width: auto;
+            height: 52px;
+            margin: 0 auto;
+            display: block
+        }
+
+        /* Eigener Untertitel "KI-Plattform" unter dem Logo */
+        .brand-subtitle {
+            text-align: center;
+            color: var(--ill-muted);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            margin: 1rem 0 2.25rem
+        }
+
+        .unified_container .row .panel-default .panel-body h3 {
+            font-size: 1.5em;
+            display: none
+        }
+
+        .unified_container .row .panel-default #api {
+            display: table;
+            margin: 0;
+            width: 100%
+        }
+
+        .unified_container .row .panel-default #api .intro {
+            display: block;
+            text-align: left
+        }
+
+        .unified_container .row .panel-default #api .intro h2 {
+            font-size: 20px;
+            color: var(--ill-text)
+        }
+
+        /* IdP-Auswahl-Screen: ".intro" enthält hier nur den "Sign up"-
+           Wechsel-Link (kein h2, keine Formularfelder darunter) und soll
+           wie Heading/Buttons zentriert erscheinen statt linksbündig. */
+        .unified_container .row .panel-default #api[data-name="IdpSelections"] .intro {
+            text-align: center;
+            margin-bottom: 1.25rem
+        }
+
+        .unified_container .row .panel-default #api[data-name="IdpSelections"] .intro p {
+            margin: 0;
+            color: var(--ill-link);
+            font-weight: 600;
+            cursor: pointer;
+            transition: color .2s ease
+        }
+
+        .unified_container .row .panel-default #api[data-name="IdpSelections"] .intro p:hover {
+            color: #dce9ff
+        }
+
+        .unified_container .row .panel-default #api .divider {
+            display: none
+        }
+
+        .unified_container .row .panel-default #api .localAccount {
+            top: 10px;
+            width: 100%
+        }
+
+        .unified_container .row .panel-default #api .localAccount .intro h2 {
+            font-size: 20px
+        }
+
+        .unified_container .row .panel-default #api .localAccount .error {
+            color: var(--ill-error);
+            text-align: left
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .buttons {
+            margin: 0 0 23px 0;
+            text-align: left
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button {
+            background-image: none;
+            background-color: var(--ill-accent);
+            border: none;
+            border-radius: var(--ill-radius);
+            cursor: pointer;
+            display: inline-block;
+            font-size: 1em;
+            font-weight: 400;
+            height: inherit;
+            line-height: 1.3333333;
+            margin-top: 2rem;
+            margin-right: 0;
+            margin-bottom: 1.2rem;
+            margin-left: 0;
+            padding: 12px 16px;
+            text-align: center;
+            touch-action: manipulation;
+            user-select: none;
+            vertical-align: middle;
+            white-space: nowrap;
+            width: inherit;
+            -moz-user-select: none;
+            -ms-touch-action: manipulation;
+            -ms-user-select: none;
+            -webkit-user-select: none;
+            color: #fff;
+            width: 100%;
+            box-shadow: 0 8px 24px rgba(47, 103, 255, 0.35)
+        }
+
+        @media screen and (-ms-high-contrast:active) {
+
+            .unified_container .row .panel-default #api .accountButton,
+            .unified_container .row .panel-default #api .localAccount .entry .buttons button {
+                border: 1px dashed #fff
+            }
+
+            .unified_container .row .panel-default #api .accountButton:hover,
+            .unified_container .row .panel-default #api .localAccount .entry .buttons button:hover {
+                border: 1px solid #fff
+            }
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button:focus,
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button:hover {
+            -moz-box-shadow: none;
+            -webkit-box-shadow: none;
+            box-shadow: 0 8px 24px rgba(91, 143, 255, 0.45);
+            background-color: var(--ill-accent-strong);
+            color: #fff
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item {
+            position: relative;
+            width: 100%;
+            padding-top: 6px;
+            padding-bottom: 6px;
+            display: block
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item label {
+            display: none
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item input:focus {
+            border: 1px solid var(--ill-accent-strong);
+            box-shadow: 0 0 0 0.18rem rgba(82, 135, 255, 0.4)
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item input {
+            outline: 0;
+            background-color: var(--ill-elevated) !important;
+            background-image: none !important;
+            border: 1px solid var(--ill-border) !important;
+            border-radius: var(--ill-radius) !important;
+            color: var(--ill-text);
+            display: inline-block;
+            font-size: 1em;
+            height: 50px;
+            line-height: 1.42857143;
+            padding: 6px 20px;
+            transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s !important;
+            width: 100% !important;
+            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s !important;
+            -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s !important
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item #password {
+            margin-bottom: 20px
+        }
+
+        ::-ms-reveal {
+            filter: invert(100%);
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item .password-label {
+            text-align: left;
+            height: 0;
+            left: 0;
+            width: 100%
+        }
+
+        .forgot-password {
+            text-align: left
+        }
+
+        .forgot-password.center-height {
+            position: absolute;
+            bottom: 0;
+            clear: right;
+            cursor: pointer;
+            text-align: right
+        }
+
+        @keyframes slideInFromRight {
+            0% {
+                opacity: 0;
+                transform: translateX(50%)
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateX(0)
+            }
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item .password-label #forgotPassword {
+            position: absolute;
+            bottom: 0;
+            clear: right;
+            cursor: pointer;
+            text-align: right;
+            color: var(--ill-link);
+        }
+
+        .unified_container .row .panel-default #api .localAccount .rememberMe {
+            margin-top: -2rem;
+            text-align: right;
+            margin-left: 59%;
+            position: relative;
+            width: 15rem
+        }
+
+        .unified_container .row .panel-default #api .localAccount .rememberMe.align-to-left {
+            margin-top: .5rem;
+            text-align: left;
+            margin-left: 0;
+            width: 100%
+        }
+
+        .working {
+            display: none
+        }
+
+        .unified_container .row .panel-default #api .claims-provider-list-text-links p,
+        .unified_container .row .panel-default #api .localAccount .create p {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: var(--ill-soft)
+        }
+
+        .unified_container .row .panel-default #api .localAccount .create #createAccount {
+            border-radius: var(--ill-radius);
+            display: inline-block;
+            font-size: 1em;
+            font-weight: 600;
+            height: inherit;
+            line-height: 1.3333333;
+            padding: 0;
+            text-align: center;
+            touch-action: manipulation;
+            user-select: none;
+            white-space: nowrap;
+            -moz-user-select: none;
+            -ms-touch-action: manipulation;
+            -ms-user-select: none;
+            -webkit-user-select: none;
+            width: 100%;
+            margin-top: 0;
+            cursor: pointer;
+            color: var(--ill-link);
+            animation: .5s ease-out 0s 1 slideInFromRight
+        }
+
+        .unified_container .row .panel-default #api .social {
+            display: table-footer-group;
+            position: relative;
+            top: 1px;
+            width: auto
+        }
+
+        .unified_container .row .panel-default #api .accountButton {
+            background-size: 10% 70%;
+            background-position-x: 3%;
+            background-position-y: 50%;
+            background-repeat: no-repeat;
+            display: block;
+            font-size: 16px;
+            height: 45px;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            overflow: hidden;
+            padding: 0 50px;
+            max-width: 100%;
+            border: 1px solid var(--ill-border);
+            background-color: var(--ill-elevated);
+            color: var(--ill-text);
+            -moz-border-radius: var(--ill-radius);
+            -webkit-border-radius: var(--ill-radius);
+            border-radius: var(--ill-radius);
+            margin-top: 10px
+        }
+
+        .unified_container .row .panel-default #api .accountButton:hover {
+            color: #fff;
+            background-color: #16223c;
+            border-color: var(--ill-border-strong)
+        }
+
+        .claims-provider-list-text-links-bottom-under-form {
+            text-align: left
+        }
+
+        @media (max-width:100%) {
+            .unified_container .row .panel-default {
+                margin-top: auto;
+                margin-bottom: auto;
+                height: 550px
+            }
+
+            .unified_container .row .panel-default .panel-body {
+                padding: 5rem 3rem;
+                margin-top: 20px;
+                color: var(--ill-text);
+            }
+
+            .unified_container .row .panel-default .panel-body .companyName {
+                display: none
+            }
+
+            .unified_container .row .panel-default .panel-body .companyLogo {
+                display: block
+            }
+
+            .unified_container .row .panel-default .panel-body h3 {
+                display: block
+            }
+
+            .unified_container .row .panel-default .panel-body #api {
+                width: auto
+            }
+
+            .unified_container .row .panel-default .panel-body #api .social {
+                top: 370px;
+                width: auto
+            }
+
+            .unified_container .row .panel-default .panel-body #api .social .options .accountButton {
+                height: 40px
+            }
+
+            .unified_container .row .panel-default .panel-body #api .localAccount {
+                top: 20px
+            }
+
+            .unified_container .row .panel-default .panel-body #api .localAccount .entry .entry-item {
+                display: block;
+                width: 100%;
+                margin-bottom: 10px
+            }
+
+            .unified_container .row .panel-default .panel-body #api .localAccount .entry .entry-item .password-label {
+                top: 145px
+            }
+
+            .unified_container .row .panel-default .panel-body #api .localAccount .entry .entry-item #logonIdentifier {
+                height: 40px
+            }
+
+            .unified_container .row .panel-default .panel-body #api .localAccount .entry .entry-item #password {
+                height: 40px
+            }
+
+            .unified_container .row .panel-default .panel-body #api .localAccount .entry .entry-item:nth-child(2) {
+                width: auto;
+                float: left
+            }
+
+            .unified_container .row .panel-default .panel-body #api .localAccount .entry .buttons #next {
+                width: auto;
+                text-indent: -4px;
+                height: 40px;
+                line-height: 0;
+                position: relative;
+                bottom: 5px;
+                left: 8px
+            }
+        }
+
+        @media screen and (max-width:320px) {
+            .unified_container .row .panel-default #api .localAccount .rememberMe {
+                margin-top: 1.75rem;
+                text-align: left;
+                margin-left: 0;
+                width: 100%
+            }
+
+            .unified_container .row .panel-default #api .localAccount .entry .entry-item .password-label #forgotPassword {
+                bottom: -1rem
+            }
+
+            .forgot-password.center-height {
+                top: 0;
+                right: 12rem;
+                position: relative
+            }
+        }
+    </style>
+
+    <style>
+        /* =========================================================
+           WOW-Layer – rein optische Erweiterungen
+           Es werden keine bestehenden IDs/Klassen entfernt oder in
+           Größe/Layout verändert – nur Farben, Schatten, Übergänge
+           und zusätzliche dekorative Ebenen kommen hinzu.
+           ========================================================= */
+        :root {
+            --ill-glow: rgba(47, 103, 255, .55);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        ::selection {
+            background: rgba(47, 103, 255, .35);
+            color: #fff;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(136, 157, 194, .35);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(136, 157, 194, .55);
+        }
+
+        /* Aurora-Glows hinter dem Maschinenbild-Overlay */
+        .aurora {
+            position: fixed;
+            z-index: 1;
+            border-radius: 50%;
+            filter: blur(90px);
+            mix-blend-mode: screen;
+            pointer-events: none;
+            opacity: .5;
+            will-change: transform;
+        }
+
+        .aurora-1 {
+            width: 620px;
+            height: 620px;
+            top: -200px;
+            left: -140px;
+            background: radial-gradient(circle, rgba(47, 103, 255, .55), transparent 70%);
+            animation: auroraDrift1 22s ease-in-out infinite alternate;
+        }
+
+        .aurora-2 {
+            width: 520px;
+            height: 520px;
+            bottom: -180px;
+            right: -120px;
+            background: radial-gradient(circle, rgba(91, 143, 255, .4), transparent 70%);
+            animation: auroraDrift2 26s ease-in-out infinite alternate;
+        }
+
+        .aurora-3 {
+            width: 380px;
+            height: 380px;
+            top: 40%;
+            left: 50%;
+            background: radial-gradient(circle, rgba(139, 180, 255, .28), transparent 70%);
+            animation: auroraDrift3 18s ease-in-out infinite alternate;
+        }
+
+        @keyframes auroraDrift1 {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(70px, 50px) scale(1.15);
+            }
+        }
+
+        @keyframes auroraDrift2 {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(-60px, -40px) scale(1.12);
+            }
+        }
+
+        @keyframes auroraDrift3 {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.25);
+            }
+        }
+
+        /* Feines, dezent ausblendendes Tech-Grid */
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            background-image:
+                linear-gradient(rgba(136, 157, 194, .06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(136, 157, 194, .06) 1px, transparent 1px);
+            background-size: 42px 42px;
+            -webkit-mask-image: radial-gradient(circle at 50% 40%, rgba(0, 0, 0, .9), transparent 72%);
+            mask-image: radial-gradient(circle at 50% 40%, rgba(0, 0, 0, .9), transparent 72%);
+            pointer-events: none;
+            opacity: .6;
+        }
+
+        /* Karte: Eintritts-Animation + Glow-Ring */
+        .unified_container .row .panel-default {
+            position: relative;
+            isolation: isolate;
+            border-radius: 1.25rem;
+            box-shadow:
+                0 30px 80px rgba(3, 9, 20, .6),
+                inset 0 0 0 1px rgba(255, 255, 255, .03);
+            animation: panelIn .8s cubic-bezier(.16, 1, .3, 1) both;
+        }
+
+        .unified_container .row .panel-default::before {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(91, 143, 255, .55), rgba(139, 180, 255, 0) 45%, rgba(47, 103, 255, .45) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .unified_container .row .panel-default::after {
+            content: "";
+            position: absolute;
+            inset: -50px;
+            z-index: -2;
+            background: radial-gradient(circle, var(--ill-glow) 0%, transparent 70%);
+            opacity: .3;
+            filter: blur(34px);
+            animation: glowPulse 6s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes panelIn {
+            0% {
+                opacity: 0;
+                transform: translateY(26px) scale(.97);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes glowPulse {
+
+            0%,
+            100% {
+                opacity: .22;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: .45;
+                transform: scale(1.05);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .aurora,
+            .grid-overlay,
+            .unified_container .row .panel-default,
+            .unified_container .row .panel-default::after,
+            .brand-subtitle,
+            .unified_container .row .panel-default .panel-body img {
+                animation: none !important;
+            }
+        }
+
+        /* Logo & Markenzeile */
+        .unified_container .row .panel-default .panel-body img {
+            filter: drop-shadow(0 10px 26px rgba(47, 103, 255, .35));
+            animation: logoIn .8s cubic-bezier(.16, 1, .3, 1) both;
+        }
+
+        @keyframes logoIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px) scale(.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .brand-subtitle {
+            position: relative;
+            animation: fadeIn .8s .1s both;
+        }
+
+        @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+            .brand-subtitle {
+                background: linear-gradient(90deg, var(--ill-soft), var(--ill-accent-strong), var(--ill-soft));
+                background-size: 200% auto;
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+                animation: shimmer 7s linear infinite, fadeIn .8s .1s both;
+            }
+        }
+
+        .brand-subtitle::after {
+            content: "";
+            display: block;
+            width: 0;
+            height: 2px;
+            margin: .9rem auto 0;
+            background: linear-gradient(90deg, transparent, var(--ill-accent-strong), transparent);
+            animation: underlineGrow .8s .35s both;
+        }
+
+        @keyframes shimmer {
+            to {
+                background-position: 200% center;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes underlineGrow {
+            from {
+                width: 0;
+                opacity: 0;
+            }
+
+            to {
+                width: 40px;
+                opacity: 1;
+            }
+        }
+
+        .unified_container .row .panel-default #api .intro h2,
+        .unified_container .row .panel-default #api .localAccount .intro h2 {
+            font-weight: 600;
+            letter-spacing: .01em;
+        }
+
+        /* Listenpunkte entfernen – B2C rendert Buttons (z.B. bei
+           B2C_SignUp) teils in <ul><li>, was Browser-Standard-Bullets
+           erzeugt. #attributeList deckt das schon ab, hier zusätzlich
+           für alles innerhalb von #api (Buttons, Social-Optionen etc.) */
+        .unified_container .row .panel-default #api ul,
+        .unified_container .row .panel-default #api ol {
+            list-style: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .unified_container .row .panel-default #api ul li,
+        .unified_container .row .panel-default #api ol li {
+            list-style: none !important;
+        }
+
+        /* Eingabefelder: weichere Interaktion */
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item input,
+        #attributeList ul li input,
+        #attributeList ul li .attrEntry .dropdown_single {
+            transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease !important;
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item input:hover,
+        #attributeList ul li input:hover {
+            border-color: var(--ill-border-strong) !important;
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item input:focus {
+            box-shadow: 0 0 0 3px rgba(91, 143, 255, .22), 0 10px 24px rgba(47, 103, 255, .18);
+        }
+
+        /* Buttons: Gradient + Shine-Sweep + Lift */
+        .buttons button,
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button,
+        #LocalAccountSigninEmailExchange,
+        #LocalAccountSigninUsernameExchange,
+        #SignInWithLogonEmailExchange,
+        #SignInWithLogonNameExchange,
+        #SignUpWithLogonEmailExchange,
+        #SignUpWithLogonNameExchange,
+        .unified_container .row .panel-default #api .accountButton {
+            position: relative;
+            overflow: hidden;
+            transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
+        }
+
+        .buttons #next,
+        #LocalAccountSigninEmailExchange,
+        #LocalAccountSigninUsernameExchange,
+        #SignInWithLogonEmailExchange,
+        #SignInWithLogonNameExchange,
+        #SignUpWithLogonEmailExchange,
+        #SignUpWithLogonNameExchange {
+            /* Das Envelope-Icon gehört nur zu E-Mail-/Login-Aktionen.
+               Generische Sign-up-Aktionsbuttons (Code senden, Bestätigen,
+               Weiter) bleiben icon-frei und erhalten separat den Primary-
+               Button-Stil. So kann das Icon deren Text nicht überlagern. */
+            background-image:
+                url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzIiB5PSI1IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIyIi8+PHBhdGggZD0iTTMgN2w5IDYgOS02Ii8+PC9zdmc+"),
+                linear-gradient(135deg, var(--ill-accent), var(--ill-accent-strong)) !important;
+            background-repeat: no-repeat, no-repeat !important;
+            background-position: 16px center, center center !important;
+            background-size: 18px 18px, cover !important;
+            padding-right: 48px !important;
+            padding-left: 48px !important;
+        }
+
+        /* Azure B2C rendert den Self-Asserted-Sign-up mit eigenen Klassen.
+           Diese Buttons sollen genauso aussehen wie der primäre Login-Button,
+           unabhängig davon, ob gerade Senden, Prüfen oder Weiter sichtbar ist. */
+        #attributeVerification .buttons #continue,
+        #attributeList ul li .attrEntry .verificationControlContent .buttons button {
+            width: 100% !important;
+            min-width: 0;
+            height: 50px !important;
+            margin: 10px 0 0 !important;
+            padding: 0 24px !important;
+            border: 1px solid transparent !important;
+            border-radius: var(--ill-radius) !important;
+            background-color: var(--ill-accent) !important;
+            background-image: linear-gradient(135deg, var(--ill-accent), var(--ill-accent-strong)) !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-size: cover !important;
+            box-shadow: 0 8px 24px rgba(47, 103, 255, .35);
+            color: #fff !important;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            line-height: 1.25;
+            text-align: center;
+            text-indent: 0 !important;
+            white-space: normal;
+        }
+
+        #attributeVerification .buttons #continue:hover,
+        #attributeVerification .buttons #continue:focus,
+        #attributeList ul li .attrEntry .verificationControlContent .buttons button:hover,
+        #attributeList ul li .attrEntry .verificationControlContent .buttons button:focus {
+            background-color: var(--ill-accent-strong) !important;
+            background-image: linear-gradient(135deg, var(--ill-accent-strong), var(--ill-accent)) !important;
+            box-shadow: 0 10px 28px rgba(91, 143, 255, .45);
+            color: #fff !important;
+            outline: none;
+        }
+
+        .buttons button::after,
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button::after,
+        #LocalAccountSigninEmailExchange::after,
+        #LocalAccountSigninUsernameExchange::after,
+        #SignInWithLogonEmailExchange::after,
+        #SignInWithLogonNameExchange::after,
+        #SignUpWithLogonEmailExchange::after,
+        #SignUpWithLogonNameExchange::after,
+        .unified_container .row .panel-default #api .accountButton::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -60%;
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255, 255, 255, .35), transparent);
+            transform: skewX(-20deg);
+            transition: left .55s ease;
+            pointer-events: none;
+        }
+
+        .buttons button:hover::after,
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button:hover::after,
+        #LocalAccountSigninEmailExchange:hover::after,
+        #LocalAccountSigninUsernameExchange:hover::after,
+        #SignInWithLogonEmailExchange:hover::after,
+        #SignInWithLogonNameExchange:hover::after,
+        #SignUpWithLogonEmailExchange:hover::after,
+        #SignUpWithLogonNameExchange:hover::after,
+        .unified_container .row .panel-default #api .accountButton:hover::after {
+            left: 130%;
+        }
+
+        .buttons button:hover,
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button:hover,
+        .unified_container .row .panel-default #api .accountButton:hover {
+            transform: translateY(-2px);
+        }
+
+        .buttons button:active,
+        .unified_container .row .panel-default #api .localAccount .entry .buttons button:active,
+        .unified_container .row .panel-default #api .accountButton:active {
+            transform: translateY(0);
+        }
+
+        /* Microsoft-Logo für den "Weiter mit Microsoft-Konto"-Button
+           (Single Sign-On). !important überschreibt B2C's Standard-Icon,
+           das sonst per Inline-Style an derselben Stelle sitzt.
+           :not(...) stellt sicher, dass die Email/Username-Exchange-
+           Buttons ihr eigenes Envelope-Icon behalten, falls sie
+           zusätzlich die Klasse .accountButton tragen sollten. */
+        .unified_container .row .panel-default #api .accountButton:not(#LocalAccountSigninEmailExchange):not(#LocalAccountSigninUsernameExchange):not(#SignInWithLogonEmailExchange):not(#SignInWithLogonNameExchange):not(#SignUpWithLogonEmailExchange):not(#SignUpWithLogonNameExchange) {
+            background-image:
+                url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMSAyMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0iI0YyNTAyMiIvPjxyZWN0IHg9IjExIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSIjN0ZCQTAwIi8+PHJlY3QgeD0iMSIgeT0iMTEiIHdpZHRoPSI5IiBoZWlnaHQ9IjkiIGZpbGw9IiMwMEE0RUYiLz48cmVjdCB4PSIxMSIgeT0iMTEiIHdpZHRoPSI5IiBoZWlnaHQ9IjkiIGZpbGw9IiNGRkI5MDAiLz48L3N2Zz4=") !important;
+            background-repeat: no-repeat !important;
+            background-position: 16px center !important;
+            background-size: 18px 18px !important;
+            padding-left: 46px !important;
+        }
+
+        /* Links: dezente Unterstreich-Animation */
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item .password-label #forgotPassword,
+        .unified_container .row .panel-default #api .localAccount .create #createAccount {
+            position: relative;
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item .password-label #forgotPassword::after,
+        .unified_container .row .panel-default #api .localAccount .create #createAccount::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -3px;
+            height: 1px;
+            background: currentColor;
+            opacity: 0;
+            transform: scaleX(0);
+            transition: transform .2s ease, opacity .2s ease;
+        }
+
+        .unified_container .row .panel-default #api .localAccount .entry .entry-item .password-label #forgotPassword:hover::after,
+        .unified_container .row .panel-default #api .localAccount .create #createAccount:hover::after {
+            opacity: .7;
+            transform: scaleX(1);
+        }
+
+        @media only screen and (max-width:600px) {
+            .aurora-1 {
+                width: 380px;
+                height: 380px;
+            }
+
+            .aurora-2 {
+                width: 320px;
+                height: 320px;
+            }
+
+            .aurora-3 {
+                display: none;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="background_branding_container">
+        <div class="hero-glow"></div>
+        <img class="hero-bg" src="https://illigaipweusa.blob.core.windows.net/root/hero-industrial-dark.png" alt="">
+        <div class="hero-overlay"></div>
+        <div class="aurora aurora-1"></div>
+        <div class="aurora aurora-2"></div>
+        <div class="aurora aurora-3"></div>
+        <div class="grid-overlay"></div>
+    </div>
+    <div class="container unified_container" role="presentation">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <img class="companyLogo" data-tenant-branding-logo="true"
+                            src="https://illigaipweusa.blob.core.windows.net/root/ILLIG_Maschinenbau.png"
+                            alt="ILLIG Maschinenbau">
+                        <p class="brand-subtitle">KI-Plattform</p>
+                        <div id="api" role="main">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

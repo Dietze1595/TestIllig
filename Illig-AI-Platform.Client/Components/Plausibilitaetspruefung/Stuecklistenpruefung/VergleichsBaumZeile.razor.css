@@ -1,0 +1,44 @@
+.su-vergleich-zeile {
+  height: var(--su-comparison-sticky-row-height);
+  cursor: default;
+}
+.su-vergleich-zeile:has(.su-vergleich-chevron) { cursor: pointer; }
+
+.su-vergleich-zeile > td {
+  box-sizing: border-box;
+  height: var(--su-comparison-sticky-row-height);
+  max-height: var(--su-comparison-sticky-row-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.su-vergleich-cell {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.su-vergleich-cell--tree {
+  box-sizing: border-box;
+}
+
+.su-vergleich-chevron {
+  display: inline-block;
+  width: 1rem;
+  color: var(--color-text-muted);
+}
+
+.su-vergleich-zeile--gruppenpfad > td {
+  box-sizing: border-box;
+  height: var(--su-comparison-sticky-row-height);
+  border-top: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
+  border-bottom-color: color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
+  background: color-mix(in srgb, #00457b 12%, var(--color-bg-panel));
+  color: var(--color-text);
+  font-weight: 600;
+  white-space: nowrap;
+}

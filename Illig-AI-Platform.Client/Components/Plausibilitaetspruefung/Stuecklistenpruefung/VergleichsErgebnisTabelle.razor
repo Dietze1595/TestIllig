@@ -1,0 +1,292 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+@if (Baum is not null)
+{
+    <section class="su-comparison-result">
+    <div class="su-comparison-head">
+        <div>
+            <h3>Vergleichsergebnis</h3>
+            <p>Positionen über den Status-Filter im Tabellenkopf eingrenzen</p>
+        </div>
+    </div>
+
+    <div class="su-comparison-scroll" @ref="_scrollElement">
+    <div class="su-comparison-sticky-path" aria-hidden="true">
+        <div class="su-comparison-breadcrumb" @ref="_breadcrumbElement" hidden></div>
+    </div>
+    <div class="su-comparison-table-wrap">
+        <table class="sm-merkmal-table" data-comparison-tree-table>
+            <colgroup>
+                <col style="width: 16%" />
+                <col style="width: 26%" />
+                <col style="width: 12%" />
+                <col style="width: 12%" />
+                <col style="width: 12%" />
+                <col style="width: 22%" />
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Artikelnummer</th>
+                    <th>Bezeichnung</th>
+                    <th>Unsere Menge</th>
+                    <th>SAP-Menge</th>
+                    <th class="su-comparison-status-th">
+                        <SpaltenFilterDropdown Titel="Status" Optionen="_statusFilterOptionen"
+                                               Ausgewaehlt="_ausgewaehlteStatus"
+                                               OnOptionUmgeschaltet="StatusFilterUmschalten" />
+                    </th>
+                    <th>Hinweis</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_sichtbareZeilen.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="su-comparison-empty-cell">Keine Positionen mit dem gewählten Status.</td>
+                    </tr>
+                }
+                else
+                {
+                    <Virtualize TItem="VergleichsZeileAnsicht"
+                                ItemsProvider="ZeilenProvider"
+                                Context="zeile"
+                                SpacerElement="tr"
+                                ItemSize="48"
+                                OverscanCount="2"
+                                @ref="_virtualize">
+                        <VergleichsBaumZeile Zeile="zeile"
+                                            Breadcrumb="@BreadcrumbFuer(zeile)"
+                                            GruppenBreadcrumb="@GruppenBreadcrumbFuer(zeile)"
+                                            OnToggle="ZeileUmschalten" />
+                    </Virtualize>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (ZeigeSapAbschnitt)
+    {
+        @if (NurInSap is { Count: > 0 })
+        {
+            <section class="su-comparison-sap" aria-labelledby="su-comparison-sap-title">
+                <h3 id="su-comparison-sap-title">Nur in SAP vorhanden</h3>
+                <div class="su-comparison-table-wrap">
+                    <table class="sm-merkmal-table">
+                        <thead>
+                            <tr>
+                                <th>Pfad</th>
+                                <th>Bezeichnung</th>
+                                <th>SAP-Menge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var position in NurInSap)
+                            {
+                                <tr>
+                                    <td>@position.Pfad</td>
+                                    <td>@position.Bezeichnung</td>
+                                    <td>@VergleichsAnzeigeHelfer.FormatMenge(position.SapMenge) @position.SapEinheit</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+        else if (_ausgewaehlteStatus.Contains(NurInSapLabel))
+        {
+            <p class="su-comparison-empty">Keine zusätzlichen Positionen in SAP vorhanden.</p>
+        }
+    }
+    </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public VergleichsKnotenAnsicht? Baum { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<VergleichsPosition>? NurInSap { get; set; }
+
+    // Filter-Optionen in der Reihenfolge Probleme zuerst, Übereinstimmung zuletzt. Die Labels
+    // stammen aus VergleichsAnzeigeHelfer.StatusText, damit Chip-Text und Zeilen-Badge identisch
+    // sind. "Nur in SAP" steuert den separaten SAP-Abschnitt, die übrigen drei den Baum.
+    private static readonly (string Label, VergleichsStatus Status)[] _statusReihenfolge =
+    [
+        (VergleichsAnzeigeHelfer.StatusText(VergleichsStatus.Abweichung), VergleichsStatus.Abweichung),
+        (VergleichsAnzeigeHelfer.StatusText(VergleichsStatus.NurBeiUns), VergleichsStatus.NurBeiUns),
+        (VergleichsAnzeigeHelfer.StatusText(VergleichsStatus.NurInSap), VergleichsStatus.NurInSap),
+        (VergleichsAnzeigeHelfer.StatusText(VergleichsStatus.Uebereinstimmung), VergleichsStatus.Uebereinstimmung),
+    ];
+    private static readonly IReadOnlyList<string> _statusFilterOptionen =
+        _statusReihenfolge.Select(s => s.Label).ToArray();
+    private static string NurInSapLabel => VergleichsAnzeigeHelfer.StatusText(VergleichsStatus.NurInSap);
+
+    private readonly HashSet<string> _ausgewaehlteStatus = [];
+    private VergleichsKnotenAnsicht? _letzterBaum;
+    private List<VergleichsZeileAnsicht> _sichtbareZeilen = [];
+    private Dictionary<VergleichsKnotenAnsicht, string> _breadcrumbNachKnoten = [];
+    private Virtualize<VergleichsZeileAnsicht>? _virtualize;
+    private ElementReference _scrollElement;
+    private ElementReference _breadcrumbElement;
+    private IJSObjectReference? _breadcrumbModule;
+
+    // SAP-Abschnitt sichtbar bei leerer Auswahl (alles) oder wenn "Nur in SAP" angehakt ist.
+    private bool ZeigeSapAbschnitt =>
+        _ausgewaehlteStatus.Count == 0 || _ausgewaehlteStatus.Contains(NurInSapLabel);
+
+    // Ohne Auswahl kein Filter (interaktiver Baum). Sonst: Knoten sichtbar, wenn er oder ein
+    // Nachfahre einen der gewählten Baum-Status trägt. Sind nur "Nur in SAP" (oder nichts
+    // Baum-relevantes) gewählt, ist die Status-Menge leer und der Baum bleibt leer.
+    private Func<VergleichsKnotenAnsicht, bool>? AktiverBaumFilter
+    {
+        get
+        {
+            if (_ausgewaehlteStatus.Count == 0)
+                return null;
+
+            var baumStatus = _statusReihenfolge
+                .Where(s => s.Status != VergleichsStatus.NurInSap && _ausgewaehlteStatus.Contains(s.Label))
+                .Select(s => s.Status)
+                .ToHashSet();
+            return knoten => knoten.EnthaeltStatus(baumStatus);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(Baum, _letzterBaum))
+        {
+            _letzterBaum = Baum;
+            _ausgewaehlteStatus.Clear();
+            ZeilenNeuBerechnen();
+        }
+    }
+
+    // Muss bei jeder Änderung aufgerufen werden, die beeinflusst, welche Knoten sichtbar
+    // sind: neuer Baum, Filterwechsel, Auf-/Zuklappen einer Zeile. Kein Force-Expand mehr —
+    // der Default-Klappzustand (VergleichsKnotenAnsicht.Aufbauen) zeigt Probleme und lässt
+    // fehlende Teilbäume eingeklappt; der Nutzer klappt bei Bedarf selbst auf.
+    private void ZeilenNeuBerechnen()
+    {
+        _sichtbareZeilen = Baum is null
+            ? []
+            : VergleichsKnotenAnsicht.SichtbareZeilen(Baum, 0, AktiverBaumFilter, false).ToList();
+        StickyPfadeVorberechnen();
+        _ = _virtualize?.RefreshDataAsync();
+    }
+
+    // Berechnet alle Breadcrumbs in einem einzigen linearen Durchlauf. So muss beim Scrollen
+    // nicht mehr für jeden Virtualize-Ausschnitt rückwärts durch die sichtbaren Zeilen
+    // gesucht werden. Identische aufeinanderfolgende Pfade teilen sich dieselbe String-Instanz.
+    private void StickyPfadeVorberechnen()
+    {
+        _breadcrumbNachKnoten = new Dictionary<VergleichsKnotenAnsicht, string>(_sichtbareZeilen.Count);
+        var gruppenPfad = new List<VergleichsZeileAnsicht>();
+        var aktuellerPfadText = "";
+        var pfadMussNeuGebautWerden = true;
+
+        foreach (var zeile in _sichtbareZeilen)
+        {
+            var erwarteteElternAnzahl = Math.Max(0, zeile.Tiefe - 1);
+            while (gruppenPfad.Count > erwarteteElternAnzahl)
+            {
+                gruppenPfad.RemoveAt(gruppenPfad.Count - 1);
+                pfadMussNeuGebautWerden = true;
+            }
+
+            if (pfadMussNeuGebautWerden)
+            {
+                aktuellerPfadText = string.Join(
+                    " › ",
+                    gruppenPfad.Select(pfadZeile => pfadZeile.Knoten.Knoten.Bezeichnung));
+                pfadMussNeuGebautWerden = false;
+            }
+
+            _breadcrumbNachKnoten[zeile.Knoten] = aktuellerPfadText;
+
+            // Der technische Root-Knoten ist in jedem Vergleich vorhanden und liefert
+            // keinen zusätzlichen Kontext. Der Breadcrumb beginnt daher erst ab Tiefe 1.
+            if (zeile.HatSichtbareKinder && zeile.Tiefe > 0)
+            {
+                gruppenPfad.Add(zeile);
+                pfadMussNeuGebautWerden = true;
+            }
+        }
+    }
+
+    // Der synchrone Provider liefert nur den kleinen, von Virtualize angeforderten Ausschnitt.
+    // Die Breadcrumb-Anzeige ist davon entkoppelt und folgt der tatsächlich sichtbaren DOM-Zeile.
+    private ValueTask<ItemsProviderResult<VergleichsZeileAnsicht>> ZeilenProvider(ItemsProviderRequest request)
+    {
+        if (_sichtbareZeilen.Count == 0)
+            return ValueTask.FromResult(new ItemsProviderResult<VergleichsZeileAnsicht>([], 0));
+
+        var startIndex = Math.Clamp(request.StartIndex, 0, _sichtbareZeilen.Count - 1);
+        var anzahl = Math.Clamp(request.Count, 0, _sichtbareZeilen.Count - startIndex);
+        return ValueTask.FromResult(new ItemsProviderResult<VergleichsZeileAnsicht>(
+            _sichtbareZeilen.Skip(startIndex).Take(anzahl), _sichtbareZeilen.Count));
+    }
+
+    private string BreadcrumbFuer(VergleichsZeileAnsicht zeile) =>
+        _breadcrumbNachKnoten.GetValueOrDefault(zeile.Knoten, "");
+
+    private string GruppenBreadcrumbFuer(VergleichsZeileAnsicht zeile)
+    {
+        if (!zeile.HatSichtbareKinder || zeile.Tiefe == 0)
+            return "";
+
+        var elternPfad = BreadcrumbFuer(zeile);
+        var bezeichnung = zeile.Knoten.Knoten.Bezeichnung;
+        return string.IsNullOrWhiteSpace(elternPfad)
+            ? bezeichnung
+            : $"{elternPfad} › {bezeichnung}";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Baum is null)
+            return;
+
+        _breadcrumbModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
+            "import",
+            "./comparisonBreadcrumb.js?v=2");
+        await _breadcrumbModule.InvokeVoidAsync(
+            "initialize",
+            _scrollElement,
+            _breadcrumbElement);
+    }
+
+    private void ZeileUmschalten(VergleichsZeileAnsicht zeile)
+    {
+        if (!zeile.HatSichtbareKinder)
+            return;
+        zeile.Knoten.Aufgeklappt = !zeile.Knoten.Aufgeklappt;
+        ZeilenNeuBerechnen();
+    }
+
+    private void StatusFilterUmschalten(string status)
+    {
+        if (!_ausgewaehlteStatus.Remove(status))
+            _ausgewaehlteStatus.Add(status);
+        ZeilenNeuBerechnen();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_breadcrumbModule is null)
+            return;
+
+        try
+        {
+            await _breadcrumbModule.InvokeVoidAsync("dispose", _scrollElement);
+            await _breadcrumbModule.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // Die Seite wurde bereits verlassen; es gibt keine Browser-Verbindung mehr.
+        }
+    }
+}
