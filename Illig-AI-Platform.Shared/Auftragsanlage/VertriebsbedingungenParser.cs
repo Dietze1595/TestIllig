@@ -163,6 +163,20 @@ public static class VertriebsbedingungenParser
                 LeerZuNull(normalisiert[..prozentStart.Index]),
                 LeerZuNull(normalisiert[prozentStart.Index..]));
 
+        // Check for proforma payment plan (e.g. Total amount payable against Proforma Invoice, net)
+        var proformaMatch = Regex.Match(normalisiert, @"(?i)\b(?:(?:total\s+amount\s+)?payable\s+against|(?:gesamtbetrag\s+)?zahlbar\s+gegen)\s+pro\s*forma(?:\s*(?:invoice|rechnung))?\b");
+        if (proformaMatch.Success)
+        {
+            var splitIndex = proformaMatch.Index;
+            if (splitIndex == 0)
+            {
+                return (normalisiert, normalisiert);
+            }
+            return (
+                LeerZuNull(normalisiert[..splitIndex]),
+                LeerZuNull(normalisiert[splitIndex..]));
+        }
+
         // Fallback für seltene Ratenpläne mit absoluten Beträgen statt Prozenten.
         var zeilen = normalisiert.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var betragStart = Array.FindIndex(zeilen, 1,

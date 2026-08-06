@@ -42,6 +42,8 @@ public class AngebotsChecklisteTests
         "30% upon order confirmation\n30% by the midpoint\n40% before delivery",
         false)]
     [InlineData("50% upon order confirmation\n50% before delivery", true)]
+    [InlineData("Total amount payable against Proforma Invoice, net", true)]
+    [InlineData("Gesamtbetrag zahlbar gegen Proforma-Rechnung", true)]
     [InlineData(null, false)]
     public void Berechnen_ErkenntAusschliesslichStandardZahlungsplan(
         string? zahlungsplan,
@@ -85,5 +87,22 @@ public class AngebotsChecklisteTests
             versandbedingung: versandbedingung);
 
         Assert.Equal(erwartet, checkliste.VersandbedingungErkannt);
+    }
+
+    [Fact]
+    public void VertriebsbedingungenParser_ParsesProformaInvoicePaymentPlanCorrectly()
+    {
+        var text = @"net price 3.999,00 EUR
+grand total 3.999,00 EUR
+tax-free export delivery according to § 4 Nr. 1a UStG
+terms of payment: 10d after rcpt. of invoice net
+Total amount payable against Proforma Invoice, net
+terms of delivery: FCA Free carrier Heilbronn, ILLIG
+INCOTERMS® 2020 applies";
+
+        var ergebnis = VertriebsbedingungenParser.Parse(text);
+
+        Assert.Equal("10d after rcpt. of invoice net", ergebnis.Zahlungsbedingungen);
+        Assert.Equal("Total amount payable against Proforma Invoice, net", ergebnis.Zahlungsplan);
     }
 }
