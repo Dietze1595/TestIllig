@@ -92,20 +92,13 @@
                             Version
                         </dt>
                         <dd style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                            @if (_antwort.VorhandeneVersionen is { Count: > 1 })
-                            {
-                                <select class="sm-select" style="padding: 0.15rem 0.5rem; border: 1px solid #c8d3d9; border-radius: 4px; font-size: 0.8125rem; background-color: white;"
-                                        value="@_antwort.AngebotVersion" @onchange="OnVersionChangedAsync" disabled="@_laedt">
-                                    @foreach (var v in _antwort.VorhandeneVersionen)
-                                    {
-                                        <option value="@v">Version @v</option>
-                                    }
-                                </select>
-                            }
-                            else
-                            {
-                                @_antwort.AngebotVersion
-                            }
+                            <select class="sm-select" style="padding: 0.15rem 0.5rem; border: 1px solid #c8d3d9; border-radius: 4px; font-size: 0.8125rem; background-color: white;"
+                                    value="@_antwort.AngebotVersion" @onchange="OnVersionChangedAsync" disabled="@(_laedt || GetAvailableVersions().Count <= 1)">
+                                @foreach (var v in GetAvailableVersions())
+                                {
+                                    <option value="@v">Version @v</option>
+                                }
+                            </select>
                             @if (!string.IsNullOrWhiteSpace(angebotStatus.VersionsKommentar))
                             {
                                 <span class="aa-version-kommentar" style="font-size: 0.8125rem; color: #e5310e; font-style: italic;" title="Hinweis zur Version">
@@ -345,13 +338,13 @@
                 <Tabs>
                     <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Angebot" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Angebot")" @onclick='() => _aktiverPdfTab = "Angebot"'>Angebot</button>
                     <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Kundenbestellung" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Kundenbestellung")" @onclick='() => _aktiverPdfTab = "Kundenbestellung"'>Kundenbestellung</button>
-                    @if (_antwort?.VorhandeneVersionen is { Count: > 1 })
+                    @if (GetAvailableVersions().Count > 0)
                     {
                         <div class="aa-pdf-tab-divider" style="display: inline-block; width: 1px; height: 1.5rem; background-color: #c8d3d9; margin: 0 1rem; vertical-align: middle;"></div>
                         <span style="font-size: 0.8125rem; font-weight: 500; color: #57666d; margin-right: 0.5rem; vertical-align: middle;">Vergleich mit:</span>
                         <select class="sm-select" style="padding: 0.15rem 0.5rem; border: 1px solid #c8d3d9; border-radius: 4px; font-size: 0.8125rem; background-color: white; vertical-align: middle; max-width: 120px;"
-                                value="@_antwort.AngebotVersion" @onchange="OnVersionChangedAsync" disabled="@_laedt">
-                            @foreach (var v in _antwort.VorhandeneVersionen)
+                                value="@_antwort.AngebotVersion" @onchange="OnVersionChangedAsync" disabled="@(_laedt || GetAvailableVersions().Count <= 1)">
+                            @foreach (var v in GetAvailableVersions())
                             {
                                 <option value="@v">Version @v</option>
                             }
@@ -607,6 +600,17 @@
                 _laedt = false;
             }
         }
+    }
+
+    private List<int> GetAvailableVersions()
+    {
+        if (_antwort?.VorhandeneVersionen is { Count: > 0 })
+            return _antwort.VorhandeneVersionen;
+
+        if (_antwort?.AngebotVersion is { } currentVersion)
+            return [currentVersion];
+
+        return [];
     }
 
     private void Zuruecksetzen()
