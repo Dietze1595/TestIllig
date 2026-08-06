@@ -124,7 +124,9 @@ public record BestaetigungVergleichAntwort(
     bool LieferterminIdentisch,
     List<string> Uebereinstimmungen,
     List<string> SonstigeAbweichungen,
-    AngebotStatusAntwort? AngebotStatus);
+    AngebotStatusAntwort? AngebotStatus,
+    int? BestaetigungId = null,
+    List<int>? VorhandeneVersionen = null);
 
 public record BestaetigungDetailAntwort(
     int Id,

@@ -91,7 +91,22 @@
                             </svg>
                             Version
                         </dt>
-                        <dd>@_antwort.AngebotVersion</dd>
+                        <dd style="display: flex; align-items: center; gap: 0.5rem;">
+                            @if (_antwort.VorhandeneVersionen is { Count: > 1 })
+                            {
+                                <select class="sm-select" style="padding: 0.15rem 0.5rem; border: 1px solid #c8d3d9; border-radius: 4px; font-size: 0.8125rem; background-color: white;"
+                                        value="@_antwort.AngebotVersion" @onchange="OnVersionChangedAsync" disabled="@_laedt">
+                                    @foreach (var v in _antwort.VorhandeneVersionen)
+                                    {
+                                        <option value="@v">Version @v</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                @_antwort.AngebotVersion
+                            }
+                        </dd>
                     </div>
                     <div>
                         <dt class="aa-info-label">
@@ -324,6 +339,18 @@
                 <Tabs>
                     <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Angebot" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Angebot")" @onclick='() => _aktiverPdfTab = "Angebot"'>Angebot</button>
                     <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Kundenbestellung" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Kundenbestellung")" @onclick='() => _aktiverPdfTab = "Kundenbestellung"'>Kundenbestellung</button>
+                    @if (_antwort?.VorhandeneVersionen is { Count: > 1 })
+                    {
+                        <div class="aa-pdf-tab-divider" style="display: inline-block; width: 1px; height: 1.5rem; background-color: #c8d3d9; margin: 0 1rem; vertical-align: middle;"></div>
+                        <span style="font-size: 0.8125rem; font-weight: 500; color: #57666d; margin-right: 0.5rem; vertical-align: middle;">Vergleich mit:</span>
+                        <select class="sm-select" style="padding: 0.15rem 0.5rem; border: 1px solid #c8d3d9; border-radius: 4px; font-size: 0.8125rem; background-color: white; vertical-align: middle; max-width: 120px;"
+                                value="@_antwort.AngebotVersion" @onchange="OnVersionChangedAsync" disabled="@_laedt">
+                            @foreach (var v in _antwort.VorhandeneVersionen)
+                            {
+                                <option value="@v">Version @v</option>
+                            }
+                        </select>
+                    }
                 </Tabs>
             </PdfViewerPanel>
         }
@@ -533,6 +560,47 @@
             return null;
 
         return $"Kundenadresse: {kundenadresse ?? "Nicht erkannt"} · Lieferadresse: {lieferadresse ?? "Nicht erkannt"}";
+    }
+
+    private async Task OnVersionChangedAsync(ChangeEventArgs e)
+    {
+        if (_antwort?.BestaetigungId is null || e.Value is null)
+            return;
+
+        if (int.TryParse(e.Value.ToString(), out var selectedVersion))
+        {
+            _laedt = true;
+            _apiError = null;
+            try
+            {
+                var neueAntwort = await Client.BestaetigungWechselnAsync(_antwort.BestaetigungId.Value, selectedVersion);
+                _antwort = neueAntwort;
+
+                // Reload the offer PDF url for the newly selected offer version
+                if (_antwort?.AngebotId is { } angebotId)
+                {
+                    try
+                    {
+                        var angebotBytes = await Client.GetAngebotDokumentAsync(angebotId);
+                        _angebotDataUrl = angebotBytes is null
+                            ? null
+                            : $"data:application/pdf;base64,{Convert.ToBase64String(angebotBytes)}";
+                    }
+                    catch (ApiRequestException)
+                    {
+                        _angebotDataUrl = null;
+                    }
+                }
+            }
+            catch (ApiRequestException ex)
+            {
+                _apiError = ex.Message;
+            }
+            finally
+            {
+                _laedt = false;
+            }
+        }
     }
 
     private void Zuruecksetzen()

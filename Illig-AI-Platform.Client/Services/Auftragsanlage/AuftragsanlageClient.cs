@@ -89,6 +89,13 @@ public class AuftragsanlageClient(HttpClient http)
         return new BestaetigungErgebnis((await response.Content.ReadFromJsonAsync<BestaetigungVergleichAntwort>())!, null);
     }
 
+    public async Task<BestaetigungVergleichAntwort> BestaetigungWechselnAsync(int id, int version)
+    {
+        var response = await http.PostAsync($"api/v1/auftragsanlage/innendienst/bestaetigung/{id}/wechseln?version={version}", null);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<BestaetigungVergleichAntwort>())!;
+    }
+
     public async Task<List<AngebotUebersicht>> GetBestaetigungenAsync(bool nurMeine)
     {
         var response = await http.GetAsync(

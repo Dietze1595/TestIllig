@@ -330,15 +330,16 @@ public class AuftragsanlageController(
                         : $"Das hochgeladene Dokument wurde nicht als Kundenbestellung erkannt. {vergleich.DokumentartHinweis}");
 
             puffer.Position = 0;
-            await angebotsService.BestaetigungSpeichernAsync(angebot.Id, daten, datei.FileName, puffer, vergleich, User.GetUserId());
+            var bestaetigungId = await angebotsService.BestaetigungSpeichernAsync(angebot.Id, daten, datei.FileName, puffer, vergleich, User.GetUserId());
 
             var angebotStatus = await angebotsService.ErstelleAngebotStatusAsync(angebot);
+            var vorhandeneVersionen = await angebotsService.VorhandeneVersionenAsync(angebot.Angebotsnummer);
 
             return Ok(new BestaetigungVergleichAntwort(
                 AngebotZuordnungStatus.Gefunden, angebot.Angebotsnummer, angebot.Version, angebot.Id, [],
                 vergleich.LieferterminAngebot, vergleich.LieferterminBestaetigung,
                 vergleich.LieferterminIdentisch, vergleich.Uebereinstimmungen,
-                vergleich.SonstigeAbweichungen, angebotStatus));
+                vergleich.SonstigeAbweichungen, angebotStatus, bestaetigungId, vorhandeneVersionen));
         }
         catch (Azure.RequestFailedException ex)
         {
@@ -349,6 +350,29 @@ public class AuftragsanlageController(
         {
             logger.LogError(ex, "Fehler beim Bestätigungsabgleich für Datei {Dateiname}.", datei.FileName);
             return StatusCode(500, "Der Abgleich ist fehlgeschlagen. Bitte versuche es erneut.");
+        }
+    }
+
+    [HttpPost("innendienst/bestaetigung/{id:int}/wechseln")]
+    [Authorize(Roles = AppRoles.OrderCreationBackoffice)]
+    [ProducesResponseType(typeof(BestaetigungVergleichAntwort), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BestaetigungVergleichAntwort>> BestaetigungWechseln(int id, [FromQuery] int version)
+    {
+        try
+        {
+            var ergebnis = await angebotsService.WechselnVersionAsync(id, version, vergleichService);
+            if (ergebnis is null)
+                return NotFound("Wechsel der Version fehlgeschlagen. Bestätigung, zugehöriges Angebot oder Ziel-Version nicht gefunden.");
+
+            return Ok(ergebnis);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Fehler beim Wechseln der Version für Bestätigung {Id} auf Version {Version}.", id, version);
+            return StatusCode(500, "Der Wechsel der Version ist fehlgeschlagen.");
         }
     }
 

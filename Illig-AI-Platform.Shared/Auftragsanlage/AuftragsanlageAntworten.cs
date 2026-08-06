@@ -179,7 +179,9 @@ public record BestaetigungVergleichAntwort(
     bool LieferterminIdentisch,
     IReadOnlyList<string> Uebereinstimmungen,
     IReadOnlyList<string> SonstigeAbweichungen,
-    AngebotStatusAntwort? AngebotStatus);
+    AngebotStatusAntwort? AngebotStatus,
+    int? BestaetigungId = null,
+    IReadOnlyList<int>? VorhandeneVersionen = null);
 
 /// <summary>Gespeicherter Innendienst-Abgleich für die Wiederherstellung aus der Historie.</summary>
 public record BestaetigungDetailAntwort(

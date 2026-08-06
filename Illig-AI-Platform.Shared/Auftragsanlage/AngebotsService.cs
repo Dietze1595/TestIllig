@@ -355,6 +355,7 @@ public class AngebotsService(
                         !IstEindeutigeHistorischeUebereinstimmung(x))
             .ToArray();
 
+        var vorhandeneVersionen = await VorhandeneVersionenAsync(angebot.Angebotsnummer, cancellationToken);
         var vergleich = new BestaetigungVergleichAntwort(
             AngebotZuordnungStatus.Gefunden,
             angebot.Angebotsnummer,
@@ -366,7 +367,9 @@ public class AngebotsService(
             bestaetigung.LieferterminIdentisch,
             uebereinstimmungen,
             abweichungen,
-            await ErstelleAngebotStatusAsync(angebot, cancellationToken));
+            await ErstelleAngebotStatusAsync(angebot, cancellationToken),
+            bestaetigung.Id,
+            vorhandeneVersionen);
 
         return new BestaetigungDetailAntwort(bestaetigung.Id, bestaetigung.Dateiname, vergleich);
     }
@@ -406,7 +409,7 @@ public class AngebotsService(
         return (bestaetigung.Dateiname, inhalt);
     }
 
-    public async Task BestaetigungSpeichernAsync(
+    public async Task<int> BestaetigungSpeichernAsync(
         int angebotId, ExtrahierteAngebotsdaten daten, string dateiname, Stream pdfInhalt,
         AngebotsVergleichLlmErgebnis vergleich, Guid? userProfileId = null, CancellationToken cancellationToken = default)
     {
@@ -450,6 +453,8 @@ public class AngebotsService(
             await kundenstamm.RegistriereQuelleAsync(
                 kunde, KundenQuelltyp.Kundenbestellung, bestaetigung.Id,
                 bestaetigung.Kundenname, bestaetigung.Kundenadresse, null, cancellationToken);
+
+        return bestaetigung.Id;
     }
 
     public async Task<AngebotStatusAntwort> ErstelleAngebotStatusAsync(
@@ -500,5 +505,43 @@ public class AngebotsService(
         {
             logger?.LogWarning(ex, "Blob {BlobPfad} konnte nicht gelöscht werden.", blobPfad);
         }
+    }
+
+    public async Task<BestaetigungVergleichAntwort?> WechselnVersionAsync(
+        int bestaetigungId, int targetVersion, IAngebotsvergleichLlmService vergleichService, CancellationToken cancellationToken = default)
+    {
+        var bestaetigung = await db.Auftragsbestaetigungen.FindAsync([bestaetigungId], cancellationToken);
+        if (bestaetigung is null)
+            return null;
+
+        var currentAngebot = await db.Angebote.FindAsync([bestaetigung.AngebotId], cancellationToken);
+        if (currentAngebot is null)
+            return null;
+
+        var zielAngebot = await db.Angebote
+            .FirstOrDefaultAsync(a => a.Angebotsnummer == currentAngebot.Angebotsnummer && a.Version == targetVersion, cancellationToken);
+        if (zielAngebot is null)
+            return null;
+
+        var vergleich = await vergleichService.VergleicheAsync(zielAngebot.Volltext, bestaetigung.Volltext);
+
+        bestaetigung.AngebotId = zielAngebot.Id;
+        bestaetigung.LieferterminAngebot = vergleich.LieferterminAngebot;
+        bestaetigung.LieferterminBestaetigung = vergleich.LieferterminBestaetigung;
+        bestaetigung.LieferterminIdentisch = vergleich.LieferterminIdentisch;
+        bestaetigung.SonstigeAbweichungen = string.Join('\n',
+            vergleich.Uebereinstimmungen.Select(x => $"[IDENTISCH] {x}")
+                .Concat(vergleich.SonstigeAbweichungen));
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var angebotStatus = await ErstelleAngebotStatusAsync(zielAngebot, cancellationToken);
+        var vorhandeneVersionen = await VorhandeneVersionenAsync(zielAngebot.Angebotsnummer, cancellationToken);
+
+        return new BestaetigungVergleichAntwort(
+            AngebotZuordnungStatus.Gefunden, zielAngebot.Angebotsnummer, zielAngebot.Version, zielAngebot.Id, [],
+            vergleich.LieferterminAngebot, vergleich.LieferterminBestaetigung,
+            vergleich.LieferterminIdentisch, vergleich.Uebereinstimmungen,
+            vergleich.SonstigeAbweichungen, angebotStatus, bestaetigung.Id, vorhandeneVersionen);
     }
 }
