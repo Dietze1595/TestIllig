@@ -220,6 +220,14 @@
                         : $"existieren bereits {_analyse.VorhandeneVersionen.Count} Versionen").
                     Wie soll das neue Angebot behandelt werden?
                 </p>
+                <div style="margin-top: 1rem; margin-bottom: 1.5rem;">
+                    <label for="versionsKommentar" style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #57666d;">
+                        Begründung / Hinweis für die neue Version (optional):
+                    </label>
+                    <textarea id="versionsKommentar" class="sm-textarea" style="width: 100%; max-width: 600px; padding: 0.5rem; border: 1px solid #c8d3d9; border-radius: 4px;"
+                              placeholder="z. B. Preisanpassung, Änderung der Werkzeuge, etc."
+                              @bind="_versionsKommentar" disabled="@_laedt"></textarea>
+                </div>
                 <div class="sm-actions">
                     <PrimaryButton OnClick="@(() => SpeichernAsync("ueberschreiben"))" Disabled="@_laedt">
                         Neueste Version überschreiben
@@ -490,6 +498,7 @@
     private string _gueltigkeitsdatumKommentar = "";
     private string _sapSparteKommentar = "";
     private string _sapFuehrendKommentar = "";
+    private string _versionsKommentar = "";
 
     // Ein SAP-Punkt gilt als erfüllt, sobald er bestätigt (Haken) ODER kommentiert ist.
     private bool SapSparteErfuellt => _sapSparteBestaetigt || !string.IsNullOrWhiteSpace(_sapSparteKommentar);
@@ -525,6 +534,7 @@
         _gueltigkeitsdatumKommentar = "";
         _sapSparteKommentar = "";
         _sapFuehrendKommentar = "";
+        _versionsKommentar = "";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -685,12 +695,12 @@
             return;
 
         _apiError = null;
-        KommentareZuruecksetzen();
         _laedt = true;
         try
         {
             _gespeichert = await Client.SpeichernAsync(
-                _dateiBytes, _dateiName, _dateiContentType, _analyse.Daten, konfliktStrategie);
+                _dateiBytes, _dateiName, _dateiContentType, _analyse.Daten, konfliktStrategie, _versionsKommentar);
+            KommentareZuruecksetzen();
             await VerlaufLadenAsync();
         }
         catch (ApiRequestException ex)
@@ -783,6 +793,7 @@
         _apiError = null;
         _freigebeLaedt = false;
         KommentareZuruecksetzen();
+        _versionsKommentar = "";
         _dateiBytes = null;
         _dateiName = null;
         _dateiContentType = null;

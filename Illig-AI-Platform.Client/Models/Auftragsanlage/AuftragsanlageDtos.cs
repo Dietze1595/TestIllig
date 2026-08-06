@@ -111,7 +111,8 @@ public record AngebotStatusAntwort(
     string? Lieferadresse = null,
     string? LieferadresseKommentar = null,
     string? SapSparteKommentar = null,
-    string? SapFuehrendKommentar = null);
+    string? SapFuehrendKommentar = null,
+    string? VersionsKommentar = null);
 
 public record BestaetigungVergleichAntwort(
     AngebotZuordnungStatus Status,

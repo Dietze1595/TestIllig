@@ -11,6 +11,7 @@ public class Angebot
     public int? KundeId { get; set; }
     public string Angebotsnummer { get; set; } = "";
     public int Version { get; set; }
+    public string? VersionsKommentar { get; set; }
     public string? Kundenname { get; set; }
     public string? Kundenadresse { get; set; }
     public string? Lieferadresse { get; set; }

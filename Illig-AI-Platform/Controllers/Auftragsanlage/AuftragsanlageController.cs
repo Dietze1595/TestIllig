@@ -94,7 +94,7 @@ public class AuftragsanlageController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<AngebotSpeichernAntwort>> AngebotSpeichern(
-        [FromForm] IFormFile datei, [FromForm] string datenJson, [FromForm] string? konfliktStrategie)
+        [FromForm] IFormFile datei, [FromForm] string datenJson, [FromForm] string? konfliktStrategie, [FromForm] string? versionsKommentar = null)
     {
         var validierungsFehler = ValidiereDatei(datei);
         if (validierungsFehler is not null)
@@ -132,7 +132,7 @@ public class AuftragsanlageController(
         {
             using var puffer = await InPufferLesenAsync(datei);
             var ergebnis = await angebotsService.SpeichernAsync(
-                daten, datei.FileName, puffer, strategie, vertriebsbedingungen, User.GetUserId());
+                daten, datei.FileName, puffer, strategie, vertriebsbedingungen, User.GetUserId(), versionsKommentar);
 
             if (ergebnis.Konflikt)
                 return Ok(new AngebotSpeichernAntwort(

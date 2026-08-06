@@ -35,7 +35,7 @@ public class AuftragsanlageClient(HttpClient http)
 
     public async Task<AngebotSpeichernAntwort> SpeichernAsync(
         byte[] inhalt, string dateiname, string contentType,
-        ExtrahierteAngebotsdaten daten, string? konfliktStrategie = null)
+        ExtrahierteAngebotsdaten daten, string? konfliktStrategie = null, string? versionsKommentar = null)
     {
         using var content = new MultipartFormDataContent();
         using var fileContent = new ByteArrayContent(inhalt);
@@ -44,6 +44,8 @@ public class AuftragsanlageClient(HttpClient http)
         content.Add(new StringContent(JsonSerializer.Serialize(daten, JsonWeb)), "datenJson");
         if (konfliktStrategie is not null)
             content.Add(new StringContent(konfliktStrategie), "konfliktStrategie");
+        if (versionsKommentar is not null)
+            content.Add(new StringContent(versionsKommentar), "versionsKommentar");
 
         var response = await http.PostAsync("api/v1/auftragsanlage/vertrieb/angebot/speichern", content);
         response.EnsureSuccessStatusCode();

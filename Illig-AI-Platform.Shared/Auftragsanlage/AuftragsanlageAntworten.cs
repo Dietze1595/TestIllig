@@ -159,7 +159,8 @@ public record AngebotStatusAntwort(
     string? Lieferadresse = null,
     string? LieferadresseKommentar = null,
     string? SapSparteKommentar = null,
-    string? SapFuehrendKommentar = null);
+    string? SapFuehrendKommentar = null,
+    string? VersionsKommentar = null);
 
 /// <summary>
 /// Antwort auf den Innendienst-Upload. Bei <see cref="AngebotZuordnungStatus.Gefunden"/>

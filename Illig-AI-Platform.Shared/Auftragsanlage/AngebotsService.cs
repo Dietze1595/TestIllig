@@ -38,7 +38,7 @@ public class AngebotsService(
     public async Task<AngebotSpeichernErgebnis> SpeichernAsync(
         ExtrahierteAngebotsdaten daten, string dateiname, Stream pdfInhalt,
         KonfliktStrategie strategie, VertriebsbedingungenErgebnis? vertriebsbedingungen = null,
-        Guid? userProfileId = null, CancellationToken cancellationToken = default)
+        Guid? userProfileId = null, string? versionsKommentar = null, CancellationToken cancellationToken = default)
     {
         var nummer = daten.Nummer;
         if (string.IsNullOrWhiteSpace(nummer))
@@ -83,6 +83,7 @@ public class AngebotsService(
 
             angebot.Kundenname = daten.Kundenname;
             angebot.Kundenadresse = daten.Kundenadresse;
+            angebot.VersionsKommentar = versionsKommentar;
             angebot.Lieferadresse = daten.Lieferadresse ??
                                       AngebotsLayoutParser.Parse(daten.Volltext).Lieferadresse;
             angebot.KundeId = kunde?.Id;
@@ -492,7 +493,8 @@ public class AngebotsService(
             angebot.Freigegeben, angebot.FreigegebenAm, freigegebenVon,
             angebot.SapSparteBestaetigt, angebot.SapFuehrendBestaetigt,
             lieferadresse, angebot.LieferadresseKommentar,
-            angebot.SapSparteKommentar, angebot.SapFuehrendKommentar);
+            angebot.SapSparteKommentar, angebot.SapFuehrendKommentar,
+            angebot.VersionsKommentar);
     }
 
     private async Task LoescheBlobStillAsync(string blobPfad, CancellationToken cancellationToken)
