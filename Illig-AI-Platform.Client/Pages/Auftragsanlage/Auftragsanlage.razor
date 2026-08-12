@@ -117,6 +117,50 @@
                     <span class="sm-choice-card__cta">Starten →</span>
                 </button>
             }
+            @if (_darfVertrieb || _darfInnendienst)
+            {
+                <button type="button" class="sm-choice-card sm-choice-card--illustrated" @onclick="@(() => Nav.NavigateTo(AppRoutes.AuftragsanlageDashboard))">
+                    <svg class="sa-choice-icon" viewBox="0 0 220 180" aria-hidden="true" focusable="false">
+                        <defs>
+                            <linearGradient id="saDashboardDoc" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#1a2b4a" />
+                                <stop offset="100%" stop-color="#0d1830" />
+                            </linearGradient>
+                            <radialGradient id="saDashboardBadge" cx="38%" cy="32%" r="75%">
+                                <stop offset="0%" stop-color="#eaf4ff" />
+                                <stop offset="35%" stop-color="#83c9f0" />
+                                <stop offset="75%" stop-color="#0090cf" />
+                                <stop offset="100%" stop-color="#00457b" />
+                            </radialGradient>
+                            <filter id="saDashboardGlow" x="-60%" y="-60%" width="220%" height="220%">
+                                <feGaussianBlur stdDeviation="4.5" result="blur" />
+                                <feMerge>
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                        </defs>
+
+                        <ellipse cx="100" cy="152" rx="70" ry="14" fill="#00457b" opacity="0.14" filter="url(#saDashboardGlow)" />
+
+                        <g transform="rotate(-4 95 90)">
+                            <rect x="45" y="45" width="100" height="95" rx="10" fill="url(#saDashboardDoc)" stroke="#3a5a86" stroke-width="1" />
+                            <rect x="58" y="110" width="12" height="15" fill="#9bc832" rx="1" />
+                            <rect x="74" y="90" width="12" height="35" fill="#00457b" rx="1" stroke="#5f89c4" stroke-width="1" />
+                            <rect x="90" y="100" width="12" height="25" fill="#9bc832" rx="1" />
+                            <rect x="106" y="80" width="12" height="45" fill="#00457b" rx="1" stroke="#5f89c4" stroke-width="1" />
+                            <rect x="122" y="95" width="12" height="30" fill="#9bc832" rx="1" />
+                        </g>
+
+                        <circle cx="155" cy="70" r="34" fill="#00457b" opacity="0.25" filter="url(#saDashboardGlow)" />
+                        <circle cx="155" cy="70" r="28" fill="url(#saDashboardBadge)" />
+                        <path d="M143,80 L143,62 M143,80 L167,80 M149,80 L149,68 M155,80 L155,64 M161,80 L161,72" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+                    </svg>
+                    <h3>Dashboard — Analyse</h3>
+                    <p>Auswertung der Angebots- und Bestelldaten über Jahre und Monate hinweg im direkten Vergleich.</p>
+                    <span class="sm-choice-card__cta">Ansehen →</span>
+                </button>
+            }
         </div>
     </RoleGuard>
 </div>

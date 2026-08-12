@@ -227,3 +227,24 @@ public record AngebotDetailAntwort(
     Guid? UserProfileId = null,
     string? SapSparteKommentar = null,
     string? SapFuehrendKommentar = null);
+
+public record DashboardStatsAntwort(
+    List<int> Jahre,
+    List<MonatsStatistik> Monatswerte,
+    List<JahresStatistik> Jahreswerte,
+    int TotalAngebote,
+    int TotalBestellungen,
+    double Konversionsrate
+);
+
+public record MonatsStatistik(
+    int Monat,
+    int AngeboteCount,
+    int BestellungenCount
+);
+
+public record JahresStatistik(
+    int Jahr,
+    int AngeboteCount,
+    int BestellungenCount
+);
