@@ -2,6 +2,8 @@ namespace Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
 
 public record VerlaufDetail(
     int Id,
+    string Dateiname,
+    AuftragsdokumentQuelle Quelle,
     string Auftragsnummer,
     string Kundennummer,
     DateOnly? Datum,

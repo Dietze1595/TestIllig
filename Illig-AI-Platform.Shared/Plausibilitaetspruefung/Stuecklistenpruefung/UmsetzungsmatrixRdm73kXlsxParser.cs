@@ -75,22 +75,36 @@ public static class UmsetzungsmatrixRdm73kXlsxParser
 
     private static string? ErmittleBedingung(IXLWorksheet ws, int zeile, int letzteSpalte, int kombinationsSpalte)
     {
-        // Bis letzteSpalte (nicht bis kombinationsSpalte) laufen — sonst wird die Bedingung nie
-        // gefunden, wenn keine Kombinationsspalte existiert (kombinationsSpalte == -1).
+        // Alle gefüllten Varianten-Spalten (außer der Kombinationsspalte selbst) einsammeln.
+        var teilbedingungen = new List<string>();
         for (var spalte = ErsteVariantenSpalte; spalte <= letzteSpalte; spalte++)
         {
             if (spalte == kombinationsSpalte)
                 continue;
 
             var wert = ws.Cell(zeile, spalte).GetString().Trim();
-            if (wert.Length == 0)
-                continue;
-
-            if (wert.Contains("siehe Komb.", StringComparison.OrdinalIgnoreCase))
-                return kombinationsSpalte > 0 ? ws.Cell(zeile, kombinationsSpalte).GetString().Trim() : wert;
-
-            return wert;
+            if (wert.Length > 0)
+                teilbedingungen.Add(wert);
         }
-        return null;
+
+        if (teilbedingungen.Count == 0)
+            return null;
+
+        // Ist die Merkmalskombinationsspalte gefüllt, ist SIE die maßgebliche, vollständige Bedingung
+        // der Zeile — die Einzelspalten markieren dann nur die beteiligten Varianten-Gruppen (teils als
+        // "siehe Komb."/"s. Kombi"-Verweis, teils mit den Rohwerten). Beobachtet: mal ODER (Zeile 449),
+        // mal die per "siehe Komb." verwiesene Kombination.
+        if (kombinationsSpalte > 0)
+        {
+            var kombi = ws.Cell(zeile, kombinationsSpalte).GetString().Trim();
+            if (kombi.Length > 0)
+                return kombi;
+        }
+
+        // Sonst: mehrere gefüllte Spalten gehören per UND zusammen (verschiedene Varianten-Gruppen,
+        // z. B. Zeile 317). Früher wurde nur die erste Spalte übernommen und der Rest verworfen.
+        return teilbedingungen.Count == 1
+            ? teilbedingungen[0]
+            : string.Join(" U ", teilbedingungen.Select(t => $"({t})"));
     }
 }

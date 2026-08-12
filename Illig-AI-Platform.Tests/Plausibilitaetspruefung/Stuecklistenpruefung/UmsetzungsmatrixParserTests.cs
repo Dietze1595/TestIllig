@@ -39,6 +39,19 @@ public class UmsetzungsmatrixParserTests
         return stream;
     }
 
+    private static Stream Rdk80Matrix()
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetzmatrix_V05_V06");
+        ws.Cell(8, 12).Value = "Nachfolgende Stücklisten gelten nur für die RDK 80";
+        ws.Cell(9, 12).Value = "9209711";
+        ws.Cell(9, 23).Value = "014590";
+        var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        stream.Position = 0;
+        return stream;
+    }
+
     [Fact]
     public void Parse_MitRdm75Format_LiefertGeparsteZeile()
     {
@@ -59,6 +72,17 @@ public class UmsetzungsmatrixParserTests
 
         Assert.Equal(["9254662", "9237787", "9237831"], zeile.Pfad);
         Assert.Equal("021127 / 021128", zeile.Bedingung);
+    }
+
+    [Fact]
+    public void Parse_MitRdk80Format_VerwendetEigenenParser()
+    {
+        using var stream = Rdk80Matrix();
+
+        var zeile = Assert.Single(UmsetzungsmatrixParser.Parse(stream, StuecklistenImportFormat.Rdk80k));
+
+        Assert.Equal(["9209425", "9209711"], zeile.Pfad);
+        Assert.Equal("014590", zeile.Bedingung);
     }
 
     [Fact]

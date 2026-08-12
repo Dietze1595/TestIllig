@@ -13,6 +13,7 @@ public static class MaximalstuecklisteParser
         StuecklistenImportFormat.Rdm75Kc => MaximalstuecklisteTxtParser.Parse(inhalt),
         StuecklistenImportFormat.Rdm73k => MaximalstuecklisteRdm73kTxtParser.Parse(inhalt),
         StuecklistenImportFormat.Rdm76Kb => MaximalstuecklisteRdm76kbTxtParser.Parse(inhalt),
+        StuecklistenImportFormat.Rdk80k => MaximalstuecklisteRdk80kTxtParser.Parse(inhalt),
         _ => throw new ArgumentOutOfRangeException(
             nameof(format), format, "Unbekanntes Stücklisten-Importformat.")
     };

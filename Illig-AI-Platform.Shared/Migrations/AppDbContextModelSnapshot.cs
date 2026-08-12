@@ -124,6 +124,9 @@ namespace Illig_AI_Platform.Shared.Migrations
                     b.Property<int>("Version")
                         .HasColumnType("int");
 
+                    b.Property<string>("VersionsKommentar")
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Volltext")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -225,134 +228,6 @@ namespace Illig_AI_Platform.Shared.Migrations
                     b.HasIndex("UserProfileId");
 
                     b.ToTable("Auftragsbestaetigungen");
-                });
-
-            modelBuilder.Entity("Illig_AI_Platform.Shared.Auftragsinformationen.Auftragsdokument", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AnalyseFehler")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("AnalyseStatus")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Auftragsnummer")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Dateiname")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<DateOnly?>("Datum")
-                        .HasColumnType("date");
-
-                    b.Property<string>("ETag")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("varchar(512)");
-
-                    b.Property<DateTime?>("GeloeschtAm")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Kundenadresse")
-                        .HasMaxLength(1000)
-                        .HasColumnType("varchar(1000)");
-
-                    b.Property<string>("Kundenname")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<string>("Kundennummer")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Maschinentyp")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
-                    b.Property<string>("SharePointDriveId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime>("SharePointErstelltAm")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("SharePointGeaendertAm")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("SharePointItemId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime?>("VerarbeitetAm")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("WebUrl")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("varchar(2048)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Auftragsnummer");
-
-                    b.HasIndex("Kundennummer");
-
-                    b.HasIndex("AnalyseStatus", "GeloeschtAm");
-
-                    b.HasIndex("SharePointDriveId", "SharePointItemId")
-                        .IsUnique();
-
-                    b.ToTable("Auftragsdokumente");
-                });
-
-            modelBuilder.Entity("Illig_AI_Platform.Shared.Auftragsinformationen.AuftragsdokumentMerkmal", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AuftragsdokumentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Beschreibung")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Kategorie")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Merkmalsnummer")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Position")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AuftragsdokumentId");
-
-                    b.HasIndex("Kategorie", "Merkmalsnummer");
-
-                    b.ToTable("AuftragsdokumentMerkmale");
                 });
 
             modelBuilder.Entity("Illig_AI_Platform.Shared.Auftragsinformationen.SharePointSynchronisationsstand", b =>
@@ -586,6 +461,53 @@ namespace Illig_AI_Platform.Shared.Migrations
                     b.HasIndex("NormalisierterName", "NormalisierteAdresse");
 
                     b.ToTable("Kunden");
+                });
+
+            modelBuilder.Entity("Illig_AI_Platform.Shared.Kunden.KundenPartneradresse", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Hauptkundennummer")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("ImportiertAm")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Land")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Ort")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("PartnerId")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Partnerrolle")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Plz")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Strasse")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hauptkundennummer", "Partnerrolle")
+                        .IsUnique();
+
+                    b.ToTable("KundenPartneradressen");
                 });
 
             modelBuilder.Entity("Illig_AI_Platform.Shared.Kunden.KundenQuelle", b =>
@@ -1015,12 +937,18 @@ namespace Illig_AI_Platform.Shared.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Auftragsnummer")
-                        .IsRequired()
+                    b.Property<string>("AnalyseFehler")
                         .HasColumnType("longtext");
 
-                    b.Property<string>("BlobPfad")
+                    b.Property<int?>("AnalyseStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Auftragsnummer")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("BlobPfad")
                         .HasColumnType("longtext");
 
                     b.Property<string>("Dateiname")
@@ -1030,10 +958,17 @@ namespace Illig_AI_Platform.Shared.Migrations
                     b.Property<DateOnly?>("Datum")
                         .HasColumnType("date");
 
+                    b.Property<string>("ETag")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
                     b.Property<int>("ErreichterSchritt")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("ErstelltAm")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("GeloeschtAm")
                         .HasColumnType("datetime(6)");
 
                     b.Property<int?>("KundeId")
@@ -1049,29 +984,66 @@ namespace Illig_AI_Platform.Shared.Migrations
 
                     b.Property<string>("Kundennummer")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("Maschinentyp")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("Quelle")
+                        .HasColumnType("int");
 
                     b.Property<string>("SapDateiname")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("SharePointDriveId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("SharePointErstelltAm")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("SharePointGeaendertAm")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SharePointItemId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
                     b.Property<string>("StuecklisteJson")
                         .HasColumnType("longtext");
 
-                    b.Property<Guid>("UserProfileId")
+                    b.Property<Guid?>("UserProfileId")
                         .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("VerarbeitetAm")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("VergleichsErgebnisJson")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("WebUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Auftragsnummer");
 
                     b.HasIndex("KundeId");
 
+                    b.HasIndex("Kundennummer");
+
+                    b.HasIndex("Quelle");
+
                     b.HasIndex("UserProfileId");
+
+                    b.HasIndex("AnalyseStatus", "GeloeschtAm");
+
+                    b.HasIndex("SharePointDriveId", "SharePointItemId")
+                        .IsUnique();
 
                     b.ToTable("StuecklistenpruefungVerlaufEintraege");
                 });
@@ -1133,15 +1105,6 @@ namespace Illig_AI_Platform.Shared.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("Illig_AI_Platform.Shared.Auftragsinformationen.AuftragsdokumentMerkmal", b =>
-                {
-                    b.HasOne("Illig_AI_Platform.Shared.Auftragsinformationen.Auftragsdokument", null)
-                        .WithMany("Merkmale")
-                        .HasForeignKey("AuftragsdokumentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Illig_AI_Platform.Shared.Data.UserProfileRole", b =>
                 {
                     b.HasOne("Illig_AI_Platform.Shared.Data.Role", "Role")
@@ -1194,11 +1157,6 @@ namespace Illig_AI_Platform.Shared.Migrations
                         .HasForeignKey("VerlaufEintragId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Illig_AI_Platform.Shared.Auftragsinformationen.Auftragsdokument", b =>
-                {
-                    b.Navigation("Merkmale");
                 });
 
             modelBuilder.Entity("Illig_AI_Platform.Shared.Data.Role", b =>

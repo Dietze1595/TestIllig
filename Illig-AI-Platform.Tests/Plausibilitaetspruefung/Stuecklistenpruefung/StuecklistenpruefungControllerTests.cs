@@ -378,11 +378,28 @@ public class StuecklistenpruefungControllerTests
         return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "datei", dateiname);
     }
 
+    private static string[] NeueSapZeile()
+    {
+        var felder = new string[40];
+        Array.Fill(felder, string.Empty);
+        return felder;
+    }
+
     private static IFormFile MiniUmsetzungsmatrix()
     {
         using var wb = new ClosedXML.Excel.XLWorkbook();
         var ws = wb.AddWorksheet("Umsetztabelle_TEST");
         ws.Cell(5, 2).Value = "9209307";
+        var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        return new FormFile(stream, 0, stream.Length, "datei", "matrix.xlsx");
+    }
+
+    private static IFormFile MiniRdk80Umsetzungsmatrix()
+    {
+        using var wb = new ClosedXML.Excel.XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetzmatrix_V05_V06");
+        ws.Cell(8, 12).Value = "Nachfolgende Stücklisten gelten nur für die RDK 80";
         var stream = new MemoryStream();
         wb.SaveAs(stream);
         return new FormFile(stream, 0, stream.Length, "datei", "matrix.xlsx");
@@ -408,6 +425,29 @@ public class StuecklistenpruefungControllerTests
         Assert.IsType<OkResult>(result);
         var gespeichert = Assert.Single(await db.MaschinentypStuecklisten.ToListAsync());
         Assert.Equal("RDK 80k", gespeichert.MaschinentypSchluessel);
+    }
+
+    [Fact]
+    public async Task Import_MitRdk80Format_PersistiertRdk80Wurzel()
+    {
+        var felder = new string[40];
+        Array.Fill(felder, "");
+        felder[1] = "9209425 0001 1 01";
+        felder[19] = "RDK 80k_Siemens_konf";
+        var txtInhalt = string.Join('\t', felder);
+
+        var db = NeueDb();
+        var controller = CreateController(
+            new FakeDocumentAnalyseService(GueltigesErgebnis()),
+            importService: new StuecklistenImportService(db, NullLogger<StuecklistenImportService>.Instance));
+
+        var result = await controller.Import(
+            TextDatei(txtInhalt, "max.txt"), MiniRdk80Umsetzungsmatrix(), "RDK 80k", "Rdk80k");
+
+        Assert.IsType<OkResult>(result);
+        var gespeichert = Assert.Single(await db.MaschinentypStuecklisten.ToListAsync());
+        Assert.Equal("RDK 80k", gespeichert.MaschinentypSchluessel);
+        Assert.Equal("9209425", gespeichert.Kopfmaterial);
     }
 
     [Fact]
@@ -444,7 +484,7 @@ public class StuecklistenpruefungControllerTests
         var unsereStueckliste = new StuecklistenKnoten("9209307", "Teil A", 1, "ST", []);
         var json = System.Text.Json.JsonSerializer.Serialize(unsereStueckliste);
 
-        var result = await controller.Vergleichen(TextDatei(txtInhalt, "sap.txt"), json);
+        var result = await controller.Vergleichen(TextDatei(txtInhalt, "sap.txt"), json, "RDM 75Kc");
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var ergebnis = Assert.IsType<VergleichsErgebnis>(ok.Value);
@@ -462,11 +502,51 @@ public class StuecklistenpruefungControllerTests
 
         var controller = CreateController(new FakeDocumentAnalyseService(GueltigesErgebnis()));
 
-        var result = await controller.Vergleichen(TextDatei(txtInhalt, "sap.txt"), "kein-json");
+        var result = await controller.Vergleichen(TextDatei(txtInhalt, "sap.txt"), "kein-json", "RDM 75Kc");
 
         var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(500, statusCodeResult.StatusCode);
         Assert.DoesNotContain("JsonException", statusCodeResult.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task Vergleichen_MitRdk80Maschinentyp_LiestRdk80Kindknoten()
+    {
+        var controller = CreateController(new FakeDocumentAnalyseService(GueltigesErgebnis()));
+        var wurzelFelder = NeueSapZeile();
+        wurzelFelder[1] = "11055895 / 40 9209425 1";
+        wurzelFelder[19] = "RDK 80k";
+        var kindFelder = NeueSapZeile();
+        kindFelder[2] = "0100 L 9209711";
+        kindFelder[19] = "Formmaschine";
+        kindFelder[20] = "1,000";
+        kindFelder[24] = "ST";
+        var sap = string.Join('\n', string.Join('\t', wurzelFelder), string.Join('\t', kindFelder));
+        var soll = new StuecklistenKnoten(
+            "9209425", "RDK 80k", 0, "",
+            [new StuecklistenKnoten("9209711", "Formmaschine", 1, "ST", [])]);
+
+        var result = await controller.Vergleichen(
+            TextDatei(sap, "sap.txt"),
+            System.Text.Json.JsonSerializer.Serialize(soll),
+            "RDK 80k_Siemens_konf_ab_01.2013");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var vergleich = Assert.IsType<VergleichsErgebnis>(ok.Value);
+        Assert.Equal(VergleichsStatus.Uebereinstimmung, Assert.Single(vergleich.Wurzel.Kinder).Status);
+    }
+
+    [Fact]
+    public async Task Vergleichen_MitUnbekanntemMaschinentyp_GibtBadRequest()
+    {
+        var controller = CreateController(new FakeDocumentAnalyseService(GueltigesErgebnis()));
+        var result = await controller.Vergleichen(
+            TextDatei("inhalt", "sap.txt"),
+            System.Text.Json.JsonSerializer.Serialize(
+                new StuecklistenKnoten("1", "", 0, "", [])),
+            "Unbekannt");
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 
     [Fact]

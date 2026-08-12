@@ -111,7 +111,8 @@ public record AngebotStatusAntwort(
     string? Lieferadresse = null,
     string? LieferadresseKommentar = null,
     string? SapSparteKommentar = null,
-    string? SapFuehrendKommentar = null);
+    string? SapFuehrendKommentar = null,
+    string? VersionsKommentar = null);
 
 public record BestaetigungVergleichAntwort(
     AngebotZuordnungStatus Status,
@@ -124,7 +125,9 @@ public record BestaetigungVergleichAntwort(
     bool LieferterminIdentisch,
     List<string> Uebereinstimmungen,
     List<string> SonstigeAbweichungen,
-    AngebotStatusAntwort? AngebotStatus);
+    AngebotStatusAntwort? AngebotStatus,
+    int? BestaetigungId = null,
+    List<int>? VorhandeneVersionen = null);
 
 public record BestaetigungDetailAntwort(
     int Id,

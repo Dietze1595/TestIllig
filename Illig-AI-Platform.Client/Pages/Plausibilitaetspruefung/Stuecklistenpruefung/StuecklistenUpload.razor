@@ -37,6 +37,29 @@
 
                 @if (_ergebnis is null)
                 {
+                    <section class="sm-card su-suche-card">
+                        <h3 class="su-suche-titel">Auftragsnummer suchen</h3>
+                        <p class="su-suche-hinweis">
+                            Existiert bereits eine Auftragsinformation (SharePoint oder vorheriger Upload)?
+                            Dann direkt danach suchen, statt das Dokument erneut hochzuladen.
+                        </p>
+                        <div class="su-suche-zeile">
+                            <input type="text" class="su-suche-input" placeholder="Auftragsnummer eingeben…"
+                                   value="@_sucheAuftragsnummer" @oninput="OnSucheInput"
+                                   @onkeydown="OnSucheKeyDown" disabled="@_sucheLaedt"
+                                   aria-label="Auftragsnummer suchen" />
+                            <PrimaryButton OnClick="AuftragsnummerSuchenAsync" Disabled="@(_sucheLaedt || string.IsNullOrWhiteSpace(_sucheAuftragsnummer))">
+                                @(_sucheLaedt ? "Suche läuft…" : "Suchen")
+                            </PrimaryButton>
+                        </div>
+                        @if (_sucheKeinTrefferHinweis)
+                        {
+                            <p class="su-suche-kein-treffer">
+                                Kein Dokument zu dieser Auftragsnummer gefunden. Bitte per Drag&amp;Drop hochladen.
+                            </p>
+                        }
+                    </section>
+
                     <section class="sm-card">
                         <FileDropzone OnChange="OnFileSelectedAsync" Accept="application/pdf" Busy="_analyzing"
                                       IdleText="Auftragsinformation (PDF) hierher ziehen oder klicken zum Auswählen"
@@ -499,6 +522,9 @@
 @code {
     private bool _analyzing;
     private string? _apiError;
+    private string _sucheAuftragsnummer = "";
+    private bool _sucheLaedt;
+    private bool _sucheKeinTrefferHinweis;
     private DokumentAnalyseErgebnis? _ergebnis;
     private List<ErkanntesMerkmal> _merkmale = [];
     private List<ErkanntesMerkmal> _sonderoptionen = [];
@@ -638,6 +664,105 @@
         await VerlaufLadenAsync();
     }
 
+    private void OnSucheInput(ChangeEventArgs e)
+    {
+        _sucheAuftragsnummer = e.Value?.ToString() ?? "";
+        _sucheKeinTrefferHinweis = false;
+    }
+
+    private async Task OnSucheKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_sucheLaedt && !string.IsNullOrWhiteSpace(_sucheAuftragsnummer))
+            await AuftragsnummerSuchenAsync();
+    }
+
+    private async Task AuftragsnummerSuchenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_sucheAuftragsnummer))
+            return;
+
+        AufbauVorgangVerwerfen();
+        _apiError = null;
+        _sucheKeinTrefferHinweis = false;
+        _sucheLaedt = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var detail = await Client.SucheNachAuftragsnummerAsync(_sucheAuftragsnummer);
+            if (detail is null)
+            {
+                _sucheKeinTrefferHinweis = true;
+                return;
+            }
+
+            var pdfBytes = detail.Quelle == AuftragsdokumentQuelle.SharePoint
+                ? await Client.GetSharePointAuftragsdokumentInhaltAsync(detail.Id)
+                : await Client.GetVerlaufDokumentAsync(detail.Id);
+
+            _ergebnis = new DokumentAnalyseErgebnis(
+                detail.Auftragsnummer, detail.Kundennummer, detail.Datum, detail.Maschinentyp,
+                detail.Merkmale, detail.Sonderoptionen);
+            _umsetzungsmatrixVerfuegbar = detail.UmsetzungsmatrixVorhanden;
+            _verfuegbareUmsetzungsmatrizen = detail.VerfuegbareUmsetzungsmatrizen ?? [];
+            _ausgeklappteBeschreibungen.Clear();
+            _merkmale = [.. detail.Merkmale];
+            _sonderoptionen = [.. detail.Sonderoptionen];
+            _pdfDataUrl = pdfBytes is null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _dokumentName = detail.Dateiname;
+            _sapDateiname = detail.SapDateiname;
+
+            if (detail.Quelle == AuftragsdokumentQuelle.SharePoint)
+            {
+                _geoeffneteSharePointId = detail.Id;
+                _geoeffneterVerlaufId = null;
+                // Denselben Eintrag als aktiven Verlauf führen, damit ein hier durchgeführter
+                // Stücklistenvergleich gespeichert wird — der Server übernimmt den (bislang
+                // userlosen) SharePoint-Eintrag dann für den aktuellen Bearbeiter.
+                _aktiverVerlaufId = detail.Id;
+                _stueckliste = null;
+                _stuecklisteGesucht = false;
+                VergleichZuruecksetzen();
+                _angezeigterSchritt = 2;
+                _hoechsterErreichterSchritt = 2;
+            }
+            else
+            {
+                _geoeffneterVerlaufId = detail.Id;
+                _geoeffneteSharePointId = null;
+                _aktiverVerlaufId = detail.Id;
+                _stueckliste = detail.Stueckliste;
+                _stuecklisteGesucht = detail.Stueckliste is not null || detail.ErreichterSchritt >= 3;
+                _vergleichsErgebnis = detail.VergleichsErgebnis;
+                _baumAnsicht = detail.VergleichsErgebnis is null
+                    ? null
+                    : VergleichsKnotenAnsicht.Aufbauen(detail.VergleichsErgebnis.Wurzel);
+
+                var wiederhergestellterSchritt = detail.VergleichsErgebnis is not null
+                    ? 4
+                    : detail.Stueckliste is not null && detail.ErreichterSchritt >= 3
+                        ? 3
+                        : 2;
+                _angezeigterSchritt = wiederhergestellterSchritt;
+                _hoechsterErreichterSchritt = wiederhergestellterSchritt;
+            }
+
+            // Aktiv über die Suche geöffnete Auftragsinformationen (SharePoint wie Drag&Drop) sind
+            // bearbeitbar: Merkmale löschen/ergänzen, Stückliste neu aufbauen, neu vergleichen. Nur
+            // die reine SharePoint-Archiv-Ansicht (SharePointDokumentOeffnen) bleibt read-only.
+            _readOnly = false;
+            _pdfEingeklappt = true;
+            _verlaufOffen = false;
+        }
+        catch (ApiRequestException ex)
+        {
+            _apiError = ex.Message;
+        }
+        finally
+        {
+            _sucheLaedt = false;
+        }
+    }
+
     private async Task VerlaufOeffnen(VerlaufEintragUebersicht eintrag)
     {
         AufbauVorgangVerwerfen();
@@ -665,7 +790,10 @@
             _geoeffneterVerlaufId = eintrag.Id;
             _geoeffneteSharePointId = null;
             _aktiverVerlaufId = eintrag.Id;
-            _readOnly = true;
+            // Historieneintrag ist bearbeitbar: Merkmale löschen/ergänzen und den Durchlauf neu
+            // rechnen. Änderungen werden beim Weitergehen (Stückliste aufbauen / vergleichen)
+            // gespeichert.
+            _readOnly = false;
             _pdfEingeklappt = true;
             _verlaufOffen = false;
             _stueckliste = detail.Stueckliste;
@@ -1008,11 +1136,18 @@
         string dateiname,
         StuecklistenKnoten stueckliste)
     {
+        if (_ergebnis is null)
+            return;
+
         _vergleichend = true;
         await InvokeAsync(StateHasChanged);
         try
         {
-            _vergleichsErgebnis = await Client.VergleichenAsync(sapDatei, dateiname, stueckliste);
+            _vergleichsErgebnis = await Client.VergleichenAsync(
+                sapDatei,
+                dateiname,
+                stueckliste,
+                _ergebnis.Maschinentyp);
             _baumAnsicht = VergleichsKnotenAnsicht.Aufbauen(_vergleichsErgebnis.Wurzel);
             _angezeigterSchritt = 4;
             _hoechsterErreichterSchritt = Math.Max(_hoechsterErreichterSchritt, 4);

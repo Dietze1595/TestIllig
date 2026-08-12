@@ -41,9 +41,12 @@
             @foreach (var eintrag in Eintraege)
             {
                 <li>
+                    @{ var wirdGeladen = _ladenderId == eintrag.Id; }
                     <button type="button"
-                            class="su-verlauf__eintrag @(GeoeffneterId == eintrag.Id ? "su-verlauf__eintrag--aktiv" : "")"
-                            @onclick="() => OnEintragOeffnen.InvokeAsync(eintrag)">
+                            class="su-verlauf__eintrag @(GeoeffneterId == eintrag.Id ? "su-verlauf__eintrag--aktiv" : "") @(wirdGeladen ? "su-verlauf__eintrag--laedt" : "")"
+                            aria-busy="@wirdGeladen"
+                            disabled="@_ladenderId.HasValue"
+                            @onclick="() => EintragOeffnenAsync(eintrag)">
                         <strong>
                             @eintrag.Angebotsnummer
                             <span class="su-verlauf__uploader">@(string.IsNullOrWhiteSpace(eintrag.HochgeladenVon) ? "Unbekannt" : eintrag.HochgeladenVon)</span>
@@ -56,6 +59,10 @@
                                 <span class="su-verlauf__badge">Freigegeben</span>
                             }
                         </span>
+                        @if (wirdGeladen)
+                        {
+                            <span class="su-verlauf__ladebalken" role="progressbar" aria-label="Historieneintrag wird geladen"><span></span></span>
+                        }
                     </button>
                 </li>
             }
@@ -64,6 +71,8 @@
 </aside>
 
 @code {
+    private int? _ladenderId;
+
     /// <summary>Ob die Historie ausgeklappt ist. Wird vom Elternteil gehalten, weil auch .su-main
     /// seine Breite daran ausrichtet.</summary>
     [Parameter, EditorRequired]
@@ -102,4 +111,20 @@
 
     [Parameter, EditorRequired]
     public EventCallback<AngebotUebersicht> OnEintragOeffnen { get; set; }
+
+    private async Task EintragOeffnenAsync(AngebotUebersicht eintrag)
+    {
+        if (_ladenderId.HasValue)
+            return;
+
+        _ladenderId = eintrag.Id;
+        try
+        {
+            await OnEintragOeffnen.InvokeAsync(eintrag);
+        }
+        finally
+        {
+            _ladenderId = null;
+        }
+    }
 }

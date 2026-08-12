@@ -155,7 +155,8 @@ public record AngebotStatusAntwort(
     string? Lieferadresse = null,
     string? LieferadresseKommentar = null,
     string? SapSparteKommentar = null,
-    string? SapFuehrendKommentar = null);
+    string? SapFuehrendKommentar = null,
+    string? VersionsKommentar = null);
 
 /// <summary>
 /// Antwort auf den Innendienst-Upload. Bei <see cref="AngebotZuordnungStatus.Gefunden"/>
@@ -175,15 +176,15 @@ public record BestaetigungVergleichAntwort(
     bool LieferterminIdentisch,
     IReadOnlyList<string> Uebereinstimmungen,
     IReadOnlyList<string> SonstigeAbweichungen,
-    AngebotStatusAntwort? AngebotStatus);
+    AngebotStatusAntwort? AngebotStatus,
+    int? BestaetigungId = null,
+    IReadOnlyList<int>? VorhandeneVersionen = null);
 
-/// <summary>Gespeicherter Innendienst-Abgleich für die Wiederherstellung aus der Historie.</summary>
 public record BestaetigungDetailAntwort(
     int Id,
     string Dateiname,
     BestaetigungVergleichAntwort Vergleich);
 
-/// <summary>Ein Eintrag der Vertriebs-Angebots-Historie (Listen-Projektion).</summary>
 public record AngebotUebersicht(
     int Id,
     string Angebotsnummer,

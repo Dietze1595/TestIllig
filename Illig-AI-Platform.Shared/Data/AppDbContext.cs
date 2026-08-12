@@ -24,8 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Dispositionsposition> Dispositionspositionen => Set<Dispositionsposition>();
     public DbSet<Kunde> Kunden => Set<Kunde>();
     public DbSet<KundenQuelle> KundenQuellen => Set<KundenQuelle>();
-    public DbSet<Auftragsdokument> Auftragsdokumente => Set<Auftragsdokument>();
-    public DbSet<AuftragsdokumentMerkmal> AuftragsdokumentMerkmale => Set<AuftragsdokumentMerkmal>();
+    public DbSet<KundenPartneradresse> KundenPartneradressen => Set<KundenPartneradresse>();
     public DbSet<SharePointSynchronisationsstand> SharePointSynchronisationsstaende => Set<SharePointSynchronisationsstand>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -81,12 +80,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             entity.HasIndex(e => e.UserProfileId);
             entity.Property(e => e.Dateiname).IsRequired();
-            entity.Property(e => e.BlobPfad).IsRequired();
+            entity.Property(e => e.Auftragsnummer).HasMaxLength(100);
+            entity.Property(e => e.Kundennummer).HasMaxLength(100);
             entity.Property(e => e.Kundenname).HasMaxLength(500);
             entity.Property(e => e.Kundenadresse).HasMaxLength(1000);
+            entity.Property(e => e.Maschinentyp).HasMaxLength(500);
             entity.Property(e => e.StuecklisteJson).HasColumnType("longtext");
             entity.Property(e => e.VergleichsErgebnisJson).HasColumnType("longtext");
+            entity.Property(e => e.SharePointDriveId).HasMaxLength(255);
+            entity.Property(e => e.SharePointItemId).HasMaxLength(255);
+            entity.Property(e => e.ETag).HasMaxLength(512);
+            entity.Property(e => e.WebUrl).HasMaxLength(2048);
+            entity.Property(e => e.AnalyseFehler).HasColumnType("longtext");
             entity.HasIndex(e => e.KundeId);
+            entity.HasIndex(e => new { e.SharePointDriveId, e.SharePointItemId }).IsUnique();
+            entity.HasIndex(e => e.Auftragsnummer);
+            entity.HasIndex(e => e.Kundennummer);
+            entity.HasIndex(e => new { e.AnalyseStatus, e.GeloeschtAm });
+            entity.HasIndex(e => e.Quelle);
             entity.HasOne<Kunde>().WithMany().HasForeignKey(e => e.KundeId).OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -222,36 +233,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne<Kunde>().WithMany().HasForeignKey(e => e.KundeId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<Auftragsdokument>(entity =>
+        modelBuilder.Entity<KundenPartneradresse>(entity =>
         {
-            entity.Property(e => e.SharePointDriveId).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.SharePointItemId).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.ETag).IsRequired().HasMaxLength(512);
-            entity.Property(e => e.Dateiname).IsRequired().HasMaxLength(500);
-            entity.Property(e => e.WebUrl).IsRequired().HasMaxLength(2048);
-            entity.Property(e => e.Auftragsnummer).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Kundennummer).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Kundenname).HasMaxLength(500);
-            entity.Property(e => e.Kundenadresse).HasMaxLength(1000);
-            entity.Property(e => e.Maschinentyp).IsRequired().HasMaxLength(500);
-            entity.Property(e => e.AnalyseFehler).HasColumnType("longtext");
-            entity.HasIndex(e => new { e.SharePointDriveId, e.SharePointItemId }).IsUnique();
-            entity.HasIndex(e => e.Auftragsnummer);
-            entity.HasIndex(e => e.Kundennummer);
-            entity.HasIndex(e => new { e.AnalyseStatus, e.GeloeschtAm });
-        });
-
-        modelBuilder.Entity<AuftragsdokumentMerkmal>(entity =>
-        {
-            entity.Property(e => e.Position).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Merkmalsnummer).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Beschreibung).IsRequired().HasColumnType("longtext");
-            entity.HasIndex(e => e.AuftragsdokumentId);
-            entity.HasIndex(e => new { e.Kategorie, e.Merkmalsnummer });
-            entity.HasOne<Auftragsdokument>()
-                .WithMany(e => e.Merkmale)
-                .HasForeignKey(e => e.AuftragsdokumentId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.Hauptkundennummer).IsRequired();
+            entity.Property(e => e.Partnerrolle).IsRequired();
+            entity.Property(e => e.PartnerId).IsRequired();
+            entity.Property(e => e.Name).IsRequired();
+            entity.HasIndex(e => new { e.Hauptkundennummer, e.Partnerrolle }).IsUnique();
         });
 
         modelBuilder.Entity<SharePointSynchronisationsstand>(entity =>

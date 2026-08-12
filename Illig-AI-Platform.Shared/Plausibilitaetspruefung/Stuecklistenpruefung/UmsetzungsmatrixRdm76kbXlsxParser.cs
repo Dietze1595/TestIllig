@@ -23,6 +23,7 @@ public static class UmsetzungsmatrixRdm76kbXlsxParser
     private const int LetzteHierarchieSpalte = 9;  // I — davor endet die Hierarchie (Spalte 10+ = Metadaten)
     private const int ErsteVariantenSpalte = 13;   // M
     private const int HeaderZeile = 3;
+    private const string StandardstromMerkmal = "9020016";
 
     public static List<MatrixZeile> Parse(Stream xlsxStream)
     {
@@ -33,6 +34,7 @@ public static class UmsetzungsmatrixRdm76kbXlsxParser
         var kombinationsSpalte = FindeKombinationsSpalte(ws, letzteSpalte);
 
         var pfadStapel = new List<(int Tiefe, string Artikelnummer)>();
+        var naechstesVorkommenNachPfad = new Dictionary<string, int>();
         var ergebnis = new List<MatrixZeile>();
 
         var letzteZeile = ws.LastRowUsed()!.RowNumber();
@@ -48,9 +50,14 @@ public static class UmsetzungsmatrixRdm76kbXlsxParser
                 pfadStapel.RemoveAt(pfadStapel.Count - 1);
             pfadStapel.Add((tiefe.Value, artikelnummer));
 
+            var pfad = pfadStapel.Select(p => p.Artikelnummer).ToList();
+            var pfadSchluessel = string.Join('/', pfad);
+            var pfadVorkommen = naechstesVorkommenNachPfad.GetValueOrDefault(pfadSchluessel);
+            naechstesVorkommenNachPfad[pfadSchluessel] = pfadVorkommen + 1;
+
             var bedingung = ErmittleBedingung(ws, zeile, letzteSpalte, kombinationsSpalte);
             if (bedingung is not null)
-                ergebnis.Add(new MatrixZeile([.. pfadStapel.Select(p => p.Artikelnummer)], bedingung));
+                ergebnis.Add(new MatrixZeile(pfad, bedingung, pfadVorkommen));
         }
 
         return ergebnis;
@@ -86,20 +93,69 @@ public static class UmsetzungsmatrixRdm76kbXlsxParser
 
     private static string? ErmittleBedingung(IXLWorksheet ws, int zeile, int letzteSpalte, int kombinationsSpalte)
     {
+        // Alle gefüllten Varianten-Spalten (außer der Kombinationsspalte selbst) einsammeln.
+        var teilbedingungen = new List<string>();
         for (var spalte = ErsteVariantenSpalte; spalte <= letzteSpalte; spalte++)
         {
             if (spalte == kombinationsSpalte)
                 continue;
 
-            var wert = ws.Cell(zeile, spalte).GetString().Trim();
+            var wert = ws.Cell(zeile, spalte).GetFormattedString().Trim();
             if (wert.Length == 0)
                 continue;
 
-            if (wert.Contains("siehe Komb.", StringComparison.OrdinalIgnoreCase))
-                return kombinationsSpalte > 0 ? ws.Cell(zeile, kombinationsSpalte).GetString().Trim() : wert;
-
-            return wert;
+            var normalisiert = NormalisiereZellenwert(ws, spalte, wert);
+            if (normalisiert is not null)
+                teilbedingungen.Add(normalisiert);
         }
-        return null;
+
+        if (teilbedingungen.Count == 0)
+            return null;
+
+        // Ist die Merkmalskombinationsspalte gefüllt, ist SIE die maßgebliche, vollständige Bedingung
+        // der Zeile — die Einzelspalten markieren dann nur die beteiligten Varianten-Gruppen (teils als
+        // "siehe Komb."/"s. Kombi"/"s.Komb."-Verweis oder Mischzelle "022689 s.Komb.", teils mit den
+        // Rohwerten). Das deckt die uneinheitlichen Marker-Schreibweisen ohne String-Erkennung ab.
+        if (kombinationsSpalte > 0)
+        {
+            var kombi = ws.Cell(zeile, kombinationsSpalte).GetFormattedString().Trim();
+            if (kombi.Length > 0)
+            {
+                var normalisierteKombi = NormalisiereZellenwert(ws, kombinationsSpalte, kombi);
+                if (!string.IsNullOrEmpty(normalisierteKombi))
+                    return normalisierteKombi;
+            }
+        }
+
+        // Sonst: mehrere gefüllte Spalten gehören per UND zusammen (z. B. Zeile 208: Formluft-Variante
+        // UND NICHT Kondenswasser). Früher wurde nur die erste Spalte übernommen und der Rest verworfen.
+        return teilbedingungen.Count == 1
+            ? teilbedingungen[0]
+            : string.Join(" U ", teilbedingungen.Select(t => $"({t})"));
+    }
+
+    private static string? NormalisiereZellenwert(IXLWorksheet ws, int spalte, string wert)
+    {
+        if (IstMaschinenhinweis(wert))
+            return null;
+
+        if (string.Equals(wert, "x", StringComparison.OrdinalIgnoreCase)
+            && KopfEnthaeltMerkmal(ws, spalte, StandardstromMerkmal))
+            return $"N{StandardstromMerkmal}";
+
+        return wert;
+    }
+
+    private static bool KopfEnthaeltMerkmal(IXLWorksheet ws, int spalte, string merkmal) =>
+        ws.Cell(HeaderZeile, spalte)
+            .GetFormattedString()
+            .Contains(merkmal, StringComparison.Ordinal);
+
+    private static bool IstMaschinenhinweis(string wert)
+    {
+        var normalisiert = string.Concat(wert.Where(char.IsLetterOrDigit)).ToUpperInvariant();
+        return normalisiert is
+            "75KC" or "75KD" or "76K" or "76KB" or
+            "RDM75KC" or "RDM75KD" or "RDM76K" or "RDM76KB";
     }
 }

@@ -1,7 +1,7 @@
+using Illig_AI_Platform.Client.Models.Auftragsanlage;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Illig_AI_Platform.Client.Models.Auftragsanlage;
 
 namespace Illig_AI_Platform.Client.Services.Auftragsanlage;
 
@@ -35,7 +35,7 @@ public class AuftragsanlageClient(HttpClient http)
 
     public async Task<AngebotSpeichernAntwort> SpeichernAsync(
         byte[] inhalt, string dateiname, string contentType,
-        ExtrahierteAngebotsdaten daten, string? konfliktStrategie = null)
+        ExtrahierteAngebotsdaten daten, string? konfliktStrategie = null, string? versionsKommentar = null)
     {
         using var content = new MultipartFormDataContent();
         using var fileContent = new ByteArrayContent(inhalt);
@@ -44,6 +44,8 @@ public class AuftragsanlageClient(HttpClient http)
         content.Add(new StringContent(JsonSerializer.Serialize(daten, JsonWeb)), "datenJson");
         if (konfliktStrategie is not null)
             content.Add(new StringContent(konfliktStrategie), "konfliktStrategie");
+        if (!string.IsNullOrWhiteSpace(versionsKommentar))
+            content.Add(new StringContent(versionsKommentar), "versionsKommentar");
 
         var response = await http.PostAsync("api/v1/auftragsanlage/vertrieb/angebot/speichern", content);
         response.EnsureSuccessStatusCode();
@@ -87,6 +89,13 @@ public class AuftragsanlageClient(HttpClient http)
 
         response.EnsureSuccessStatusCode();
         return new BestaetigungErgebnis((await response.Content.ReadFromJsonAsync<BestaetigungVergleichAntwort>())!, null);
+    }
+
+    public async Task<BestaetigungVergleichAntwort> BestaetigungWechselnAsync(int id, int version)
+    {
+        var response = await http.PostAsync($"api/v1/auftragsanlage/innendienst/bestaetigung/{id}/wechseln?version={version}", null);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<BestaetigungVergleichAntwort>())!;
     }
 
     public async Task<List<AngebotUebersicht>> GetBestaetigungenAsync(bool nurMeine)

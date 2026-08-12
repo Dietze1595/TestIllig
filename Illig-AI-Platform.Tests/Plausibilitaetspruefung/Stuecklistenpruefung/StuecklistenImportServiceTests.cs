@@ -25,6 +25,13 @@ public class StuecklistenImportServiceTests
         ])
     ]);
 
+    private static RohPosition BaumMitDoppeltemPfad() => new("9209307", "RDM 75Kc", 0m, "", [
+        new RohPosition("9237787", "Folieneinlauf_FB_200-900_konf", 1m, "ST", [
+            new RohPosition("9237831", "Lichtleiter_BGR", 1m, "ST", []),
+            new RohPosition("9237831", "Lichtleiter_BGR", 1m, "ST", [])
+        ])
+    ]);
+
     private sealed class SammelndeLogger : ILogger<StuecklistenImportService>
     {
         public List<string> Warnungen { get; } = [];
@@ -95,5 +102,51 @@ public class StuecklistenImportServiceTests
 
         Assert.Equal(3, await db.MaximalstuecklistenPositionen.CountAsync());
         Assert.Single(logger.Warnungen, w => w.Contains("9999999"));
+    }
+
+    [Fact]
+    public async Task ImportierenAsync_OrdnetDoppeltePfadeNachVorkommenZu()
+    {
+        await using var db = CreateDb();
+        var service = new StuecklistenImportService(db, NullLogger<StuecklistenImportService>.Instance);
+        var matrixZeilen = new List<MatrixZeile>
+        {
+            new(["9209307", "9237787", "9237831"], "020113 / 020114", 0),
+            new(["9209307", "9237787", "9237831"], "020113 oder 020114 oder 017361", 1)
+        };
+
+        await service.ImportierenAsync("RDM 75Kc", "9209307", BaumMitDoppeltemPfad(), matrixZeilen);
+
+        var bedingungen = await db.MaximalstuecklistenPositionen
+            .Where(p => p.Artikelnummer == "9237831")
+            .OrderBy(p => p.Reihenfolge)
+            .Select(p => p.Bedingung)
+            .ToListAsync();
+        Assert.Equal(
+            ["020113 / 020114", "020113 oder 020114 oder 017361"],
+            bedingungen);
+    }
+
+    [Fact]
+    public async Task ImportierenAsync_BehaeltPfadbasierteOderZuordnungOhneVorkommen()
+    {
+        await using var db = CreateDb();
+        var service = new StuecklistenImportService(db, NullLogger<StuecklistenImportService>.Instance);
+        var matrixZeilen = new List<MatrixZeile>
+        {
+            new(["9209307", "9237787", "9237831"], "020113 / 020114"),
+            new(["9209307", "9237787", "9237831"], "017361")
+        };
+
+        await service.ImportierenAsync("RDM 75Kc", "9209307", BaumMitDoppeltemPfad(), matrixZeilen);
+
+        var bedingungen = await db.MaximalstuecklistenPositionen
+            .Where(p => p.Artikelnummer == "9237831")
+            .OrderBy(p => p.Reihenfolge)
+            .Select(p => p.Bedingung)
+            .ToListAsync();
+        Assert.Equal(
+            ["(020113 / 020114) / (017361)", "(020113 / 020114) / (017361)"],
+            bedingungen);
     }
 }

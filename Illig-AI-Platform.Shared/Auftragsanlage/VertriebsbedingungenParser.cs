@@ -172,6 +172,19 @@ public static class VertriebsbedingungenParser
                 LeerZuNull(string.Join(Environment.NewLine, zeilen[..betragStart])),
                 LeerZuNull(string.Join(Environment.NewLine, zeilen[betragStart..])));
 
+        // Manche Angebote drücken den Ratenplan rein textuell aus — Vollzahlung gegen
+        // Proforma-Rechnung bzw. Vorkasse — ohne Prozent oder Betrag. Auch dann steht in
+        // Zeile 1 das Zahlungsziel; die Planzeile beginnt darunter (daher Suche ab Index 1).
+        var planTextStart = Array.FindIndex(zeilen, 1,
+            zeile => Regex.IsMatch(
+                zeile,
+                @"\b(?:total\s+amount\s+payable|payable\s+against|against\s+proforma|zahlbar\s+gegen|gegen\s+proforma|vorkasse|vorauszahlung)\b",
+                RegexOptions.IgnoreCase));
+        if (planTextStart >= 0)
+            return (
+                LeerZuNull(string.Join(Environment.NewLine, zeilen[..planTextStart])),
+                LeerZuNull(string.Join(Environment.NewLine, zeilen[planTextStart..])));
+
         return (normalisiert, null);
     }
 

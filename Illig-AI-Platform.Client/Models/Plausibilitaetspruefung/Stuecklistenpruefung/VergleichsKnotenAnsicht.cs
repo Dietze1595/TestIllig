@@ -20,6 +20,13 @@ public sealed class VergleichsKnotenAnsicht
     public bool EnthaeltStatus(IReadOnlySet<VergleichsStatus> status) =>
         status.Contains(Knoten.Status) || Kinder.Any(kind => kind.EnthaeltStatus(status));
 
+    // Wie EnthaeltStatus, aber für die Textsuche: true, wenn dieser Knoten oder ein Nachfahre die
+    // gesuchte Zeichenfolge in Artikelnummer oder Bezeichnung trägt — hält den Pfad zu Treffern sichtbar.
+    public bool EnthaeltText(string suchtext) =>
+        Knoten.Artikelnummer.Contains(suchtext, StringComparison.OrdinalIgnoreCase)
+        || Knoten.Bezeichnung.Contains(suchtext, StringComparison.OrdinalIgnoreCase)
+        || Kinder.Any(kind => kind.EnthaeltText(suchtext));
+
     // Default-Klappzustand (bottom-up): ein Knoten wird aufgeklappt, um darunterliegende
     // Probleme sichtbar zu machen — nämlich wenn ein Kind selbst ein Problem trägt (Status
     // ungleich Übereinstimmung) oder seinerseits aufgeklappt ist (tieferliegendes Problem).

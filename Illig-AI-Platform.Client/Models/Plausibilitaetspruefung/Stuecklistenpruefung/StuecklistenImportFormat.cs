@@ -11,7 +11,8 @@ public enum StuecklistenImportFormat
 {
     Rdm75Kc,
     Rdm73k,
-    Rdm76Kb
+    Rdm76Kb,
+    Rdk80k
 }
 
 /// <summary>Anzeigetexte für die Format-Auswahl im Import-UI.</summary>
@@ -22,6 +23,7 @@ public static class StuecklistenImportFormatInfo
         StuecklistenImportFormat.Rdm75Kc => "RDM 75Kc",
         StuecklistenImportFormat.Rdm73k => "RDM 73K",
         StuecklistenImportFormat.Rdm76Kb => "RDM 76Kb",
+        StuecklistenImportFormat.Rdk80k => "RDK 80k",
         _ => format.ToString()
     };
 }

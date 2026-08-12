@@ -220,11 +220,21 @@
                         : $"existieren bereits {_analyse.VorhandeneVersionen.Count} Versionen").
                     Wie soll das neue Angebot behandelt werden?
                 </p>
+                <div class="aa-neueversion-grund">
+                    <label for="neueVersionGrund">
+                        Grund für die neue Version <span class="aa-status-legende__stern">*</span>
+                    </label>
+                    <textarea id="neueVersionGrund" class="form-control" rows="2"
+                              placeholder="z. B. Preis nach Nachverhandlung angepasst"
+                              @bind="_neueVersionKommentar" @bind:event="oninput" disabled="@_laedt"></textarea>
+                    <p class="aa-neueversion-grund__hinweis">Wird dem Innendienst beim Versionswechsel angezeigt.</p>
+                </div>
                 <div class="sm-actions">
                     <PrimaryButton OnClick="@(() => SpeichernAsync("ueberschreiben"))" Disabled="@_laedt">
                         Neueste Version überschreiben
                     </PrimaryButton>
-                    <SecondaryButton OnClick="@(() => SpeichernAsync("neueversion"))" Disabled="@_laedt">
+                    <SecondaryButton OnClick="@(() => SpeichernAsync("neueversion"))"
+                                     Disabled="@(_laedt || string.IsNullOrWhiteSpace(_neueVersionKommentar))">
                         Als neue Version ablegen
                     </SecondaryButton>
                     <button type="button" class="btn btn-link" @onclick="Zuruecksetzen" disabled="@_laedt">Abbrechen</button>
@@ -502,6 +512,11 @@
     private string? _dateiContentType;
     private string? _pdfDokumentName;
 
+    // Pflicht-Begründung für „Als neue Version ablegen" (Rückfrage-Karte). Wird bewusst NICHT in
+    // KommentareZuruecksetzen zurückgesetzt, weil SpeichernAsync das dort zu Beginn aufruft — der
+    // Wert muss bis zum Client-Aufruf erhalten bleiben.
+    private string _neueVersionKommentar = "";
+
     private bool KonfliktOffen => _analyse is { VorhandeneVersionen.Count: > 0 } && _gespeichert is null;
     private bool ZeigeErgebnis => _gespeichert is not null || _analyse is { Checkliste.NummerVorhanden: false };
     private bool PrueflayoutAktiv => (_readOnly && _detail is not null) || ZeigeErgebnis;
@@ -643,6 +658,7 @@
         _analyse = null;
         _gespeichert = null;
         KommentareZuruecksetzen();
+        _neueVersionKommentar = "";
         _laedt = true;
         try
         {
@@ -684,13 +700,16 @@
         if (_dateiBytes is null || _dateiName is null || _dateiContentType is null || _analyse is null)
             return;
 
+        // Grund vor dem Reset sichern — nur beim Anlegen einer neuen Version relevant.
+        var versionsKommentar = konfliktStrategie == "neueversion" ? _neueVersionKommentar : null;
+
         _apiError = null;
         KommentareZuruecksetzen();
         _laedt = true;
         try
         {
             _gespeichert = await Client.SpeichernAsync(
-                _dateiBytes, _dateiName, _dateiContentType, _analyse.Daten, konfliktStrategie);
+                _dateiBytes, _dateiName, _dateiContentType, _analyse.Daten, konfliktStrategie, versionsKommentar);
             await VerlaufLadenAsync();
         }
         catch (ApiRequestException ex)
@@ -763,8 +782,11 @@
             return "Nicht erkannt";
 
         var normalisiert = System.Text.RegularExpressions.Regex.Replace(adresse, @"\s+", " ").Trim();
+        // Eine PO-Box-/Postfach-Nummer ist keine PLZ — sonst zeigt der Adressvergleich bei
+        // "PO Box 10554 11433 RIYADH" fälschlich 10554 statt der echten PLZ 11433.
         var plz = System.Text.RegularExpressions.Regex.Match(
-            normalisiert, @"(?<!\d)(?<plz>\d{4,6}(?:-\d{4})?)(?!\d)");
+            normalisiert, @"(?<!\d)(?<!\bbox\s)(?<!\bpostfach\s)(?<plz>\d{4,6}(?:-\d{4})?)(?!\d)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         if (!plz.Success)
             return normalisiert;
 
@@ -783,6 +805,7 @@
         _apiError = null;
         _freigebeLaedt = false;
         KommentareZuruecksetzen();
+        _neueVersionKommentar = "";
         _dateiBytes = null;
         _dateiName = null;
         _dateiContentType = null;

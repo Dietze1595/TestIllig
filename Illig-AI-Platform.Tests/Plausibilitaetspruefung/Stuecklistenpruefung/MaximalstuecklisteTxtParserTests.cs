@@ -73,7 +73,22 @@ public class MaximalstuecklisteTxtParserTests
 
         var wurzel = MaximalstuecklisteTxtParser.Parse(auszug);
 
+        Assert.Equal("9209307", wurzel.Artikelnummer);
         var kind = Assert.Single(wurzel.Kinder);
         Assert.Equal("9237787", kind.Artikelnummer);
+    }
+
+    [Fact]
+    public void Parse_ParstDeutscheMengeMitTausendertrennzeichen()
+    {
+        var auszug = string.Join('\n',
+            Zeile(1, "9209307 0001 1 01", "RDM 75Kc_konf_ab      (877)"),
+            Zeile(2, "0010 R 8104330", "Rundstahl", "3.654,900", "3.654,900", "KG"));
+
+        var wurzel = MaximalstuecklisteTxtParser.Parse(auszug);
+
+        var kind = Assert.Single(wurzel.Kinder);
+        Assert.Equal("8104330", kind.Artikelnummer);
+        Assert.Equal(3654.900m, kind.Menge);
     }
 }

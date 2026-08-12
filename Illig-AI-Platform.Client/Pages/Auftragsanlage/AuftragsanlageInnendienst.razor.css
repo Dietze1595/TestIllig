@@ -3,6 +3,57 @@
     position: relative;
 }
 
+/* Versions-Auswahl im Kopf: Dropdown + darunter der Grund der aktuell gewählten Version. */
+.aa-versions-dd {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+
+.aa-versions-auswahl {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.aa-versions-grund {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--color-text-muted, #57666d);
+}
+
+/* Ladezustand beim Versionswechsel (siehe OnVersionChangedAsync / _laedt). */
+.aa-innendienst-laden {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .85rem;
+    padding: 3rem 1rem;
+    color: var(--color-text-muted, #57666d);
+    font-size: .9rem;
+}
+
+.aa-innendienst-laden__kreis {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 3px solid rgba(0, 69, 123, .2);
+    border-top-color: #00457b;
+    border-radius: 50%;
+    animation: aa-innendienst-spin .7s linear infinite;
+}
+
+@keyframes aa-innendienst-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aa-innendienst-laden__kreis {
+        animation-duration: 2.4s;
+    }
+}
+
 .su-main {
     box-sizing: border-box;
     min-width: 0;
@@ -454,6 +505,7 @@
     font-size: 1.25rem;
     font-weight: 800;
     line-height: 1;
+    white-space: nowrap;
 }
 
 .sm-feature-group {

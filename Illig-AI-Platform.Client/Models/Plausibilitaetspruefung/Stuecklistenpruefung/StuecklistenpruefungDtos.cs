@@ -54,8 +54,18 @@ public record AuftragsdokumentDetail(
     IReadOnlyList<ErkanntesMerkmal> Merkmale,
     IReadOnlyList<ErkanntesMerkmal> Sonderoptionen);
 
+// Client-Spiegel zum Server-Enum AuftragsdokumentQuelle. Reihenfolge (= Zahlenwert) muss zum
+// Server passen, da System.Text.Json das Enum als Zahl (de)serialisiert — wie bei VergleichsStatus.
+public enum AuftragsdokumentQuelle
+{
+    DragAndDrop,
+    SharePoint
+}
+
 public record VerlaufDetail(
     int Id,
+    string Dateiname,
+    AuftragsdokumentQuelle Quelle,
     string Auftragsnummer,
     string Kundennummer,
     DateOnly? Datum,

@@ -81,8 +81,15 @@ public class StuecklistenpruefungVerlaufService(
         Guid userProfileId, string dateiname, Stream pdfInhalt, DokumentAnalyseErgebnis ergebnis,
         CancellationToken cancellationToken = default)
     {
+        // Nur Drag&Drop-Einträge sind für die Duplikaterkennung relevant. SharePoint-synchronisierte
+        // Einträge haben keinen Blob (Original liegt in SharePoint) und keinen Uploader — würden sie
+        // hier als Blob-/Kunden-Quelle (Fall 2) dienen, entstünde ein Drag&Drop-Eintrag ohne Blob,
+        // dessen hochgeladenes Dokument verloren ginge. Beide Wege sollen unabhängig funktionieren:
+        // Der SharePoint-Sync läuft nur täglich, ein Drag&Drop-Upload desselben Auftrags muss trotzdem
+        // ein eigenes, abrufbares Dokument anlegen (Fall 3).
         var treffer = await db.StuecklistenpruefungVerlaufEintraege
-            .Where(e => e.Auftragsnummer == ergebnis.Auftragsnummer && e.Kundennummer == ergebnis.Kundennummer)
+            .Where(e => e.Quelle == AuftragsdokumentQuelle.DragAndDrop && e.GeloeschtAm == null
+                && e.Auftragsnummer == ergebnis.Auftragsnummer && e.Kundennummer == ergebnis.Kundennummer)
             .ToListAsync(cancellationToken);
 
         // Fall 1: eigener Eintrag vorhanden -> öffnen, nichts anlegen.
@@ -112,8 +119,14 @@ public class StuecklistenpruefungVerlaufService(
         Guid userProfileId, int id, VerlaufStandAktualisieren stand,
         CancellationToken cancellationToken = default)
     {
+        // SharePoint-synchronisierte Einträge haben zunächst keine UserProfileId. Sobald ein User
+        // an einem solchen Eintrag arbeitet (z. B. einen SAP-Stücklistenvergleich durchführt), wird
+        // die UserProfileId hier hinterlegt — der Eintrag "gehört" ab dann diesem User und taucht
+        // fortan auch unter "Alle"/"Meine" auf, statt nur unter "SharePoint".
         var eintrag = await db.StuecklistenpruefungVerlaufEintraege
-            .FirstOrDefaultAsync(e => e.Id == id && e.UserProfileId == userProfileId, cancellationToken);
+            .FirstOrDefaultAsync(
+                e => e.Id == id && (e.UserProfileId == userProfileId || e.UserProfileId == null),
+                cancellationToken);
         if (eintrag is null)
             return false;
 
@@ -136,6 +149,8 @@ public class StuecklistenpruefungVerlaufService(
                 ? null
                 : JsonSerializer.Serialize(stand.VergleichsErgebnis);
             eintrag.SapDateiname = stand.SapDateiname;
+
+            eintrag.UserProfileId ??= userProfileId;
         }
         else
         {
@@ -147,12 +162,6 @@ public class StuecklistenpruefungVerlaufService(
         return true;
     }
 
-    /// <summary>
-    /// Ersetzt einen eigenen vorhandenen Verlauf mit dem neu hochgeladenen Dokument und den
-    /// frisch erkannten Merkmalen. Nachgelagerte Ergebnisse werden verworfen, weil sie noch auf
-    /// dem alten Merkmalsstand basieren. Ein alter Blob wird nur gelöscht, wenn kein anderer
-    /// Verlaufseintrag auf ihn verweist.
-    /// </summary>
     public async Task<bool> NeuEinlesenAsync(
         Guid userProfileId,
         int id,
@@ -242,7 +251,12 @@ public class StuecklistenpruefungVerlaufService(
     public async Task<IReadOnlyList<VerlaufEintragUebersicht>> ListeAsync(
         Guid? nurUserProfileId = null, CancellationToken cancellationToken = default)
     {
-        var query = db.StuecklistenpruefungVerlaufEintraege.AsNoTracking();
+        // SharePoint-synchronisierte Einträge haben keine UserProfileId und werden bereits über den
+        // separaten SharePoint-Endpunkt (AuftragsdokumentService) angezeigt. Ohne diesen Ausschluss
+        // würden sie bei "Alle" doppelt auftauchen (hier + in der SharePoint-Sektion).
+        var query = db.StuecklistenpruefungVerlaufEintraege
+            .AsNoTracking()
+            .Where(e => e.UserProfileId != null);
         if (nurUserProfileId is { } userProfileId)
             query = query.Where(e => e.UserProfileId == userProfileId);
 
@@ -286,6 +300,34 @@ public class StuecklistenpruefungVerlaufService(
         return eintrag is null ? null : await BaueDetailAsync(eintrag, cancellationToken);
     }
 
+    /// <summary>
+    /// Sucht nach Auftragsnummer über beide Workflows hinweg (SharePoint-Sync und
+    /// Drag&amp;Drop-Upload teilen sich seit der Konsolidierung dieselbe Tabelle). Bei mehreren
+    /// Treffern wird der SharePoint-Eintrag bevorzugt (maßgebliche Quelle), sonst der am weitesten
+    /// fortgeschrittene bzw. neueste Drag&amp;Drop-Eintrag — dieselbe Priorisierung wie in
+    /// <see cref="SpeichernOderOeffnenAsync"/>.
+    /// </summary>
+    public async Task<VerlaufDetail?> SucheNachAuftragsnummerAsync(
+        string auftragsnummer, CancellationToken cancellationToken = default)
+    {
+        var gesucht = auftragsnummer.Trim();
+        var treffer = await db.StuecklistenpruefungVerlaufEintraege
+            .AsNoTracking()
+            .Where(e => e.Auftragsnummer.ToUpper() == gesucht.ToUpper())
+            .ToListAsync(cancellationToken);
+
+        var bester = treffer
+            .Where(e => e.Quelle == AuftragsdokumentQuelle.SharePoint)
+            .OrderByDescending(e => e.SharePointGeaendertAm)
+            .FirstOrDefault()
+            ?? treffer
+                .OrderByDescending(e => e.ErreichterSchritt)
+                .ThenByDescending(e => e.ErstelltAm)
+                .FirstOrDefault();
+
+        return bester is null ? null : await BaueDetailAsync(bester, cancellationToken);
+    }
+
     private async Task<VerlaufDetail> BaueDetailAsync(
         StuecklistenpruefungVerlaufEintrag eintrag, CancellationToken cancellationToken)
     {
@@ -296,6 +338,8 @@ public class StuecklistenpruefungVerlaufService(
 
         return new VerlaufDetail(
             eintrag.Id,
+            eintrag.Dateiname,
+            eintrag.Quelle,
             eintrag.Auftragsnummer,
             eintrag.Kundennummer,
             eintrag.Datum,

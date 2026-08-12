@@ -4,6 +4,7 @@
 @using Illig_AI_Platform.Client.Components.Plausibilitaetspruefung.Stuecklistenpruefung
 @inject AuftragsanlageClient Client
 @inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 <PageTitle>Auftragsanlage · Innendienst</PageTitle>
 
@@ -11,323 +12,361 @@
     <RoleGuard Roles="@(new[] { AppClientRoles.OrderCreationBackoffice, AppClientRoles.Admin })" OnAuthorized="VerlaufLadenAsync">
         <div class="su-layout">
             <AngebotVerlaufSidebar Offen="_verlaufOffen" OffenChanged="v => _verlaufOffen = v"
-                                    Eintraege="_verlaufEintraege" Laedt="_verlaufLaedt" Fehler="_verlaufFehler"
-                                    Leertext="Noch keine Bestätigungsabgleiche." FreigabeAnzeigen="false"
-                                    GeoeffneterId="_geoeffneterId" NurMeine="_nurMeine" NurMeineChanged="NurMeineGeaendertAsync"
-                                    OnRetry="VerlaufLadenAsync" OnEintragOeffnen="VerlaufOeffnenAsync" />
+                                   Eintraege="_verlaufEintraege" Laedt="_verlaufLaedt" Fehler="_verlaufFehler"
+                                   Leertext="Noch keine Bestätigungsabgleiche." FreigabeAnzeigen="false"
+                                   GeoeffneterId="_geoeffneterId" NurMeine="_nurMeine" NurMeineChanged="NurMeineGeaendertAsync"
+                                   OnRetry="VerlaufLadenAsync" OnEintragOeffnen="VerlaufOeffnenAsync" />
 
             <div class="su-main @PdfPanelKlasse @VerlaufPanelKlasse">
-        <SeitenKopf Titel="Bestätigungsabgleich"
-                    Lead="Kundenbestellung (PDF) hochladen — geprüft werden Angebotsbezug, Liefertermin, Positionen und Mengen, Preis und Währung, Zahlungs- und Lieferbedingungen sowie wichtige Vertragsklauseln." />
+                <SeitenKopf Titel="Bestätigungsabgleich"
+                            Lead="Kundenbestellung (PDF) hochladen — geprüft werden Angebotsbezug, Liefertermin, Positionen und Mengen, Preis und Währung, Zahlungs- und Lieferbedingungen sowie wichtige Vertragsklauseln." />
 
-        <div class="aa-innendienst-content">
-        @if (_apiError is { Length: > 0 })
-        {
-            <ApiFehlerHinweis Message="@_apiError" OnRetry="@(() => _apiError = null)" />
-        }
-
-        @if (_antwort is null)
-        {
-            <section class="sm-card">
-                @if (_uploadHinweis is { Length: > 0 })
-                {
-                    <div class="aa-hinweis--warnung" role="alert">@_uploadHinweis</div>
-                }
-                <FileDropzone OnChange="OnFileSelectedAsync" Accept="application/pdf" Busy="_laedt"
-                              IdleText="Kundenbestellung (PDF) hierher ziehen oder klicken zum Auswählen" BusyText="Dokument wird analysiert…" />
-            </section>
-        }
-        else if (_antwort.Status == AngebotZuordnungStatus.Mehrdeutig)
-        {
-            <section class="sm-card">
-                <div class="aa-hinweis--warnung">
-                    Im Dokument wurden mehrere bekannte Angebotsnummern gefunden — keine automatische Zuordnung möglich:
-                    @string.Join(", ", _antwort.KandidatenNummern)
-                </div>
-                <div class="sm-actions">
-                    <PrimaryButton OnClick="Zuruecksetzen">Weitere Bestellung prüfen</PrimaryButton>
-                </div>
-            </section>
-        }
-        else
-        {
-            var angebotStatus = _antwort.AngebotStatus!;
-
-            <div class="aa-innendienst-prueflayout">
-            <section class="sm-card aa-pruefergebnis-card aa-innendienst-prueflayout__kopf">
-                <div class="aa-innendienst-detailkopf">
-                    <div class="sm-detail__head">
-                        <h2>
-                            Vergleich für @(!string.IsNullOrWhiteSpace(angebotStatus.Kundenname) ? angebotStatus.Kundenname : "unbekannten Kunden")
-                            @if (_readOnly)
-                            {
-                                <span class="aa-verlauf-badge">Historie</span>
-                            }
-                        </h2>
-                        <p class="sm-detail__sub">
-                            Version @_antwort.AngebotVersion · Automatischer Abgleich mit der Kundenbestellung
-                        </p>
-                    </div>
-                    <PrimaryButton Class="aa-innendienst-detailkopf__aktion" OnClick="Zuruecksetzen">
-                        Weitere Bestellung prüfen →
-                    </PrimaryButton>
-                </div>
-
-                <dl class="sm-info">
-                    <div>
-                        <dt class="aa-info-label">
-                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M7 3.75h7l3 3V20.25H7z" />
-                                <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" />
-                            </svg>
-                            Angebotsnummer
-                        </dt>
-                        <dd>@_antwort.Angebotsnummer</dd>
-                    </div>
-                    <div>
-                        <dt class="aa-info-label">
-                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="m12 4 7 3.5-7 3.5-7-3.5zM5 12l7 3.5 7-3.5M5 16.5l7 3.5 7-3.5" />
-                            </svg>
-                            Version
-                        </dt>
-                        <dd>@_antwort.AngebotVersion</dd>
-                    </div>
-                    <div>
-                        <dt class="aa-info-label">
-                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 3.5 18 6v5c0 4.1-2.55 7.45-6 9-3.45-1.55-6-4.9-6-9V6z" />
-                                <path d="m9.1 11.8 1.8 1.8 4-4" />
-                            </svg>
-                            Vertriebsstatus
-                        </dt>
-                        <dd class="aa-vertriebsstatus @(angebotStatus.Freigegeben ? "aa-text--ok" : "aa-text--warnung")">
-                            <span>@(angebotStatus.Freigegeben ? "Freigegeben" : "Freigabe ausstehend")</span>
-                            @if (angebotStatus.Freigegeben && angebotStatus.FreigegebenAm is { } freigegebenAm)
-                            {
-                                <span class="aa-vertriebsstatus__info">
-                                    <span class="aa-vertriebsstatus__trigger"
-                                          tabindex="0"
-                                          aria-label="Details zur Freigabe"
-                                          aria-describedby="aa-freigabe-popover">?</span>
-                                    <span class="aa-vertriebsstatus__popover" id="aa-freigabe-popover" role="tooltip">
-                                        Freigegeben von @(angebotStatus.FreigegebenVon ?? "Name nicht verfügbar")
-                                        am @freigegebenAm.ToLocalTime().ToString("dd.MM.yyyy 'um' HH:mm 'Uhr'")
-                                    </span>
-                                </span>
-                            }
-                        </dd>
-                    </div>
-                    <div>
-                        <dt class="aa-info-label">
-                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <circle cx="12" cy="12" r="8.25" />
-                                <path d="m8.5 12 2.25 2.25 4.75-4.75" />
-                            </svg>
-                            Übereinstimmungen
-                        </dt>
-                        <dd class="aa-text--ok">@_antwort.Uebereinstimmungen.Count</dd>
-                    </div>
-                    <div>
-                        <dt class="aa-info-label">
-                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 4 20 19H4z" />
-                                <path d="M12 9v4.5M12 16.5h.01" />
-                            </svg>
-                            Weitere Abweichungen
-                        </dt>
-                        <dd class="@(_antwort.SonstigeAbweichungen.Count == 0 ? "aa-text--ok" : "aa-text--warnung")">
-                            @_antwort.SonstigeAbweichungen.Count
-                        </dd>
-                    </div>
-                </dl>
-
-            </section>
-
-            <section class="sm-card aa-innendienst-prueflayout__inhalt">
-                <div class="aa-innendienst-prueflayout__scroll">
-                <section class="aa-innendienst-scrollsektion">
-                <header class="aa-section-head aa-innendienst-scrolltitel">
-                    <div>
-                        <h2>Aus dem Angebot ausgelesene Daten</h2>
-                        <p class="sm-detail__sub">Originalwerte aus dem hochgeladenen Angebotsdokument</p>
-                    </div>
-                </header>
-                <div class="aa-checkliste-tabelle">
-                    <div class="aa-checkliste-kopf" aria-hidden="true">
-                        <span class="aa-checkliste-kopf__daten">
-                            <span>Prüfpunkt</span>
-                            <span>Ausgelesener Wert</span>
-                        </span>
-                        <span>Kommentar Vertrieb</span>
-                    </div>
-                    <ul class="aa-checkliste">
-                    <ChecklistItem Ok="angebotStatus.Checkliste.NummerVorhanden" Label="Angebotsnummer" StatusSymbolAnzeigen="false"
-                                   Wert="@_antwort.Angebotsnummer" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.KundeVorhanden" Label="Kunde mit Adresse" StatusSymbolAnzeigen="false"
-                                   Abweichend="@(!angebotStatus.Checkliste.KundeVorhanden && (!string.IsNullOrWhiteSpace(angebotStatus.Kundenname) || !string.IsNullOrWhiteSpace(angebotStatus.Kundenadresse)))"
-                                   Wert="@((!string.IsNullOrWhiteSpace(angebotStatus.Kundenname) || !string.IsNullOrWhiteSpace(angebotStatus.Kundenadresse)) ? $"{angebotStatus.Kundenname ?? "Kundenname nicht erkannt"} · {angebotStatus.Kundenadresse ?? "Adresse nicht erkannt"}" : null)"
-                                   KommentarAnzeige="@angebotStatus.KundeKommentar" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.KundenUndLieferadresseIdentisch" Label="Kundenadresse = Lieferadresse" StatusSymbolAnzeigen="false"
-                                   Abweichend="@(!angebotStatus.Checkliste.KundenUndLieferadresseIdentisch && !string.IsNullOrWhiteSpace(angebotStatus.Lieferadresse))"
-                                   Wert="@FormatAdressvergleich(angebotStatus.Kundenadresse, angebotStatus.Lieferadresse)"
-                                   KommentarAnzeige="@angebotStatus.LieferadresseKommentar" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.VerkaeuferVorhanden" Label="Verkäuferinformation" StatusSymbolAnzeigen="false"
-                                   Wert="@angebotStatus.Verkaeufer" KommentarAnzeige="@angebotStatus.VerkaeuferKommentar" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.GueltigkeitsdatumGueltig" Label="Gültigkeitsdatum" StatusSymbolAnzeigen="false"
-                                   Abweichend="@(!angebotStatus.Checkliste.GueltigkeitsdatumGueltig && angebotStatus.GueltigBis is not null)"
-                                   Wert="@angebotStatus.GueltigBis?.ToString("dd.MM.yyyy")"
-                                   KommentarAnzeige="@angebotStatus.GueltigkeitsdatumKommentar" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.LieferterminVorhanden" Label="Liefertermin/-dauer" StatusSymbolAnzeigen="false"
-                                   Wert="@angebotStatus.Liefertermin" KommentarAnzeige="@angebotStatus.LieferterminKommentar" />
-                    <ChecklistItem Ok="@(angebotStatus.Checkliste.ZahlungsbedingungenVorhanden && angebotStatus.Checkliste.ZahlungsbedingungStandardErkannt)"
-                                   Abweichend="@(angebotStatus.Checkliste.ZahlungsbedingungenVorhanden && !angebotStatus.Checkliste.ZahlungsbedingungStandardErkannt)"
-                                   Label="Zahlungsbedingung" StatusSymbolAnzeigen="false"
-                                   Wert="@angebotStatus.Zahlungsbedingungen"
-                                   KommentarAnzeige="@angebotStatus.ZahlungsbedingungenKommentar" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.ZahlungsplanStandardErkannt" Label="Zahlungsplan" StatusSymbolAnzeigen="false"
-                                   Abweichend="@(!angebotStatus.Checkliste.ZahlungsplanStandardErkannt && !string.IsNullOrWhiteSpace(angebotStatus.Zahlungsplan))"
-                                   Wert="@angebotStatus.Zahlungsplan" KommentarAnzeige="@angebotStatus.ZahlungsplanKommentar" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.IncotermGueltig" Label="Incoterm" StatusSymbolAnzeigen="false"
-                                   Abweichend="@(!angebotStatus.Checkliste.IncotermGueltig && !string.IsNullOrWhiteSpace(angebotStatus.Incoterm))"
-                                   Wert="@(!string.IsNullOrWhiteSpace(angebotStatus.Incoterm) ? $"{angebotStatus.Incoterm}{(string.IsNullOrWhiteSpace(angebotStatus.IncotermOrt) ? "" : $" · {angebotStatus.IncotermOrt}")}" : null)"
-                                   KommentarAnzeige="@angebotStatus.IncotermKommentar" />
-                    <ChecklistItem Ok="angebotStatus.Checkliste.VersandbedingungErkannt" Label="Versandart" StatusSymbolAnzeigen="false"
-                                   Abweichend="@(!angebotStatus.Checkliste.VersandbedingungErkannt && !string.IsNullOrWhiteSpace(angebotStatus.Versandbedingung))"
-                                   Wert="@angebotStatus.Versandbedingung" KommentarAnzeige="@angebotStatus.VersandbedingungKommentar" />
-                    </ul>
-                </div>
-                <div class="aa-status-legende" aria-label="Legende der Prüfzustände">
-                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--ok"></i>Vollständig</span>
-                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--abweichend"></i>Abweichend</span>
-                    <span><i class="aa-status-legende__punkt aa-status-legende__punkt--fehlt"></i>Fehlt</span>
-                </div>
-                <section class="aa-innendienst-sapstatus" aria-label="Manuelle SAP-Prüfung durch den Vertrieb">
-                    <p class="aa-innendienst-sapstatus__hinweis">
-                        <strong>Vom Vertrieb manuell geprüft</strong>
-                        <span>Die folgenden Angaben wurden vom Vertrieb mit den Daten in SAP abgeglichen.</span>
-                    </p>
-                    <SapBestaetigungen Sparte="@(angebotStatus.SapSparteBestaetigt == true)"
-                                      Fuehrend="@(angebotStatus.SapFuehrendBestaetigt == true)"
-                                      SparteKommentar="@angebotStatus.SapSparteKommentar"
-                                      FuehrendKommentar="@angebotStatus.SapFuehrendKommentar"
-                                      Disabled="true" />
-                </section>
-                </section>
-
-            <section class="aa-innendienst-vergleich">
-                <header class="aa-innendienst-scrolltitel">
-                    <h2>Vergleich mit der Kundenbestellung</h2>
-                    <p class="sm-detail__sub">Liefertermin sowie kaufmännische und vertragliche Abweichungen</p>
-                </header>
-
-                <div class="sm-comparison">
-                    <div class="sm-comparison__summary">
-                        <div class="sm-comparison__summary-item @(angebotStatus.Freigegeben ? "sm-comparison__summary-item--match" : "sm-comparison__summary-item--missing")">
-                            <span>@(angebotStatus.Freigegeben ? "Angebotsstatus: Freigegeben" : "Angebotsstatus: Freigabe ausstehend")</span>
-                        </div>
-                        <div class="sm-comparison__summary-item @(_antwort.LieferterminIdentisch ? "sm-comparison__summary-item--match" : "sm-comparison__summary-item--missing")">
-                            <span>@(_antwort.LieferterminIdentisch ? "Liefertermin: Identisch" : "Liefertermin: Abweichend")</span>
-                        </div>
-                        <div class="sm-comparison__summary-item sm-comparison__summary-item--match">
-                            <span class="sm-comparison__count">@_antwort.Uebereinstimmungen.Count</span>
-                            <span>@(_antwort.Uebereinstimmungen.Count == 1 ? "Bestätigte Übereinstimmung" : "Bestätigte Übereinstimmungen")</span>
-                        </div>
-                        <div class="sm-comparison__summary-item @(_antwort.SonstigeAbweichungen.Count == 0 ? "sm-comparison__summary-item--match" : "sm-comparison__summary-item--missing")">
-                            <span class="sm-comparison__count">@_antwort.SonstigeAbweichungen.Count</span>
-                            <span>@(_antwort.SonstigeAbweichungen.Count == 1 ? "Weitere Abweichung" : "Weitere Abweichungen")</span>
-                        </div>
-                    </div>
-
-                    @if (_antwort.Uebereinstimmungen.Count > 0)
+                <div class="aa-innendienst-content">
+                    @if (_apiError is { Length: > 0 })
                     {
-                        <section class="sm-feature-group sm-feature-group--match">
-                            <header class="sm-feature-group__head">
-                                <div>
-                                    <h3>
-                                        Bestätigte Übereinstimmungen
-                                    </h3>
-                                    <p>Diese geprüften Inhalte sind identisch oder semantisch gleichwertig.</p>
-                                </div>
-                                <span class="sm-feature-group__badge">@_antwort.Uebereinstimmungen.Count</span>
-                            </header>
-                            <div class="sm-feature-table-wrap aa-innendienst-sticky-tabelle">
-                                <table class="sm-feature-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Prüfbereich</th>
-                                            <th>Ergebnis</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var uebereinstimmung in _antwort.Uebereinstimmungen)
-                                        {
-                                            <tr>
-                                                <td><strong>@AbweichungsKategorie(uebereinstimmung)</strong></td>
-                                                <td>@AbweichungsText(uebereinstimmung)</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
+                        <ApiFehlerHinweis Message="@_apiError" OnRetry="@(() => _apiError = null)" />
+                    }
+
+                    @if (_antwort is null)
+                    {
+                        <section class="sm-card">
+                            @if (_uploadHinweis is { Length: > 0 })
+                            {
+                                <div class="aa-hinweis--warnung" role="alert">@_uploadHinweis</div>
+                            }
+                            <FileDropzone OnChange="OnFileSelectedAsync" Accept="application/pdf" Busy="_laedt"
+                                          IdleText="Kundenbestellung (PDF) hierher ziehen oder klicken zum Auswählen" BusyText="Dokument wird analysiert…" />
+                        </section>
+                    }
+                    else if (_antwort.Status == AngebotZuordnungStatus.Mehrdeutig)
+                    {
+                        <section class="sm-card">
+                            <div class="aa-hinweis--warnung">
+                                Im Dokument wurden mehrere bekannte Angebotsnummern gefunden — keine automatische Zuordnung möglich:
+                                @string.Join(", ", _antwort.KandidatenNummern)
+                            </div>
+                            <div class="sm-actions">
+                                <PrimaryButton OnClick="Zuruecksetzen">Weitere Bestellung prüfen</PrimaryButton>
                             </div>
                         </section>
                     }
+                    else
+                    {
+                        var angebotStatus = _antwort.AngebotStatus!;
 
-                    <section class="sm-feature-group @(_antwort.SonstigeAbweichungen.Count == 0 ? "sm-feature-group--match" : "sm-feature-group--missing")">
-                        <header class="sm-feature-group__head">
-                            <div>
-                                <h3>
-                                    @(_antwort.SonstigeAbweichungen.Count == 0 ? "Keine weiteren Abweichungen" : "Kaufmännische und vertragliche Abweichungen")
-                                </h3>
-                                <p>@(_antwort.SonstigeAbweichungen.Count == 0
-                                    ? "Alle ausgegebenen Prüfergebnisse wurden korrekt eingeordnet."
-                                    : "Nur tatsächlich abweichende Inhalte werden orange dargestellt.")</p>
-                            </div>
-                            <span class="sm-feature-group__badge">@_antwort.SonstigeAbweichungen.Count</span>
-                        </header>
-                        @if (_antwort.SonstigeAbweichungen.Count == 0)
-                        {
-                            <p class="sm-feature-group__empty">Keine weiteren Abweichungen erkannt.</p>
-                        }
-                        else
-                        {
-                            <div class="sm-feature-table-wrap aa-innendienst-sticky-tabelle">
-                                <table class="sm-feature-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Prüfbereich</th>
-                                            <th>Erkannte Abweichung</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var abweichung in _antwort.SonstigeAbweichungen)
-                                        {
-                                            <tr>
-                                                <td><strong>@AbweichungsKategorie(abweichung)</strong></td>
-                                                <td>@AbweichungsText(abweichung)</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </section>
+                        <div class="aa-innendienst-prueflayout">
+                            <section class="sm-card aa-pruefergebnis-card aa-innendienst-prueflayout__kopf">
+                                <div class="aa-innendienst-detailkopf">
+                                    <div class="sm-detail__head">
+                                        <h2>
+                                            Vergleich für @(!string.IsNullOrWhiteSpace(angebotStatus.Kundenname) ? angebotStatus.Kundenname : "unbekannten Kunden")
+                                            @if (_readOnly)
+                                            {
+                                                <span class="aa-verlauf-badge">Historie</span>
+                                            }
+                                        </h2>
+                                        <p class="sm-detail__sub">
+                                            Version @_antwort.AngebotVersion · Automatischer Abgleich mit der Kundenbestellung
+                                        </p>
+                                    </div>
+                                    <PrimaryButton Class="aa-innendienst-detailkopf__aktion" OnClick="Zuruecksetzen">
+                                        Weitere Bestellung prüfen →
+                                    </PrimaryButton>
+                                </div>
+
+                                <dl class="sm-info">
+                                    <div>
+                                        <dt class="aa-info-label">
+                                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M7 3.75h7l3 3V20.25H7z" />
+                                                <path d="M14 3.75v3h3M9.5 11h5M9.5 14.5h5" />
+                                            </svg>
+                                            Angebotsnummer
+                                        </dt>
+                                        <dd>@_antwort.Angebotsnummer</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="aa-info-label">
+                                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="m12 4 7 3.5-7 3.5-7-3.5zM5 12l7 3.5 7-3.5M5 16.5l7 3.5 7-3.5" />
+                                            </svg>
+                                            Version
+                                        </dt>
+                                        <dd class="aa-versions-dd">
+                                            <span class="aa-versions-auswahl">
+                                                @if (_antwort.VorhandeneVersionen is { Count: > 1 })
+                                                {
+                                                    <select class="sm-select" style="padding: 0.15rem 0.5rem; border: 1px solid #c8d3d9; border-radius: 4px; font-size: 0.8125rem; background-color: white;"
+                                                            value="@_antwort.AngebotVersion" @onchange="OnVersionChangedAsync" disabled="@_laedt">
+                                                        @foreach (var v in _antwort.VorhandeneVersionen)
+                                                        {
+                                                            <option value="@v">Version @v</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else
+                                                {
+                                                    @_antwort.AngebotVersion
+                                                }
+                                            </span>
+                                            @if (!string.IsNullOrWhiteSpace(angebotStatus.VersionsKommentar))
+                                            {
+                                                <span class="aa-versions-grund">Grund: @angebotStatus.VersionsKommentar</span>
+                                            }
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt class="aa-info-label">
+                                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M12 3.5 18 6v5c0 4.1-2.55 7.45-6 9-3.45-1.55-6-4.9-6-9V6z" />
+                                                <path d="m9.1 11.8 1.8 1.8 4-4" />
+                                            </svg>
+                                            Vertriebsstatus
+                                        </dt>
+                                        <dd class="aa-vertriebsstatus @(angebotStatus.Freigegeben ? "aa-text--ok" : "aa-text--warnung")">
+                                            <span>@(angebotStatus.Freigegeben ? "Freigegeben" : "Freigabe ausstehend")</span>
+                                            @if (angebotStatus.Freigegeben && angebotStatus.FreigegebenAm is { } freigegebenAm)
+                                            {
+                                                <span class="aa-vertriebsstatus__info">
+                                                    <span class="aa-vertriebsstatus__trigger"
+                                                          tabindex="0"
+                                                          aria-label="Details zur Freigabe"
+                                                          aria-describedby="aa-freigabe-popover">?</span>
+                                                    <span class="aa-vertriebsstatus__popover" id="aa-freigabe-popover" role="tooltip">
+                                                        Freigegeben von @(angebotStatus.FreigegebenVon ?? "Name nicht verfügbar")
+                                                        am @freigegebenAm.ToLocalTime().ToString("dd.MM.yyyy 'um' HH:mm 'Uhr'")
+                                                    </span>
+                                                </span>
+                                            }
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt class="aa-info-label">
+                                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <circle cx="12" cy="12" r="8.25" />
+                                                <path d="m8.5 12 2.25 2.25 4.75-4.75" />
+                                            </svg>
+                                            Übereinstimmungen
+                                        </dt>
+                                        <dd class="aa-text--ok">@_antwort.Uebereinstimmungen.Count</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="aa-info-label">
+                                            <svg class="aa-info-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M12 4 20 19H4z" />
+                                                <path d="M12 9v4.5M12 16.5h.01" />
+                                            </svg>
+                                            Weitere Abweichungen
+                                        </dt>
+                                        <dd class="@(_antwort.SonstigeAbweichungen.Count == 0 ? "aa-text--ok" : "aa-text--warnung")">
+                                            @_antwort.SonstigeAbweichungen.Count
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </section>
+
+                            <section class="sm-card aa-innendienst-prueflayout__inhalt">
+                                @if (_laedt)
+                                {
+                                    <div class="aa-innendienst-laden" role="status" aria-live="polite">
+                                        <span class="aa-innendienst-laden__kreis" aria-hidden="true"></span>
+                                        <span>Version wird geladen…</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="aa-innendienst-prueflayout__scroll">
+                                        <section class="aa-innendienst-scrollsektion">
+                                            <header class="aa-section-head aa-innendienst-scrolltitel">
+                                                <div>
+                                                    <h2>Aus dem Angebot ausgelesene Daten</h2>
+                                                    <p class="sm-detail__sub">Originalwerte aus dem hochgeladenen Angebotsdokument</p>
+                                                </div>
+                                            </header>
+                                            <div class="aa-checkliste-tabelle">
+                                                <div class="aa-checkliste-kopf" aria-hidden="true">
+                                                    <span class="aa-checkliste-kopf__daten">
+                                                        <span>Prüfpunkt</span>
+                                                        <span>Ausgelesener Wert</span>
+                                                    </span>
+                                                    <span>Kommentar Vertrieb</span>
+                                                </div>
+                                                <ul class="aa-checkliste">
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.NummerVorhanden" Label="Angebotsnummer" StatusSymbolAnzeigen="false"
+                                                                   Wert="@_antwort.Angebotsnummer" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.KundeVorhanden" Label="Kunde mit Adresse" StatusSymbolAnzeigen="false"
+                                                                   Abweichend="@(!angebotStatus.Checkliste.KundeVorhanden && (!string.IsNullOrWhiteSpace(angebotStatus.Kundenname) || !string.IsNullOrWhiteSpace(angebotStatus.Kundenadresse)))"
+                                                                   Wert="@((!string.IsNullOrWhiteSpace(angebotStatus.Kundenname) || !string.IsNullOrWhiteSpace(angebotStatus.Kundenadresse)) ? $"{angebotStatus.Kundenname ?? "Kundenname nicht erkannt"} · {angebotStatus.Kundenadresse ?? "Adresse nicht erkannt"}" : null)"
+                                                                   KommentarAnzeige="@angebotStatus.KundeKommentar" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.KundenUndLieferadresseIdentisch" Label="Kundenadresse = Lieferadresse" StatusSymbolAnzeigen="false"
+                                                                   Abweichend="@(!angebotStatus.Checkliste.KundenUndLieferadresseIdentisch && !string.IsNullOrWhiteSpace(angebotStatus.Lieferadresse))"
+                                                                   Wert="@FormatAdressvergleich(angebotStatus.Kundenadresse, angebotStatus.Lieferadresse)"
+                                                                   KommentarAnzeige="@angebotStatus.LieferadresseKommentar" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.VerkaeuferVorhanden" Label="Verkäuferinformation" StatusSymbolAnzeigen="false"
+                                                                   Wert="@angebotStatus.Verkaeufer" KommentarAnzeige="@angebotStatus.VerkaeuferKommentar" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.GueltigkeitsdatumGueltig" Label="Gültigkeitsdatum" StatusSymbolAnzeigen="false"
+                                                                   Abweichend="@(!angebotStatus.Checkliste.GueltigkeitsdatumGueltig && angebotStatus.GueltigBis is not null)"
+                                                                   Wert="@angebotStatus.GueltigBis?.ToString("dd.MM.yyyy")"
+                                                                   KommentarAnzeige="@angebotStatus.GueltigkeitsdatumKommentar" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.LieferterminVorhanden" Label="Liefertermin/-dauer" StatusSymbolAnzeigen="false"
+                                                                   Wert="@angebotStatus.Liefertermin" KommentarAnzeige="@angebotStatus.LieferterminKommentar" />
+                                                    <ChecklistItem Ok="@(angebotStatus.Checkliste.ZahlungsbedingungenVorhanden && angebotStatus.Checkliste.ZahlungsbedingungStandardErkannt)"
+                                                                   Abweichend="@(angebotStatus.Checkliste.ZahlungsbedingungenVorhanden && !angebotStatus.Checkliste.ZahlungsbedingungStandardErkannt)"
+                                                                   Label="Zahlungsbedingung" StatusSymbolAnzeigen="false"
+                                                                   Wert="@angebotStatus.Zahlungsbedingungen"
+                                                                   KommentarAnzeige="@angebotStatus.ZahlungsbedingungenKommentar" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.ZahlungsplanStandardErkannt" Label="Zahlungsplan" StatusSymbolAnzeigen="false"
+                                                                   Abweichend="@(!angebotStatus.Checkliste.ZahlungsplanStandardErkannt && !string.IsNullOrWhiteSpace(angebotStatus.Zahlungsplan))"
+                                                                   Wert="@angebotStatus.Zahlungsplan" KommentarAnzeige="@angebotStatus.ZahlungsplanKommentar" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.IncotermGueltig" Label="Incoterm" StatusSymbolAnzeigen="false"
+                                                                   Abweichend="@(!angebotStatus.Checkliste.IncotermGueltig && !string.IsNullOrWhiteSpace(angebotStatus.Incoterm))"
+                                                                   Wert="@(!string.IsNullOrWhiteSpace(angebotStatus.Incoterm) ? $"{angebotStatus.Incoterm}{(string.IsNullOrWhiteSpace(angebotStatus.IncotermOrt) ? "" : $" · {angebotStatus.IncotermOrt}")}" : null)"
+                                                                   KommentarAnzeige="@angebotStatus.IncotermKommentar" />
+                                                    <ChecklistItem Ok="angebotStatus.Checkliste.VersandbedingungErkannt" Label="Versandart" StatusSymbolAnzeigen="false"
+                                                                   Abweichend="@(!angebotStatus.Checkliste.VersandbedingungErkannt && !string.IsNullOrWhiteSpace(angebotStatus.Versandbedingung))"
+                                                                   Wert="@angebotStatus.Versandbedingung" KommentarAnzeige="@angebotStatus.VersandbedingungKommentar" />
+                                                </ul>
+                                            </div>
+                                            <div class="aa-status-legende" aria-label="Legende der Prüfzustände">
+                                                <span><i class="aa-status-legende__punkt aa-status-legende__punkt--ok"></i>Vollständig</span>
+                                                <span><i class="aa-status-legende__punkt aa-status-legende__punkt--abweichend"></i>Abweichend</span>
+                                                <span><i class="aa-status-legende__punkt aa-status-legende__punkt--fehlt"></i>Fehlt</span>
+                                            </div>
+                                            <section class="aa-innendienst-sapstatus" aria-label="Manuelle SAP-Prüfung durch den Vertrieb">
+                                                <p class="aa-innendienst-sapstatus__hinweis">
+                                                    <strong>Vom Vertrieb manuell geprüft</strong>
+                                                    <span>Die folgenden Angaben wurden vom Vertrieb mit den Daten in SAP abgeglichen.</span>
+                                                </p>
+                                                <SapBestaetigungen Sparte="@(angebotStatus.SapSparteBestaetigt == true)"
+                                                                   Fuehrend="@(angebotStatus.SapFuehrendBestaetigt == true)"
+                                                                   SparteKommentar="@angebotStatus.SapSparteKommentar"
+                                                                   FuehrendKommentar="@angebotStatus.SapFuehrendKommentar"
+                                                                   Disabled="true" />
+                                            </section>
+                                        </section>
+
+                                        <section class="aa-innendienst-vergleich">
+                                            <header class="aa-innendienst-scrolltitel">
+                                                <h2>Vergleich mit der Kundenbestellung</h2>
+                                                <p class="sm-detail__sub">Liefertermin sowie kaufmännische und vertragliche Abweichungen</p>
+                                            </header>
+
+                                            <div class="sm-comparison">
+                                                <div class="sm-comparison__summary">
+                                                    <div class="sm-comparison__summary-item @(angebotStatus.Freigegeben ? "sm-comparison__summary-item--match" : "sm-comparison__summary-item--missing")">
+                                                        <span>@(angebotStatus.Freigegeben ? "Angebotsstatus: Freigegeben" : "Angebotsstatus: Freigabe ausstehend")</span>
+                                                    </div>
+                                                    <div class="sm-comparison__summary-item @(_antwort.LieferterminIdentisch ? "sm-comparison__summary-item--match" : "sm-comparison__summary-item--missing")">
+                                                        <span>@(_antwort.LieferterminIdentisch ? "Liefertermin: Identisch" : "Liefertermin: Abweichend")</span>
+                                                    </div>
+                                                    <div class="sm-comparison__summary-item sm-comparison__summary-item--match">
+                                                        <span class="sm-comparison__count">@_antwort.Uebereinstimmungen.Count</span>
+                                                        <span>@(_antwort.Uebereinstimmungen.Count == 1 ? "Bestätigte Übereinstimmung" : "Bestätigte Übereinstimmungen")</span>
+                                                    </div>
+                                                    <div class="sm-comparison__summary-item @(_antwort.SonstigeAbweichungen.Count == 0 ? "sm-comparison__summary-item--match" : "sm-comparison__summary-item--missing")">
+                                                        <span class="sm-comparison__count">@_antwort.SonstigeAbweichungen.Count</span>
+                                                        <span>@(_antwort.SonstigeAbweichungen.Count == 1 ? "Weitere Abweichung" : "Weitere Abweichungen")</span>
+                                                    </div>
+                                                </div>
+
+                                                <section class="sm-feature-group @(_antwort.SonstigeAbweichungen.Count == 0 ? "sm-feature-group--match" : "sm-feature-group--missing")">
+                                                    <header class="sm-feature-group__head">
+                                                        <div>
+                                                            <h3>
+                                                                @(_antwort.SonstigeAbweichungen.Count == 0 ? "Keine weiteren Abweichungen" : "Kaufmännische und vertragliche Abweichungen")
+                                                            </h3>
+                                                            <p>
+                                                                @(_antwort.SonstigeAbweichungen.Count == 0
+                                            ? "Alle ausgegebenen Prüfergebnisse wurden korrekt eingeordnet."
+                                            : "Nur tatsächlich abweichende Inhalte werden orange dargestellt.")
+                                                            </p>
+                                                        </div>
+                                                        <span class="sm-feature-group__badge">@_antwort.SonstigeAbweichungen.Count</span>
+                                                    </header>
+                                                    @if (_antwort.SonstigeAbweichungen.Count == 0)
+                                                    {
+                                                        <p class="sm-feature-group__empty">Keine weiteren Abweichungen erkannt.</p>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="sm-feature-table-wrap aa-innendienst-sticky-tabelle">
+                                                            <table class="sm-feature-table">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Prüfbereich</th>
+                                                                        <th>Erkannte Abweichung</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @foreach (var abweichung in _antwort.SonstigeAbweichungen)
+                                                                    {
+                                                                        <tr>
+                                                                            <td><strong>@AbweichungsKategorie(abweichung)</strong></td>
+                                                                            <td>@AbweichungsText(abweichung)</td>
+                                                                        </tr>
+                                                                    }
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    }
+                                                </section>
+
+                                                @if (_antwort.Uebereinstimmungen.Count > 0)
+                                                {
+                                                    <section class="sm-feature-group sm-feature-group--match">
+                                                        <header class="sm-feature-group__head">
+                                                            <div>
+                                                                <h3>
+                                                                    Bestätigte Übereinstimmungen
+                                                                </h3>
+                                                                <p>Diese geprüften Inhalte sind identisch oder semantisch gleichwertig.</p>
+                                                            </div>
+                                                            <span class="sm-feature-group__badge">@_antwort.Uebereinstimmungen.Count</span>
+                                                        </header>
+                                                        <div class="sm-feature-table-wrap aa-innendienst-sticky-tabelle">
+                                                            <table class="sm-feature-table">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Prüfbereich</th>
+                                                                        <th>Ergebnis</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @foreach (var uebereinstimmung in _antwort.Uebereinstimmungen)
+                                                                    {
+                                                                        <tr>
+                                                                            <td><strong>@AbweichungsKategorie(uebereinstimmung)</strong></td>
+                                                                            <td>@AbweichungsText(uebereinstimmung)</td>
+                                                                        </tr>
+                                                                    }
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </section>
+                                                }
+                                            </div>
+
+                                        </section>
+                                    </div>
+                                }
+                            </section>                            
+                        </div>
+
+                        <PdfViewerPanel Eingeklappt="_pdfEingeklappt" OnToggle="TogglePdfEingeklappt"
+                                        Busy="_laedt"
+                                        DataUrl="@(_aktiverPdfTab == "Angebot" ? _angebotDataUrl : _kundenbestellungDataUrl)">
+                            <Tabs>
+                                <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Angebot" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Angebot")" @onclick='() => _aktiverPdfTab = "Angebot"'>Angebot</button>
+                                <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Kundenbestellung" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Kundenbestellung")" @onclick='() => _aktiverPdfTab = "Kundenbestellung"'>Kundenbestellung</button>
+                                @if (_antwort?.VorhandeneVersionen is { Count: > 1 })
+                                {
+                                    <div class="aa-pdf-tab-divider" style="display: inline-block; width: 1px; height: 1.5rem; background-color: #c8d3d9; margin: 0 1rem; vertical-align: middle;"></div>
+                                    <span style="font-size: 0.8125rem; font-weight: 500; color: #57666d; margin-right: 0.5rem; vertical-align: middle;">Vergleich mit: @_antwort.AngebotVersion</span>
+                                }
+                            </Tabs>
+                        </PdfViewerPanel>
+                    }
                 </div>
-
-            </section>
-            </div>
-            </section>
-            </div>
-
-            <PdfViewerPanel Eingeklappt="_pdfEingeklappt" OnToggle="TogglePdfEingeklappt"
-                            DataUrl="@(_aktiverPdfTab == "Angebot" ? _angebotDataUrl : _kundenbestellungDataUrl)">
-                <Tabs>
-                    <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Angebot" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Angebot")" @onclick='() => _aktiverPdfTab = "Angebot"'>Angebot</button>
-                    <button type="button" class="aa-pdf-tab @(_aktiverPdfTab == "Kundenbestellung" ? "aa-pdf-tab--aktiv" : "")" aria-selected="@(_aktiverPdfTab == "Kundenbestellung")" @onclick='() => _aktiverPdfTab = "Kundenbestellung"'>Kundenbestellung</button>
-                </Tabs>
-            </PdfViewerPanel>
-        }
-            </div>
             </div>
         </div>
     </RoleGuard>
@@ -392,12 +431,10 @@
             }
             else
             {
+                await PdfsFreigebenAsync();
                 _antwort = ergebnis.Antwort;
-                _kundenbestellungDataUrl = $"data:{e.File.ContentType};base64,{Convert.ToBase64String(inhalt)}";
+                _kundenbestellungDataUrl = await PdfObjektUrlAsync(inhalt, e.File.ContentType);
                 _aktiverPdfTab = "Angebot";
-                // PDF eingeklappt starten, aber schon laden: das iframe wird im PdfViewerPanel
-                // immer ins DOM gerendert (nur per display:none versteckt), lädt also im
-                // Hintergrund und ist beim Aufklappen sofort da.
                 _pdfEingeklappt = true;
 
                 if (_antwort?.AngebotId is { } angebotId)
@@ -405,14 +442,10 @@
                     try
                     {
                         var angebotBytes = await Client.GetAngebotDokumentAsync(angebotId);
-                        _angebotDataUrl = angebotBytes is null
-                            ? null
-                            : $"data:application/pdf;base64,{Convert.ToBase64String(angebotBytes)}";
+                        _angebotDataUrl = await PdfObjektUrlAsync(angebotBytes);
                     }
                     catch (ApiRequestException)
                     {
-                        // Anzeige des Angebots-PDFs ist ein Zusatz — ein Fehler hier soll den
-                        // Vergleich nicht blockieren; das Panel zeigt "Dokument nicht verfügbar.".
                         _angebotDataUrl = null;
                     }
                 }
@@ -476,8 +509,7 @@
             _verlaufOffen = false;
             _uploadHinweis = null;
             _aktiverPdfTab = "Angebot";
-            _kundenbestellungDataUrl = null;
-            _angebotDataUrl = null;
+            await PdfsFreigebenAsync();
 
             var bestaetigungTask = DokumentStillLadenAsync(Client.GetBestaetigungDokumentAsync(eintrag.Id));
             var angebotTask = detail.Vergleich.AngebotId is { } angebotId
@@ -487,12 +519,10 @@
 
             var bestaetigungBytes = await bestaetigungTask;
             var angebotBytes = await angebotTask;
-            _kundenbestellungDataUrl = bestaetigungBytes is null
-                ? null
-                : $"data:application/pdf;base64,{Convert.ToBase64String(bestaetigungBytes)}";
-            _angebotDataUrl = angebotBytes is null
-                ? null
-                : $"data:application/pdf;base64,{Convert.ToBase64String(angebotBytes)}";
+            // Object-URLs für BEIDE Dokumente sofort (im Hintergrund) erzeugen, damit der
+            // spätere Tab-Wechsel nur noch anzeigt und nichts mehr umwandeln muss.
+            _kundenbestellungDataUrl = await PdfObjektUrlAsync(bestaetigungBytes);
+            _angebotDataUrl = await PdfObjektUrlAsync(angebotBytes);
         }
         catch (ApiRequestException ex)
         {
@@ -535,16 +565,95 @@
         return $"Kundenadresse: {kundenadresse ?? "Nicht erkannt"} · Lieferadresse: {lieferadresse ?? "Nicht erkannt"}";
     }
 
-    private void Zuruecksetzen()
+    private async Task OnVersionChangedAsync(ChangeEventArgs e)
+    {
+        if (_antwort?.BestaetigungId is null || e.Value is null)
+            return;
+
+        if (int.TryParse(e.Value.ToString(), out var selectedVersion))
+        {
+            _laedt = true;
+            _apiError = null;
+            try
+            {
+                var neueAntwort = await Client.BestaetigungWechselnAsync(_antwort.BestaetigungId.Value, selectedVersion);
+                _antwort = neueAntwort;
+
+                // Reload the offer PDF url for the newly selected offer version
+                if (_antwort?.AngebotId is { } angebotId)
+                {
+                    try
+                    {
+                        var angebotBytes = await Client.GetAngebotDokumentAsync(angebotId);
+                        await PdfObjektUrlFreigebenAsync(_angebotDataUrl);
+                        _angebotDataUrl = await PdfObjektUrlAsync(angebotBytes);
+                    }
+                    catch (ApiRequestException)
+                    {
+                        _angebotDataUrl = null;
+                    }
+                }
+            }
+            catch (ApiRequestException ex)
+            {
+                _apiError = ex.Message;
+            }
+            finally
+            {
+                _laedt = false;
+            }
+        }
+    }
+
+    private async Task Zuruecksetzen()
     {
         _antwort = null;
         _apiError = null;
         _uploadHinweis = null;
-        _kundenbestellungDataUrl = null;
-        _angebotDataUrl = null;
+        await PdfsFreigebenAsync();
         _aktiverPdfTab = "Angebot";
         _pdfEingeklappt = false;
         _geoeffneterId = null;
         _readOnly = false;
     }
+
+    // Erzeugt eine Blob-Object-URL direkt aus den Bytes (kein Base64-Umweg) — schnell und
+    // ohne Größenlimit fürs iframe. Rückgabe ist eine "blob:"-URL, die das PdfViewerPanel
+    // unverändert anzeigt. Object-URLs müssen später per Revoke freigegeben werden.
+    private async Task<string?> PdfObjektUrlAsync(byte[]? bytes, string? contentType = null)
+    {
+        if (bytes is null)
+            return null;
+
+        // DotNetStreamReference überträgt die Bytes roh nach JS (kein Base64 wie bei einem
+        // byte[]-Argument, das System.Text.Json sonst als Base64-String serialisieren würde).
+        using var stream = new MemoryStream(bytes, writable: false);
+        using var streamRef = new DotNetStreamReference(stream);
+        return await JSRuntime.InvokeAsync<string>(
+            "pdfObjectUrl.fromStream", streamRef, contentType ?? "application/pdf");
+    }
+
+    private async Task PdfObjektUrlFreigebenAsync(string? url)
+    {
+        if (string.IsNullOrEmpty(url))
+            return;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("pdfObjectUrl.revoke", url);
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            // Seite bereits verlassen — die Object-URL wird ohnehin mit dem Dokument freigegeben.
+        }
+    }
+
+    private async Task PdfsFreigebenAsync()
+    {
+        await PdfObjektUrlFreigebenAsync(_kundenbestellungDataUrl);
+        await PdfObjektUrlFreigebenAsync(_angebotDataUrl);
+        _kundenbestellungDataUrl = null;
+        _angebotDataUrl = null;
+    }
+
+    public async ValueTask DisposeAsync() => await PdfsFreigebenAsync();
 }

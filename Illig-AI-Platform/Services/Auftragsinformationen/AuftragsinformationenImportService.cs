@@ -1,5 +1,6 @@
 using Illig_AI_Platform.Shared.Auftragsinformationen;
 using Illig_AI_Platform.Shared.Data;
+using Illig_AI_Platform.Shared.Kunden;
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung;
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ public sealed class AuftragsinformationenImportService(
     AppDbContext db,
     ISharePointDokumentClient sharePoint,
     IDocumentAnalyseService analyse,
+    KundenstammService kundenstamm,
     IOptions<SharePointAuftragsinformationenOptions> options,
     ILogger<AuftragsinformationenImportService> logger)
 {
@@ -84,16 +86,16 @@ public sealed class AuftragsinformationenImportService(
         {
             // Abgebrochene und fehlgeschlagene Analysen erneut versuchen, auch wenn der Delta-Cursor
             // den betreffenden SharePoint-Eintrag bereits passiert hat.
-            var wiederholungen = await db.Auftragsdokumente.AsNoTracking()
-                .Where(d => d.GeloeschtAm == null
+            var wiederholungen = await db.StuecklistenpruefungVerlaufEintraege.AsNoTracking()
+                .Where(d => d.Quelle == AuftragsdokumentQuelle.SharePoint && d.GeloeschtAm == null
                     && (d.AnalyseStatus == AuftragsdokumentAnalyseStatus.Fehlgeschlagen
                         || (d.AnalyseStatus == AuftragsdokumentAnalyseStatus.InBearbeitung
                             && d.VerarbeitetAm < DateTime.UtcNow.AddHours(-2))))
                 .OrderBy(d => d.VerarbeitetAm)
                 .Take(50)
                 .Select(d => new SharePointAenderung(
-                    d.SharePointDriveId, d.SharePointItemId, d.Dateiname, d.ETag, d.WebUrl,
-                    d.SharePointErstelltAm, d.SharePointGeaendertAm, true, false))
+                    d.SharePointDriveId!, d.SharePointItemId!, d.Dateiname, d.ETag!, d.WebUrl!,
+                    d.SharePointErstelltAm!.Value, d.SharePointGeaendertAm!.Value, true, false))
                 .ToListAsync(cancellationToken);
 
             foreach (var wiederholung in wiederholungen)
@@ -170,8 +172,9 @@ public sealed class AuftragsinformationenImportService(
         bool analyseErzwingen,
         CancellationToken cancellationToken)
     {
-        var dokument = await db.Auftragsdokumente
-            .SingleOrDefaultAsync(d => d.SharePointDriveId == eintrag.DriveId
+        var dokument = await db.StuecklistenpruefungVerlaufEintraege
+            .SingleOrDefaultAsync(d => d.Quelle == AuftragsdokumentQuelle.SharePoint
+                && d.SharePointDriveId == eintrag.DriveId
                 && d.SharePointItemId == eintrag.ItemId, cancellationToken);
 
         if (!analyseErzwingen && dokument is not null
@@ -181,13 +184,15 @@ public sealed class AuftragsinformationenImportService(
             && string.Equals(dokument.ETag, eintrag.ETag, StringComparison.Ordinal))
             return EintragErgebnis.Uebersprungen;
 
-        dokument ??= new Auftragsdokument
+        dokument ??= new StuecklistenpruefungVerlaufEintrag
         {
+            Quelle = AuftragsdokumentQuelle.SharePoint,
             SharePointDriveId = eintrag.DriveId,
             SharePointItemId = eintrag.ItemId,
+            ErstelltAm = DateTime.UtcNow,
         };
         if (dokument.Id == 0)
-            db.Auftragsdokumente.Add(dokument);
+            db.StuecklistenpruefungVerlaufEintraege.Add(dokument);
 
         MetadatenUebernehmen(dokument, eintrag);
         dokument.AnalyseStatus = AuftragsdokumentAnalyseStatus.InBearbeitung;
@@ -223,14 +228,27 @@ public sealed class AuftragsinformationenImportService(
             dokument.AnalyseFehler = null;
             dokument.VerarbeitetAm = DateTime.UtcNow;
 
-            var vorhandeneMerkmale = await db.AuftragsdokumentMerkmale
-                .Where(m => m.AuftragsdokumentId == dokument.Id)
+            // Kundenstamm genau wie beim Drag&Drop-Upload speisen (FindeOderErstelle + Quelle
+            // registrieren), damit beide Wege dasselbe Ergebnis liefern. Beides ist idempotent, der
+            // wiederkehrende SharePoint-Sync erzeugt also keine Dubletten.
+            var kunde = await kundenstamm.FindeOderErstelleAsync(
+                ergebnis.Kundenname, ergebnis.Kundenadresse, ergebnis.Kundennummer, cancellationToken);
+            dokument.KundeId = kunde?.Id;
+
+            var vorhandeneMerkmale = await db.VerlaufMerkmale
+                .Where(m => m.VerlaufEintragId == dokument.Id)
                 .ToListAsync(cancellationToken);
-            db.AuftragsdokumentMerkmale.RemoveRange(vorhandeneMerkmale);
-            db.AuftragsdokumentMerkmale.AddRange(
+            db.VerlaufMerkmale.RemoveRange(vorhandeneMerkmale);
+            db.VerlaufMerkmale.AddRange(
                 ergebnis.Merkmale.Select(m => NeuesMerkmal(dokument.Id, MerkmalKategorie.Merkmal, m))
                     .Concat(ergebnis.Sonderoptionen.Select(m => NeuesMerkmal(dokument.Id, MerkmalKategorie.Sonderoption, m))));
             await db.SaveChangesAsync(cancellationToken);
+
+            if (kunde is not null)
+                await kundenstamm.RegistriereQuelleAsync(
+                    kunde, KundenQuelltyp.Auftragsinformation, dokument.Id,
+                    ergebnis.Kundenname, ergebnis.Kundenadresse, ergebnis.Kundennummer, cancellationToken);
+
             return EintragErgebnis.Verarbeitet;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -250,8 +268,9 @@ public sealed class AuftragsinformationenImportService(
         SharePointAenderung eintrag,
         CancellationToken cancellationToken)
     {
-        var dokument = await db.Auftragsdokumente
-            .SingleOrDefaultAsync(d => d.SharePointDriveId == eintrag.DriveId
+        var dokument = await db.StuecklistenpruefungVerlaufEintraege
+            .SingleOrDefaultAsync(d => d.Quelle == AuftragsdokumentQuelle.SharePoint
+                && d.SharePointDriveId == eintrag.DriveId
                 && d.SharePointItemId == eintrag.ItemId, cancellationToken);
         if (dokument is null || dokument.GeloeschtAm is not null)
             return false;
@@ -261,7 +280,7 @@ public sealed class AuftragsinformationenImportService(
         return true;
     }
 
-    private static void MetadatenUebernehmen(Auftragsdokument dokument, SharePointAenderung eintrag)
+    private static void MetadatenUebernehmen(StuecklistenpruefungVerlaufEintrag dokument, SharePointAenderung eintrag)
     {
         dokument.ETag = eintrag.ETag;
         dokument.Dateiname = eintrag.Dateiname;
@@ -270,12 +289,12 @@ public sealed class AuftragsinformationenImportService(
         dokument.SharePointGeaendertAm = eintrag.GeaendertAm;
     }
 
-    private static AuftragsdokumentMerkmal NeuesMerkmal(
-        int dokumentId,
+    private static VerlaufMerkmal NeuesMerkmal(
+        int verlaufEintragId,
         MerkmalKategorie kategorie,
         ErkanntesMerkmal merkmal) => new()
     {
-        AuftragsdokumentId = dokumentId,
+        VerlaufEintragId = verlaufEintragId,
         Kategorie = kategorie,
         Position = merkmal.Position,
         Merkmalsnummer = merkmal.Merkmalsnummer,

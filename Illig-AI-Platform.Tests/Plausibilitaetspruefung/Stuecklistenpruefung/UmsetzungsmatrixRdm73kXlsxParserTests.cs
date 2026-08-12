@@ -66,6 +66,73 @@ public class UmsetzungsmatrixRdm73kXlsxParserTests
     }
 
     [Fact]
+    public void Parse_VerknuepftMehrereBedingungsspaltenOhneKombiSpalteMitUnd()
+    {
+        // Echte Zeile 317 (9276558): zwei verschiedene Varianten-Gruppen (Antrieb 021118 +
+        // Vorstreckstempel 021123), keine Kombinationsspalte -> UND-Verknüpfung.
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 73K");
+        ws.Cell(8, 2).Value = "9254662";
+        ws.Cell(10, 3).Value = "9276558";
+        ws.Cell(10, 4).Value = "Anschlag_Zahnstange";
+        ws.Cell(10, 14).Value = "021118";
+        ws.Cell(10, 27).Value = "021123";
+
+        using var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        stream.Position = 0;
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm73kXlsxParser.Parse(stream));
+        Assert.Equal("(021118) U (021123)", zeile.Bedingung);
+    }
+
+    [Fact]
+    public void Parse_GefuellteKombiSpalteIstMassgeblich_TrotzRohwerteInEinzelspalten()
+    {
+        // Echte Zeile 449 (9251322): Einzelspalten tragen die Rohwerte 020440 / 025010, die
+        // Kombinationsspalte die vollständige (ODER-)Bedingung. Reines UND wäre hier falsch.
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 73K");
+        ws.Cell(1, 30).Value = "Merkmalskombination";
+        ws.Cell(2, 30).Value = "Merkmalskombination";
+        ws.Cell(8, 2).Value = "9254662";
+        ws.Cell(10, 3).Value = "9251322";
+        ws.Cell(10, 14).Value = "020440";
+        ws.Cell(10, 15).Value = "025010";
+        ws.Cell(10, 30).Value = "020440 oder 025010";
+
+        using var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        stream.Position = 0;
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm73kXlsxParser.Parse(stream));
+        Assert.Equal("020440 oder 025010", zeile.Bedingung);
+    }
+
+    [Fact]
+    public void Parse_LoestAbgekuerztesSKombiUeberKombinationsSpalteAuf()
+    {
+        // Echte Zeile 466 (9239118): Marker "s. Kombi" (nicht "siehe Komb."), volle Bedingung in
+        // der Kombinationsspalte. Früher: Parse-Fehler/Crash.
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 73K");
+        ws.Cell(1, 30).Value = "Merkmalskombination";
+        ws.Cell(2, 30).Value = "Merkmalskombination";
+        ws.Cell(8, 2).Value = "9254662";
+        ws.Cell(10, 3).Value = "9239118";
+        ws.Cell(10, 14).Value = "s. Kombi";
+        ws.Cell(10, 15).Value = "s. Kombi";
+        ws.Cell(10, 30).Value = "014903 / 020581 / 021138";
+
+        using var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        stream.Position = 0;
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm73kXlsxParser.Parse(stream));
+        Assert.Equal("014903 / 020581 / 021138", zeile.Bedingung);
+    }
+
+    [Fact]
     public void Parse_LoestSieheKombUeberMerkmalskombinationsSpalteAuf()
     {
         using var wb = new XLWorkbook();

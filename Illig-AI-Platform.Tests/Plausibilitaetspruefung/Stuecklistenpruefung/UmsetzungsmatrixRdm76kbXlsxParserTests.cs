@@ -75,6 +75,58 @@ public class UmsetzungsmatrixRdm76kbXlsxParserTests
     }
 
     [Fact]
+    public void Parse_VerknuepftMehrereBedingungsspaltenMitUnd()
+    {
+        // Echter Fall 9268432 (Zeile 208): Formluft-Variante (AF) UND NICHT Kondenswasser (AM),
+        // beide Spalten gefüllt, KEIN "siehe Komb." — müssen mit UND kombiniert werden.
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 76Kb");
+        ws.Cell(7, 2).Value = "9268197";
+        ws.Cell(9, 3).Value = "9268432";
+        ws.Cell(9, 13).Value = "017366 / 017367"; // erste Bedingungsspalte
+        ws.Cell(9, 15).Value = "N020121";          // weitere Bedingungsspalte
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb)));
+        Assert.Equal("(017366 / 017367) U (N020121)", zeile.Bedingung);
+    }
+
+    [Theory]
+    [InlineData("s. Kombi")]  // mit Leerzeichen (echte Zeile 427)
+    [InlineData("s.Kombi")]   // ohne Leerzeichen (echte Zeile 416)
+    [InlineData("s.Komb.")]   // abgekürzt
+    public void Parse_LoestAbgekuerzteKombiMarkerUeberKombinationsSpalteAuf(string marker)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 76Kb");
+        ws.Cell(3, 20).Value = "Merkmalskombination"; // Kopf in Zeile 3
+        ws.Cell(7, 2).Value = "9268197";
+        ws.Cell(9, 3).Value = "9251322";
+        ws.Cell(9, 13).Value = marker;
+        ws.Cell(9, 20).Value = "014903 / 020581 / 021138";
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb)));
+        Assert.Equal("014903 / 020581 / 021138", zeile.Bedingung);
+    }
+
+    [Fact]
+    public void Parse_LoestMischzelleMitMerkmalUndKombiMarkerUeberKombinationsSpalteAuf()
+    {
+        // Echte Zeile 149/150: Zelle enthält Merkmalsnummer UND Marker ("022689 s.Komb."),
+        // die vollständige Bedingung steht in der Kombinationsspalte.
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 76Kb");
+        ws.Cell(3, 20).Value = "Merkmalskombination";
+        ws.Cell(7, 2).Value = "9268197";
+        ws.Cell(9, 3).Value = "9280490";
+        ws.Cell(9, 13).Value = "022689 s.Komb.";
+        ws.Cell(9, 14).Value = "siehe Komb.";
+        ws.Cell(9, 20).Value = "022689 oder 022078";
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb)));
+        Assert.Equal("022689 oder 022078", zeile.Bedingung);
+    }
+
+    [Fact]
     public void Parse_LoestSieheKombUeberMerkmalskombinationsSpalteAuf()
     {
         using var wb = new XLWorkbook();
@@ -89,5 +141,82 @@ public class UmsetzungsmatrixRdm76kbXlsxParserTests
 
         var zeile = Assert.Single(UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb)));
         Assert.Equal("017367 oder 017369", zeile.Bedingung);
+    }
+
+    [Fact]
+    public void Parse_ErhaeltFuehrendeNullAusZahlenformat()
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 76Kb");
+        ws.Cell(7, 2).Value = "9268197";
+        ws.Cell(9, 3).Value = "9312266";
+        ws.Cell(9, 13).Value = 25643;
+        ws.Cell(9, 13).Style.NumberFormat.Format = "000000";
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb)));
+
+        Assert.Equal("025643", zeile.Bedingung);
+    }
+
+    [Theory]
+    [InlineData("x")]
+    [InlineData("X")]
+    public void Parse_InterpretiertSonderspannungsmarkerAlsNegation(string marker)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 76Kb");
+        ws.Cell(3, 13).Value = "Stromversorgung (9020016) Standard, (x) Sonderspannung";
+        ws.Cell(7, 2).Value = "9268197";
+        ws.Cell(9, 3).Value = "9061560";
+        ws.Cell(9, 13).Value = marker;
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb)));
+
+        Assert.Equal("N9020016", zeile.Bedingung);
+    }
+
+    [Fact]
+    public void Parse_EntferntMaschinenhinweiseAusRdm76Bedingung()
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 76Kb");
+        ws.Cell(7, 2).Value = "9268197";
+        ws.Cell(9, 3).Value = "9271839";
+        ws.Cell(9, 13).Value = "75Kc";
+        ws.Cell(9, 14).Value = "76K";
+        ws.Cell(9, 15).Value = "020575 / 020576 / 020577";
+
+        var zeile = Assert.Single(UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb)));
+
+        Assert.Equal("020575 / 020576 / 020577", zeile.Bedingung);
+    }
+
+    [Fact]
+    public void Parse_UnterscheidetDoppeltePfadeNachVorkommen()
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Umsetztabelle RDM 76Kb");
+        ws.Cell(7, 2).Value = "9268197";
+        ws.Cell(9, 3).Value = "9271478";
+        ws.Cell(9, 13).Value = "022073";
+        ws.Cell(10, 3).Value = "9271478";
+        ws.Cell(10, 14).Value = "022074";
+
+        var zeilen = UmsetzungsmatrixRdm76kbXlsxParser.Parse(Speichern(wb));
+
+        Assert.Collection(
+            zeilen,
+            erste =>
+            {
+                Assert.Equal(["9268197", "9271478"], erste.Pfad);
+                Assert.Equal("022073", erste.Bedingung);
+                Assert.Equal(0, erste.PfadVorkommen);
+            },
+            zweite =>
+            {
+                Assert.Equal(["9268197", "9271478"], zweite.Pfad);
+                Assert.Equal("022074", zweite.Bedingung);
+                Assert.Equal(1, zweite.PfadVorkommen);
+            });
     }
 }

@@ -41,6 +41,17 @@ public class MaximalstuecklisteParserTests
     }
 
     [Fact]
+    public void Parse_MitRdk80Format_VerwendetEigenenParser()
+    {
+        var inhalt = Zeile(1, "9209425 0001 1 01", 19, "RDK 80k_Siemens_konf");
+
+        var wurzel = MaximalstuecklisteParser.Parse(inhalt, StuecklistenImportFormat.Rdk80k);
+
+        Assert.Equal("9209425", wurzel.Artikelnummer);
+        Assert.Equal("RDK 80k_Siemens_konf", wurzel.Bezeichnung);
+    }
+
+    [Fact]
     public void Parse_MitUnbekanntemFormat_WirftArgumentException()
     {
         var inhalt = Zeile(1, "9254662 0001 1 01", 19, "RDM 73K_konf");

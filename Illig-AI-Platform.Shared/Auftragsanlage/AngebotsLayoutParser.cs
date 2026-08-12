@@ -236,6 +236,13 @@ public static class AngebotsLayoutParser
                      @"\s(?=(?:TAX\s*ID|VAT(?:\s*(?:ID|NO\.?|NUMBER))?|USt-IdNr\.?|RFC)\s*:)",
                      RegexOptions.IgnoreCase) is { Success: true, Index: > 0 } steuerkennung)
             schnitt = steuerkennung.Index;
+        // Postfach-/PO-Box-Adressen beginnen mit einem Schlüsselwort vor der Nummer. Ohne diese
+        // Grenze würde der reine Ziffern-Fallback mitten in „PO Box 10554" trennen und „PO Box"
+        // in den Namen ziehen. Deshalb vor dem allgemeinen \s\d-Split abfangen.
+        else if (Regex.Match(zeile,
+                     @"\s(?=(?:P\.?\s*O\.?\s*Box|Post\s*Office\s*Box|Postfach)\b)",
+                     RegexOptions.IgnoreCase) is { Success: true, Index: > 0 } postfach)
+            schnitt = postfach.Index;
         else if (Regex.Match(zeile, @"\s\d") is { Success: true, Index: > 0 } zahl)
             schnitt = zahl.Index;
         else

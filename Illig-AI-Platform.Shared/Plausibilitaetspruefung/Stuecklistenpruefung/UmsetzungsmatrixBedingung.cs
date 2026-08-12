@@ -35,12 +35,20 @@ public sealed partial class UmsetzungsmatrixBedingung
     [GeneratedRegex(@"\(|\)|[^\s()]+")]
     private static partial Regex TokenPattern();
 
+    // NICHT-Präfix direkt vor einer Merkmalsnummer ohne Leerzeichen, z. B. "N020121" (echte
+    // Matrix, Zelle AI222). Merkmalsnummern sind rein numerisch, beginnen also nie mit "N" —
+    // ein "N" unmittelbar vor einer Ziffer ist daher immer der NICHT-Operator.
+    [GeneratedRegex(@"(?<![A-Za-z0-9])N(?=\d)")]
+    private static partial Regex NichtPraefix();
+
     private static List<string> Tokenisieren(string ausdruck)
     {
         // "/" kommt in der kompakten Notation ohne umgebende Leerzeichen vor — zur Sicherheit
         // wird der Operator vor der Tokenisierung mit Leerzeichen umgeben. "(" und ")" isoliert
         // TokenPattern bereits selbst, auch ohne umgebende Leerzeichen.
         var normalisiert = ausdruck.Replace("/", " / ");
+        // "N020121" -> "N 020121", damit der NICHT-Operator als eigenes Token erkannt wird.
+        normalisiert = NichtPraefix().Replace(normalisiert, "N ");
         return TokenPattern().Matches(normalisiert).Select(m => m.Value).ToList();
     }
 

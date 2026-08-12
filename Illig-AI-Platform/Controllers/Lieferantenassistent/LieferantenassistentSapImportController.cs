@@ -21,10 +21,10 @@ public class LieferantenassistentSapImportController(SapDirektImportService impo
     [ProducesResponseType(typeof(SapDirektImportErgebnis), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public Task<ActionResult<SapDirektImportErgebnis>> Dispositionsliste(
-        [FromBody] OffeneBestellungenPush? push,
-        CancellationToken cancellationToken) =>
-        AusfuehrenAsync(push, value => importService.ImportiereDispositionAsync(value, cancellationToken));
+    public Task<ActionResult<SapDirektImportErgebnis>> Dispositionsliste([FromBody] OffeneBestellungenPush? push, CancellationToken cancellationToken)
+    {
+        return AusfuehrenAsync(push, value => importService.ImportiereDispositionAsync(value, cancellationToken));
+    }
 
     [HttpPost("lieferanten-kreditoren-stammdaten")]
     [EndpointSummary("Stammdaten der Lieferanten und Kreditoren")]
