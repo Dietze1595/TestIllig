@@ -265,4 +265,47 @@ public class VergleichsKnotenAnsichtTests
         Assert.Contains(zeilen, z => z.Knoten == enkelDerDenFilterBesteht);
         Assert.DoesNotContain(zeilen, z => z.Knoten == kindDasKomplettAusgeblendetWird);
     }
+
+    private static VergleichsKnoten KnotenMitText(
+        string artNum,
+        string bezeichnung,
+        VergleichsStatus status = VergleichsStatus.Uebereinstimmung,
+        params VergleichsKnoten[] kinder) =>
+        new(
+            artNum,
+            bezeichnung,
+            bezeichnung,
+            1,
+            "ST",
+            1,
+            "ST",
+            status,
+            null,
+            kinder);
+
+    [Fact]
+    public void SichtbareZeilen_SearchPropagatesToDescendants()
+    {
+        // Root -> Baugruppe A -> Kind 1 (Uebereinstimmung)
+        //                     -> Kind 2 (Abweichung)
+        //      -> Baugruppe B
+        var kind1 = KnotenMitText("101", "Kind 1");
+        var kind2 = KnotenMitText("102", "Kind 2", VergleichsStatus.Abweichung);
+        var baugruppeA = KnotenMitText("200", "Baugruppe A", VergleichsStatus.Uebereinstimmung, kind1, kind2);
+        var baugruppeB = KnotenMitText("300", "Baugruppe B");
+        var wurzel = KnotenMitText("000", "Root", VergleichsStatus.Uebereinstimmung, baugruppeA, baugruppeB);
+
+        var ansicht = VergleichsKnotenAnsicht.Aufbauen(wurzel);
+
+        // Search for "Baugruppe A"
+        var zeilen = VergleichsKnotenAnsicht.SichtbareZeilen(ansicht, 0, null, true, "Baugruppe A").ToList();
+
+        // Should include Root (ancestor), Baugruppe A (match), and its children Kind 1 and Kind 2 (descendants of match).
+        // It should NOT include Baugruppe B.
+        Assert.Contains(zeilen, z => z.Knoten.Knoten.Bezeichnung == "Root");
+        Assert.Contains(zeilen, z => z.Knoten.Knoten.Bezeichnung == "Baugruppe A");
+        Assert.Contains(zeilen, z => z.Knoten.Knoten.Bezeichnung == "Kind 1");
+        Assert.Contains(zeilen, z => z.Knoten.Knoten.Bezeichnung == "Kind 2");
+        Assert.DoesNotContain(zeilen, z => z.Knoten.Knoten.Bezeichnung == "Baugruppe B");
+    }
 }

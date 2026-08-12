@@ -27,6 +27,11 @@ public sealed class VergleichsKnotenAnsicht
         || Knoten.Bezeichnung.Contains(suchtext, StringComparison.OrdinalIgnoreCase)
         || Kinder.Any(kind => kind.EnthaeltText(suchtext));
 
+    // Prüft, ob dieser Knoten selbst direkt die gesuchte Zeichenfolge in Artikelnummer oder Bezeichnung trägt.
+    public bool HatDirektenText(string suchtext) =>
+        Knoten.Artikelnummer.Contains(suchtext, StringComparison.OrdinalIgnoreCase)
+        || Knoten.Bezeichnung.Contains(suchtext, StringComparison.OrdinalIgnoreCase);
+
     // Default-Klappzustand (bottom-up): ein Knoten wird aufgeklappt, um darunterliegende
     // Probleme sichtbar zu machen — nämlich wenn ein Kind selbst ein Problem trägt (Status
     // ungleich Übereinstimmung) oder seinerseits aufgeklappt ist (tieferliegendes Problem).
@@ -57,13 +62,39 @@ public sealed class VergleichsKnotenAnsicht
     // Filter ihn durchlässt; seine Kinder folgen nur, wenn er selbst aufgeklappt ist (oder
     // alleSichtbarenKinderAnzeigen das erzwingt).
     public static IEnumerable<VergleichsZeileAnsicht> SichtbareZeilen(
-        VergleichsKnotenAnsicht knoten, int tiefe,
-        Func<VergleichsKnotenAnsicht, bool>? filter, bool alleSichtbarenKinderAnzeigen)
+        VergleichsKnotenAnsicht knoten,
+        int tiefe,
+        Func<VergleichsKnotenAnsicht, bool>? filter,
+        bool alleSichtbarenKinderAnzeigen,
+        string? suchtext = null,
+        bool elterMatchtDirekt = false)
     {
-        if (!(filter?.Invoke(knoten) ?? true))
+        var hatSuche = !string.IsNullOrWhiteSpace(suchtext);
+        var such = suchtext ?? "";
+        var istDirektesMatch = hatSuche && knoten.HatDirektenText(such);
+        var aktuellesMatchtDirekt = elterMatchtDirekt || istDirektesMatch;
+
+        if (hatSuche && !aktuellesMatchtDirekt && !knoten.EnthaeltText(such))
             yield break;
 
-        var hatSichtbareKinder = knoten.Kinder.Any(k => filter?.Invoke(k) ?? true);
+        if (filter is not null && !filter(knoten))
+            yield break;
+
+        var hatSichtbareKinder = knoten.Kinder.Any(k =>
+        {
+            var kHatSuche = hatSuche;
+            var kIstDirektesMatch = kHatSuche && k.HatDirektenText(such);
+            var kAktuellesMatchtDirekt = aktuellesMatchtDirekt || kIstDirektesMatch;
+
+            if (kHatSuche && !kAktuellesMatchtDirekt && !k.EnthaeltText(such))
+                return false;
+
+            if (filter is not null && !filter(k))
+                return false;
+
+            return true;
+        });
+
         var istAufgeklappt = alleSichtbarenKinderAnzeigen || knoten.Aufgeklappt;
 
         yield return new VergleichsZeileAnsicht(knoten, tiefe, hatSichtbareKinder, istAufgeklappt);
@@ -72,7 +103,17 @@ public sealed class VergleichsKnotenAnsicht
             yield break;
 
         foreach (var kind in knoten.Kinder)
-            foreach (var zeile in SichtbareZeilen(kind, tiefe + 1, filter, alleSichtbarenKinderAnzeigen))
+        {
+            var unterzeilen = SichtbareZeilen(
+                kind,
+                tiefe + 1,
+                filter,
+                alleSichtbarenKinderAnzeigen,
+                suchtext,
+                aktuellesMatchtDirekt);
+
+            foreach (var zeile in unterzeilen)
                 yield return zeile;
+        }
     }
 }

@@ -11,6 +11,38 @@
   margin-bottom: 1rem;
 }
 
+.su-comparison-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 24rem;
+  width: 100%;
+}
+
+.su-comparison-search__input {
+  width: 100%;
+  padding: 0.45rem 1rem 0.45rem 2.25rem;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 2rem;
+  outline: none;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.su-comparison-search__input:focus {
+  border-color: #00457b; /* Illig Primary Color #1 */
+  box-shadow: 0 0 0 0.2rem rgba(0, 69, 123, 0.15);
+}
+
+.su-comparison-search__icon {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
 .su-comparison-head h3 {
   margin: 0;
   color: var(--color-text);

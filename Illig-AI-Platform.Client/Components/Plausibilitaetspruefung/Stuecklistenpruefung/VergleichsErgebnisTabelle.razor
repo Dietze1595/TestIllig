@@ -10,6 +10,9 @@
             <p>Nach Artikelnummer/Bezeichnung suchen oder über den Status-Filter im Tabellenkopf eingrenzen</p>
         </div>
         <div class="su-comparison-search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="su-comparison-search__icon" viewBox="0 0 16 16">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+            </svg>
             <input type="search"
                    class="su-comparison-search__input"
                    placeholder="Artikelnummer suchen…"
@@ -51,7 +54,7 @@
                 @if (_sichtbareZeilen.Count == 0)
                 {
                     <tr>
-                        <td colspan="6" class="su-comparison-empty-cell">Keine passenden Positionen.</td>
+                        <td colspan="6" class="su-comparison-empty-cell">Keine Positionen mit dem gewählten Status.</td>
                     </tr>
                 }
                 else
@@ -163,27 +166,22 @@
         }
     }
 
-    // Ohne Filter/Suche kein Baum-Filter (interaktiver Baum). Sonst ist ein Knoten sichtbar, wenn er
-    // oder ein Nachfahre den gewählten Status UND (falls gesucht wird) den Suchtext trägt.
+    // Ohne Statusfilter kein Baum-Filter (interaktiver Baum). Sonst ist ein Knoten sichtbar, wenn er
+    // oder ein Nachfahre den gewählten Status trägt.
     private Func<VergleichsKnotenAnsicht, bool>? AktiverBaumFilter
     {
         get
         {
-            var suchtext = _suchtext.Trim();
-            var hatSuche = suchtext.Length > 0;
             var hatStatus = _ausgewaehlteStatus.Count > 0;
-            if (!hatSuche && !hatStatus)
+            if (!hatStatus)
                 return null;
 
-            var baumStatus = hatStatus
-                ? _statusReihenfolge
-                    .Where(s => s.Status != VergleichsStatus.NurInSap && _ausgewaehlteStatus.Contains(s.Label))
-                    .Select(s => s.Status)
-                    .ToHashSet()
-                : null;
-            return knoten =>
-                (baumStatus is null || knoten.EnthaeltStatus(baumStatus))
-                && (!hatSuche || knoten.EnthaeltText(suchtext));
+            var baumStatus = _statusReihenfolge
+                .Where(s => s.Status != VergleichsStatus.NurInSap && _ausgewaehlteStatus.Contains(s.Label))
+                .Select(s => s.Status)
+                .ToHashSet();
+
+            return knoten => knoten.EnthaeltStatus(baumStatus);
         }
     }
 
@@ -212,10 +210,11 @@
     {
         // Bei aktiver Suche alle passenden Knoten entlang des gefilterten Pfades aufklappen, damit
         // Treffer auch in sonst eingeklappten Ästen sichtbar werden.
-        var suchAktiv = _suchtext.Trim().Length > 0;
+        var suchtext = _suchtext.Trim();
+        var suchAktiv = suchtext.Length > 0;
         _sichtbareZeilen = Baum is null
             ? []
-            : VergleichsKnotenAnsicht.SichtbareZeilen(Baum, 0, AktiverBaumFilter, suchAktiv).ToList();
+            : VergleichsKnotenAnsicht.SichtbareZeilen(Baum, 0, AktiverBaumFilter, suchAktiv, suchtext).ToList();
         StickyPfadeVorberechnen();
         _ = _virtualize?.RefreshDataAsync();
     }
