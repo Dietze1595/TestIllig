@@ -49,6 +49,16 @@ public class StuecklistenpruefungClient(HttpClient http)
         return await response.Content.ReadFromJsonAsync<VerlaufDetail>();
     }
 
+    public async Task<VerlaufDetail?> SucheNachAuftragsnummerAsync(string auftragsnummer)
+    {
+        var response = await http.GetAsync(
+            $"api/v1/stuecklistenpruefung/suche?auftragsnummer={Uri.EscapeDataString(auftragsnummer)}");
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<VerlaufDetail>();
+    }
+
     public async Task<byte[]?> GetVerlaufDokumentAsync(int id)
     {
         var response = await http.GetAsync($"api/v1/stuecklistenpruefung/verlauf/{id}/dokument");
@@ -164,7 +174,8 @@ public class StuecklistenpruefungClient(HttpClient http)
         content.Add(xlsxContent, "umsetzungsmatrix", umsetzungsmatrix.Name);
 
         content.Add(new StringContent(maschinentypSchluessel), "maschinentypSchluessel");
-        // Enum-Name muss zu den Server-Werten passen (case-insensitiv geparst): Rdm75Kc/Rdm73k/Rdm76Kb.
+        // Enum-Name muss zu den Server-Werten passen (case-insensitiv geparst):
+        // Rdm75Kc/Rdm73k/Rdm76Kb/Rdk80k.
         content.Add(new StringContent(format.ToString()), "format");
 
         var response = await http.PostAsync("api/v1/stuecklistenpruefung/import", content);
@@ -174,25 +185,30 @@ public class StuecklistenpruefungClient(HttpClient http)
     // Admin-only? Nein — normale PlausibilityCheck-Rolle, seltener Vorgang pro Auftrag,
     // ähnliches Multipart-Muster wie ImportAsync, aber mit einem Text-Formularfeld statt
     // einer zweiten Datei für den bereits im Browser vorhandenen berechneten Baum.
-    public async Task<VergleichsErgebnis> VergleichenAsync(IBrowserFile sapDatei, StuecklistenKnoten unsereStueckliste)
+    public async Task<VergleichsErgebnis> VergleichenAsync(
+        IBrowserFile sapDatei,
+        StuecklistenKnoten unsereStueckliste,
+        string maschinentyp)
     {
         using var stream = sapDatei.OpenReadStream(MaxDateiBytes);
-        return await VergleichenAsync(stream, sapDatei.Name, unsereStueckliste);
+        return await VergleichenAsync(stream, sapDatei.Name, unsereStueckliste, maschinentyp);
     }
 
     public async Task<VergleichsErgebnis> VergleichenAsync(
         byte[] sapDatei,
         string dateiname,
-        StuecklistenKnoten unsereStueckliste)
+        StuecklistenKnoten unsereStueckliste,
+        string maschinentyp)
     {
         using var stream = new MemoryStream(sapDatei, writable: false);
-        return await VergleichenAsync(stream, dateiname, unsereStueckliste);
+        return await VergleichenAsync(stream, dateiname, unsereStueckliste, maschinentyp);
     }
 
     private async Task<VergleichsErgebnis> VergleichenAsync(
         Stream stream,
         string dateiname,
-        StuecklistenKnoten unsereStueckliste)
+        StuecklistenKnoten unsereStueckliste,
+        string maschinentyp)
     {
         using var content = new MultipartFormDataContent();
         using var fileContent = new StreamContent(stream);
@@ -200,6 +216,7 @@ public class StuecklistenpruefungClient(HttpClient http)
         content.Add(fileContent, "sapDatei", dateiname);
 
         content.Add(new StringContent(JsonSerializer.Serialize(unsereStueckliste)), "unsereStuecklisteJson");
+        content.Add(new StringContent(maschinentyp), "maschinentyp");
 
         var response = await http.PostAsync("api/v1/stuecklistenpruefung/vergleichen", content);
         response.EnsureSuccessStatusCode();

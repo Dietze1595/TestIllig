@@ -2,6 +2,7 @@ using System.Text;
 using Illig_AI_Platform.Services.Auftragsinformationen;
 using Illig_AI_Platform.Shared.Auftragsinformationen;
 using Illig_AI_Platform.Shared.Data;
+using Illig_AI_Platform.Shared.Kunden;
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,12 +27,13 @@ public class AuftragsinformationenImportServiceTests
         Assert.Equal(1, zweiterLauf.Uebersprungen);
         Assert.Equal(1, graph.OpenCount);
 
-        var dokument = await db.Auftragsdokumente.SingleAsync();
+        var dokument = await db.StuecklistenpruefungVerlaufEintraege
+            .SingleAsync(d => d.Quelle == AuftragsdokumentQuelle.SharePoint);
         Assert.Equal("drive-1", dokument.SharePointDriveId);
         Assert.Equal("item-1", dokument.SharePointItemId);
         Assert.Equal("11055627 / 40", dokument.Auftragsnummer);
         Assert.Equal(AuftragsdokumentAnalyseStatus.Erfolgreich, dokument.AnalyseStatus);
-        Assert.Equal(2, await db.AuftragsdokumentMerkmale.CountAsync());
+        Assert.Equal(2, await db.VerlaufMerkmale.CountAsync(m => m.VerlaufEintragId == dokument.Id));
 
         var stand = await db.SharePointSynchronisationsstaende.SingleAsync();
         Assert.Equal("delta-2", stand.DeltaLink);
@@ -47,12 +49,37 @@ public class AuftragsinformationenImportServiceTests
         await import.SynchronisierenAsync();
         await import.SynchronisierenAsync();
 
-        var dokument = await db.Auftragsdokumente.SingleAsync();
+        var dokument = await db.StuecklistenpruefungVerlaufEintraege
+            .SingleAsync(d => d.Quelle == AuftragsdokumentQuelle.SharePoint);
         Assert.NotNull(dokument.GeloeschtAm);
 
         var dokumentService = new AuftragsdokumentService(db, graph);
         Assert.Empty(await dokumentService.ListeAsync());
         Assert.Null(await dokumentService.DokumentAsync(dokument.Id));
+    }
+
+    [Fact]
+    public async Task Synchronisieren_legt_Kunde_an_und_registriert_Quelle_wie_DragAndDrop()
+    {
+        await using var db = NeueDb();
+        var graph = new FakeSharePointClient();
+        var service = NeuerImport(db, graph);
+
+        await service.SynchronisierenAsync();
+
+        var dokument = await db.StuecklistenpruefungVerlaufEintraege
+            .SingleAsync(d => d.Quelle == AuftragsdokumentQuelle.SharePoint);
+
+        // Kunde muss – genau wie beim Drag&Drop – im Kundenstamm angelegt und am Eintrag vermerkt sein.
+        var kunde = Assert.Single(db.Kunden);
+        Assert.Equal("708555", kunde.Kundennummer);
+        Assert.Equal(kunde.Id, dokument.KundeId);
+
+        // Und die Auftragsinformation muss als Kundenquelle registriert sein (per QuellId = Eintrag-Id).
+        var quelle = Assert.Single(
+            await db.KundenQuellen.Where(q => q.Quelltyp == KundenQuelltyp.Auftragsinformation).ToListAsync());
+        Assert.Equal(dokument.Id, quelle.QuellId);
+        Assert.Equal(kunde.Id, quelle.KundeId);
     }
 
     private static AuftragsinformationenImportService NeuerImport(
@@ -62,6 +89,7 @@ public class AuftragsinformationenImportServiceTests
             db,
             graph,
             new FakeAnalyseService(),
+            new KundenstammService(db),
             Options.Create(new SharePointAuftragsinformationenOptions
             {
                 Enabled = true,

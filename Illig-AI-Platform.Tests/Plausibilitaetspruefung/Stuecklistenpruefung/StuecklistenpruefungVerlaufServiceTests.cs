@@ -209,6 +209,48 @@ public class StuecklistenpruefungVerlaufServiceTests
     }
 
     [Fact]
+    public async Task StandAktualisierenAsync_SharePointEintragOhneUser_UebernimmtBearbeiterUndSpeichert()
+    {
+        var db = NeueDb();
+        var service = new StuecklistenpruefungVerlaufService(db, new FakeBlobStorageService());
+        var user = Guid.NewGuid();
+
+        // Unbeanspruchte SharePoint-Auftragsinformation (keine UserProfileId, kein Blob).
+        var eintrag = new StuecklistenpruefungVerlaufEintrag
+        {
+            Quelle = AuftragsdokumentQuelle.SharePoint,
+            Dateiname = "sp.pdf",
+            Auftragsnummer = "11055894 / 40",
+            Kundennummer = "717220",
+            Maschinentyp = "RDM 75Kc",
+            SharePointDriveId = "d",
+            SharePointItemId = "i",
+            AnalyseStatus = AuftragsdokumentAnalyseStatus.Erfolgreich,
+            ErstelltAm = DateTime.UtcNow,
+        };
+        db.StuecklistenpruefungVerlaufEintraege.Add(eintrag);
+        await db.SaveChangesAsync();
+
+        var stueckliste = new StuecklistenKnoten("100", "W", 1, "ST", []);
+        var vergleich = new VergleichsErgebnis(
+            new VergleichsKnoten("100", "W", 1, "ST", 1, "ST", VergleichsStatus.Uebereinstimmung, null, []), []);
+
+        var ok = await service.StandAktualisierenAsync(
+            user, eintrag.Id,
+            new VerlaufStandAktualisieren(4, GueltigesErgebnis().Merkmale, [], stueckliste, vergleich, "sap.txt"));
+
+        Assert.True(ok);
+        var aktualisiert = await db.StuecklistenpruefungVerlaufEintraege.SingleAsync(e => e.Id == eintrag.Id);
+        Assert.Equal(user, aktualisiert.UserProfileId);                        // Bearbeiter übernommen
+        Assert.Equal(AuftragsdokumentQuelle.SharePoint, aktualisiert.Quelle);   // bleibt SharePoint-Quelle
+        Assert.Equal(4, aktualisiert.ErreichterSchritt);
+
+        var detail = await service.DetailAsync(user, eintrag.Id);
+        Assert.NotNull(detail);
+        Assert.Equal("100", detail!.Stueckliste!.Artikelnummer);
+    }
+
+    [Fact]
     public async Task StandAktualisierenAsync_AendertKeinenFremdenEintrag()
     {
         var db = NeueDb();
@@ -407,6 +449,44 @@ public class StuecklistenpruefungVerlaufServiceTests
     }
 
     [Fact]
+    public async Task SpeichernOderOeffnenAsync_SharePointEintragVorhanden_LegtEigenenDragAndDropEintragMitBlobAn()
+    {
+        var db = NeueDb();
+        var blob = new FakeBlobStorageService();
+        var service = new StuecklistenpruefungVerlaufService(db, blob, new KundenstammService(db));
+        var ergebnis = GueltigesErgebnis();
+        var userId = Guid.NewGuid();
+
+        // SharePoint hat denselben Auftrag bereits (täglich) synchronisiert — KEIN Blob, älter als
+        // der Drag&Drop. Der Drag&Drop-Pfad darf diesen Eintrag NICHT als Blob-Quelle wiederverwenden.
+        db.StuecklistenpruefungVerlaufEintraege.Add(new StuecklistenpruefungVerlaufEintrag
+        {
+            Quelle = AuftragsdokumentQuelle.SharePoint,
+            Dateiname = "sharepoint.pdf",
+            Auftragsnummer = ergebnis.Auftragsnummer,
+            Kundennummer = ergebnis.Kundennummer,
+            Maschinentyp = ergebnis.Maschinentyp,
+            SharePointDriveId = "drive-1",
+            SharePointItemId = "item-1",
+            AnalyseStatus = AuftragsdokumentAnalyseStatus.Erfolgreich,
+            SharePointGeaendertAm = new DateTime(2026, 1, 1),
+            ErstelltAm = new DateTime(2026, 1, 1),
+        });
+        await db.SaveChangesAsync();
+
+        var (id, bestehend) = await service.SpeichernOderOeffnenAsync(
+            userId, "dragdrop.pdf", new MemoryStream([1]), ergebnis);
+
+        Assert.Null(bestehend);
+        var dragDrop = await db.StuecklistenpruefungVerlaufEintraege.SingleAsync(e => e.Id == id);
+        Assert.Equal(AuftragsdokumentQuelle.DragAndDrop, dragDrop.Quelle);
+        // Eigenes Dokument muss gespeichert und abrufbar sein (nicht der leere SharePoint-Blob).
+        Assert.False(string.IsNullOrEmpty(dragDrop.BlobPfad));
+        Assert.Contains("dragdrop.pdf", blob.HochgeladeneDateinamen);
+        Assert.NotNull(await service.DokumentAsync(userId, id));
+    }
+
+    [Fact]
     public async Task SpeichernOderOeffnenAsync_MehrereEigeneTreffer_OeffnetWeitestFortgeschrittenen()
     {
         var db = NeueDb();
@@ -449,5 +529,78 @@ public class StuecklistenpruefungVerlaufServiceTests
         Assert.Null(bestehend);                                          // kein Treffer -> neu
         Assert.Equal(2, blob.HochgeladeneDateinamen.Count);
         Assert.Equal(2, await db.StuecklistenpruefungVerlaufEintraege.CountAsync());
+    }
+
+    [Fact]
+    public async Task SucheNachAuftragsnummerAsync_DragAndDropTreffer_LiefertDetailMitQuelle()
+    {
+        var db = NeueDb();
+        var service = new StuecklistenpruefungVerlaufService(db, new FakeBlobStorageService(), new KundenstammService(db));
+        var ergebnis = GueltigesErgebnis();
+
+        await service.SpeichernAsync(Guid.NewGuid(), "a.pdf", new MemoryStream([1]), ergebnis);
+
+        var detail = await service.SucheNachAuftragsnummerAsync(ergebnis.Auftragsnummer);
+
+        Assert.NotNull(detail);
+        Assert.Equal(AuftragsdokumentQuelle.DragAndDrop, detail!.Quelle);
+        Assert.Equal("a.pdf", detail.Dateiname);
+    }
+
+    [Fact]
+    public async Task SucheNachAuftragsnummerAsync_KeinTreffer_LiefertNull()
+    {
+        var db = NeueDb();
+        var service = new StuecklistenpruefungVerlaufService(db, new FakeBlobStorageService(), new KundenstammService(db));
+
+        var detail = await service.SucheNachAuftragsnummerAsync("nicht-vorhanden");
+
+        Assert.Null(detail);
+    }
+
+    [Fact]
+    public async Task SucheNachAuftragsnummerAsync_IgnoriertGrossKleinschreibungUndWhitespace()
+    {
+        var db = NeueDb();
+        var service = new StuecklistenpruefungVerlaufService(db, new FakeBlobStorageService(), new KundenstammService(db));
+        var ergebnis = GueltigesErgebnis();
+
+        await service.SpeichernAsync(Guid.NewGuid(), "a.pdf", new MemoryStream([1]), ergebnis);
+
+        var detail = await service.SucheNachAuftragsnummerAsync($"  {ergebnis.Auftragsnummer.ToLowerInvariant()}  ");
+
+        Assert.NotNull(detail);
+    }
+
+    [Fact]
+    public async Task SucheNachAuftragsnummerAsync_SharePointUndDragAndDropTreffer_BevorzugtSharePoint()
+    {
+        var db = NeueDb();
+        var service = new StuecklistenpruefungVerlaufService(db, new FakeBlobStorageService(), new KundenstammService(db));
+        var ergebnis = GueltigesErgebnis();
+
+        await service.SpeichernAsync(Guid.NewGuid(), "dragdrop.pdf", new MemoryStream([1]), ergebnis);
+
+        db.StuecklistenpruefungVerlaufEintraege.Add(new StuecklistenpruefungVerlaufEintrag
+        {
+            Quelle = AuftragsdokumentQuelle.SharePoint,
+            Dateiname = "sharepoint.pdf",
+            Auftragsnummer = ergebnis.Auftragsnummer,
+            Kundennummer = ergebnis.Kundennummer,
+            Maschinentyp = ergebnis.Maschinentyp,
+            WebUrl = "https://sharepoint.example/sharepoint.pdf",
+            SharePointDriveId = "drive-1",
+            SharePointItemId = "item-1",
+            AnalyseStatus = AuftragsdokumentAnalyseStatus.Erfolgreich,
+            SharePointGeaendertAm = DateTime.UtcNow,
+            ErstelltAm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var detail = await service.SucheNachAuftragsnummerAsync(ergebnis.Auftragsnummer);
+
+        Assert.NotNull(detail);
+        Assert.Equal(AuftragsdokumentQuelle.SharePoint, detail!.Quelle);
+        Assert.Equal("sharepoint.pdf", detail.Dateiname);
     }
 }

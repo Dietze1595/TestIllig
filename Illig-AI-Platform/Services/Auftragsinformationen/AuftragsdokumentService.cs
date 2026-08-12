@@ -12,33 +12,35 @@ public sealed class AuftragsdokumentService(
 {
     public async Task<IReadOnlyList<AuftragsdokumentUebersicht>> ListeAsync(
         CancellationToken cancellationToken = default) =>
-        await db.Auftragsdokumente.AsNoTracking()
-            .Where(d => d.GeloeschtAm == null && d.AnalyseStatus == AuftragsdokumentAnalyseStatus.Erfolgreich)
+        await db.StuecklistenpruefungVerlaufEintraege.AsNoTracking()
+            .Where(d => d.Quelle == AuftragsdokumentQuelle.SharePoint
+                && d.GeloeschtAm == null && d.AnalyseStatus == AuftragsdokumentAnalyseStatus.Erfolgreich)
             .OrderByDescending(d => d.Datum)
             .ThenByDescending(d => d.SharePointGeaendertAm)
             .Take(200)
             .Select(d => new AuftragsdokumentUebersicht(
                 d.Id, d.Dateiname, d.Auftragsnummer, d.Kundennummer, d.Maschinentyp,
-                d.Datum, d.SharePointGeaendertAm))
+                d.Datum, d.SharePointGeaendertAm!.Value))
             .ToListAsync(cancellationToken);
 
     public async Task<AuftragsdokumentDetail?> DetailAsync(
         int id,
         CancellationToken cancellationToken = default)
     {
-        var dokument = await db.Auftragsdokumente.AsNoTracking()
-            .SingleOrDefaultAsync(d => d.Id == id && d.GeloeschtAm == null
+        var dokument = await db.StuecklistenpruefungVerlaufEintraege.AsNoTracking()
+            .SingleOrDefaultAsync(d => d.Id == id && d.Quelle == AuftragsdokumentQuelle.SharePoint
+                && d.GeloeschtAm == null
                 && d.AnalyseStatus == AuftragsdokumentAnalyseStatus.Erfolgreich, cancellationToken);
         if (dokument is null)
             return null;
 
-        var merkmale = await db.AuftragsdokumentMerkmale.AsNoTracking()
-            .Where(m => m.AuftragsdokumentId == id)
+        var merkmale = await db.VerlaufMerkmale.AsNoTracking()
+            .Where(m => m.VerlaufEintragId == id)
             .OrderBy(m => m.Id)
             .ToListAsync(cancellationToken);
 
         return new AuftragsdokumentDetail(
-            dokument.Id, dokument.Dateiname, dokument.WebUrl,
+            dokument.Id, dokument.Dateiname, dokument.WebUrl ?? "",
             dokument.Auftragsnummer, dokument.Kundennummer, dokument.Kundenname,
             dokument.Kundenadresse, dokument.Datum, dokument.Maschinentyp,
             merkmale.Where(m => m.Kategorie == MerkmalKategorie.Merkmal)
@@ -51,14 +53,15 @@ public sealed class AuftragsdokumentService(
         int id,
         CancellationToken cancellationToken = default)
     {
-        var dokument = await db.Auftragsdokumente.AsNoTracking()
-            .SingleOrDefaultAsync(d => d.Id == id && d.GeloeschtAm == null
+        var dokument = await db.StuecklistenpruefungVerlaufEintraege.AsNoTracking()
+            .SingleOrDefaultAsync(d => d.Id == id && d.Quelle == AuftragsdokumentQuelle.SharePoint
+                && d.GeloeschtAm == null
                 && d.AnalyseStatus == AuftragsdokumentAnalyseStatus.Erfolgreich, cancellationToken);
         if (dokument is null)
             return null;
 
         var inhalt = await sharePoint.OeffnenAsync(
-            dokument.SharePointDriveId, dokument.SharePointItemId, cancellationToken);
+            dokument.SharePointDriveId!, dokument.SharePointItemId!, cancellationToken);
         return (dokument.Dateiname, inhalt);
     }
 }

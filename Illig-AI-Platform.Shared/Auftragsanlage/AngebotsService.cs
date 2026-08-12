@@ -1,16 +1,15 @@
-using System.Text.RegularExpressions;
 using Illig_AI_Platform.Shared.Data;
 using Illig_AI_Platform.Shared.Kunden;
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace Illig_AI_Platform.Shared.Auftragsanlage;
 
 public enum KonfliktStrategie
 {
-    /// <summary>Kein expliziter Nutzerwunsch — bei vorhandener Nummer wird ein Konflikt gemeldet.</summary>
     Keine,
     Ueberschreiben,
     NeueVersion,
@@ -38,7 +37,8 @@ public class AngebotsService(
     public async Task<AngebotSpeichernErgebnis> SpeichernAsync(
         ExtrahierteAngebotsdaten daten, string dateiname, Stream pdfInhalt,
         KonfliktStrategie strategie, VertriebsbedingungenErgebnis? vertriebsbedingungen = null,
-        Guid? userProfileId = null, string? versionsKommentar = null, CancellationToken cancellationToken = default)
+        Guid? userProfileId = null, string? versionsKommentar = null,
+        CancellationToken cancellationToken = default)
     {
         var nummer = daten.Nummer;
         if (string.IsNullOrWhiteSpace(nummer))
@@ -57,33 +57,42 @@ public class AngebotsService(
             : await kundenstamm.FindeOderErstelleAsync(
                 daten.Kundenname, daten.Kundenadresse, null, cancellationToken);
         var ueberschreibt = strategie == KonfliktStrategie.Ueberschreiben && vorhandeneVersionen.Count > 0;
-        var alterBlobPfad = ueberschreibt ? vorhandeneVersionen[0].BlobPfad : null;
+        // Überschreiben = kompletter Neustart: alle bisherigen Versionszeilen werden gelöscht,
+        // also müssen auch alle zugehörigen Blobs weg (nicht nur der neueste).
+        List<string> alteBlobPfade = ueberschreibt
+            ? [.. vorhandeneVersionen.Select(a => a.BlobPfad)]
+            : [];
 
         var neuerBlobPfad = await blobStorage.UploadAsync(pdfInhalt, dateiname, cancellationToken);
 
         try
         {
-            Angebot angebot;
             if (ueberschreibt)
             {
-                // „Überschreiben" ersetzt die neueste Version in place (die Id bleibt, damit
-                // verknüpfte Auftragsbestätigungen erhalten bleiben — ein Hard-Delete würde sie
-                // per FK-Cascade mitreißen). Der alte Blob wird nach erfolgreichem Commit gelöscht.
-                angebot = vorhandeneVersionen[0];
+                // „Überschreiben" ist ein kompletter Neustart: alle bestehenden Versionen dieser
+                // Angebotsnummer werden gelöscht (die per FK-Cascade verknüpften
+                // Auftragsbestätigungen gehen dabei bewusst mit) und danach als frische Version 1
+                // neu angelegt. Bewusst ein eigenes SaveChanges vor dem Insert: der Unique-Index
+                // (Angebotsnummer, Version) erlaubt es nicht, die alte Version 1 im selben
+                // SaveChanges zu löschen und sofort wieder einzufügen.
+                db.Angebote.RemoveRange(vorhandeneVersionen);
+                await db.SaveChangesAsync(cancellationToken);
             }
-            else
+
+            var angebot = new Angebot
             {
-                angebot = new Angebot
-                {
-                    Angebotsnummer = nummer,
-                    Version = vorhandeneVersionen.Count > 0 ? vorhandeneVersionen[0].Version + 1 : 1,
-                };
-                db.Angebote.Add(angebot);
-            }
+                Angebotsnummer = nummer,
+                Version = !ueberschreibt && vorhandeneVersionen.Count > 0
+                    ? vorhandeneVersionen[0].Version + 1
+                    : 1,
+                // Nur beim Anlegen einer neuen Version ist der Grund gesetzt (Pflichtfeld im
+                // Vertrieb); bei Erstanlage und Überschreiben bleibt er null.
+                VersionsKommentar = strategie == KonfliktStrategie.NeueVersion ? versionsKommentar : null,
+            };
+            db.Angebote.Add(angebot);
 
             angebot.Kundenname = daten.Kundenname;
             angebot.Kundenadresse = daten.Kundenadresse;
-            angebot.VersionsKommentar = versionsKommentar;
             angebot.Lieferadresse = daten.Lieferadresse ??
                                       AngebotsLayoutParser.Parse(daten.Volltext).Lieferadresse;
             angebot.KundeId = kunde?.Id;
@@ -122,9 +131,11 @@ public class AngebotsService(
                     kunde, KundenQuelltyp.Angebot, angebot.Id,
                     angebot.Kundenname, angebot.Kundenadresse, null, cancellationToken);
 
-            // Erst nach erfolgreichem Commit den alten Blob entfernen (best-effort).
-            if (alterBlobPfad is not null && alterBlobPfad != neuerBlobPfad)
-                await LoescheBlobStillAsync(alterBlobPfad, cancellationToken);
+            // Erst nach erfolgreichem Commit die Blobs der überschriebenen Versionen entfernen
+            // (best-effort).
+            foreach (var alterBlobPfad in alteBlobPfade)
+                if (alterBlobPfad != neuerBlobPfad)
+                    await LoescheBlobStillAsync(alterBlobPfad, cancellationToken);
 
             return new AngebotSpeichernErgebnis(false, angebot, []);
         }
@@ -357,6 +368,7 @@ public class AngebotsService(
             .ToArray();
 
         var vorhandeneVersionen = await VorhandeneVersionenAsync(angebot.Angebotsnummer, cancellationToken);
+
         var vergleich = new BestaetigungVergleichAntwort(
             AngebotZuordnungStatus.Gefunden,
             angebot.Angebotsnummer,
@@ -371,7 +383,6 @@ public class AngebotsService(
             await ErstelleAngebotStatusAsync(angebot, cancellationToken),
             bestaetigung.Id,
             vorhandeneVersionen);
-
         return new BestaetigungDetailAntwort(bestaetigung.Id, bestaetigung.Dateiname, vergleich);
     }
 
@@ -410,8 +421,7 @@ public class AngebotsService(
         return (bestaetigung.Dateiname, inhalt);
     }
 
-    public async Task<int> BestaetigungSpeichernAsync(
-        int angebotId, ExtrahierteAngebotsdaten daten, string dateiname, Stream pdfInhalt,
+    public async Task<int> BestaetigungSpeichernAsync(int angebotId, ExtrahierteAngebotsdaten daten, string dateiname, Stream pdfInhalt,
         AngebotsVergleichLlmErgebnis vergleich, Guid? userProfileId = null, CancellationToken cancellationToken = default)
     {
         var blobPfad = await blobStorage.UploadAsync(pdfInhalt, dateiname, cancellationToken);
@@ -451,10 +461,11 @@ public class AngebotsService(
         await db.SaveChangesAsync(cancellationToken);
 
         if (kunde is not null && kundenstamm is not null)
+        {
             await kundenstamm.RegistriereQuelleAsync(
                 kunde, KundenQuelltyp.Kundenbestellung, bestaetigung.Id,
                 bestaetigung.Kundenname, bestaetigung.Kundenadresse, null, cancellationToken);
-
+        }
         return bestaetigung.Id;
     }
 
@@ -497,18 +508,6 @@ public class AngebotsService(
             angebot.VersionsKommentar);
     }
 
-    private async Task LoescheBlobStillAsync(string blobPfad, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await blobStorage.DeleteAsync(blobPfad, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "Blob {BlobPfad} konnte nicht gelöscht werden.", blobPfad);
-        }
-    }
-
     public async Task<BestaetigungVergleichAntwort?> WechselnVersionAsync(
         int bestaetigungId, int targetVersion, IAngebotsvergleichLlmService vergleichService, CancellationToken cancellationToken = default)
     {
@@ -545,5 +544,17 @@ public class AngebotsService(
             vergleich.LieferterminAngebot, vergleich.LieferterminBestaetigung,
             vergleich.LieferterminIdentisch, vergleich.Uebereinstimmungen,
             vergleich.SonstigeAbweichungen, angebotStatus, bestaetigung.Id, vorhandeneVersionen);
+    }
+
+    private async Task LoescheBlobStillAsync(string blobPfad, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await blobStorage.DeleteAsync(blobPfad, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Blob {BlobPfad} konnte nicht gelöscht werden.", blobPfad);
+        }
     }
 }

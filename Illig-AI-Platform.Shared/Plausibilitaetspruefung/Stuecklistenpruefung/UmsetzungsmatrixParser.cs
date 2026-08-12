@@ -13,6 +13,7 @@ public static class UmsetzungsmatrixParser
         StuecklistenImportFormat.Rdm75Kc => UmsetzungsmatrixXlsxParser.Parse(xlsxStream),
         StuecklistenImportFormat.Rdm73k => UmsetzungsmatrixRdm73kXlsxParser.Parse(xlsxStream),
         StuecklistenImportFormat.Rdm76Kb => UmsetzungsmatrixRdm76kbXlsxParser.Parse(xlsxStream),
+        StuecklistenImportFormat.Rdk80k => UmsetzungsmatrixRdk80kXlsxParser.Parse(xlsxStream),
         _ => throw new ArgumentOutOfRangeException(
             nameof(format), format, "Unbekanntes Umsetzungsmatrix-Format.")
     };

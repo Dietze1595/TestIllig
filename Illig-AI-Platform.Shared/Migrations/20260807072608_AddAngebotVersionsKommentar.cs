@@ -5,7 +5,7 @@
 namespace Illig_AI_Platform.Shared.Migrations
 {
     /// <inheritdoc />
-    public partial class AddVersionsKommentar : Migration
+    public partial class AddAngebotVersionsKommentar : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

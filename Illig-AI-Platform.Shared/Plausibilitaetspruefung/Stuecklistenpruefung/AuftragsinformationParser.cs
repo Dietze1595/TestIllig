@@ -57,10 +57,19 @@ public static partial class AuftragsinformationParser
 
     // "Sonderoption:" steht nicht immer allein auf einer Zeile — teils am Ende einer
     // Beschreibungszeile ("...spannungsfrei. Sonderoption:") oder direkt vor der Merkmalsnummer
-    // derselben Zeile ("Sonderoption: 020182 Sonderablauf..."). Wird deshalb als Teilstring
-    // erkannt und aus dem Zeileninhalt entfernt statt die ganze Zeile zu verwerfen.
+    // derselben Zeile ("Sonderoption: 020182 Sonderablauf..."). Wird als Teilstring erkannt und
+    // NUR dieser reine Marker aus dem Beschreibungstext entfernt (nicht die ganze Zeile).
     [GeneratedRegex(@"Sonderoption\s*:")]
     private static partial Regex SonderoptionMarker();
+
+    // Überschrift, die die zugehörige(n) Position(en) als Sonderoption ausweist — breiter als der
+    // reine "Sonderoption:"-Marker: jede mit ":" endende Kopfzeile, die "Sonder…" (DE, z. B.
+    // "Bedienerführung-Sondersprache:") oder "Special…" (EN, z. B. "Documentation-Special
+    // language:") enthält. Nur für die KLASSIFIZIERUNG (Sonderoption ja/nein), nicht fürs Bereinigen
+    // der Beschreibung. Wortgrenze + case-insensitiv, damit z. B. "besonders" nicht fälschlich
+    // matcht; eine reine "…-Varianten:"-/Standardsprache-Überschrift wird bewusst NICHT erfasst.
+    [GeneratedRegex(@"\b(?:Sonder\p{L}*|Special(?:\s+\p{L}+)*)\s*:", RegexOptions.IgnoreCase)]
+    private static partial Regex SonderUeberschrift();
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex MehrfachLeerzeichen();
@@ -490,8 +499,8 @@ public static partial class AuftragsinformationParser
             var positionsTreffer = PositionLine().Match(tabellenZeilen[i]);
             if (!positionsTreffer.Success)
             {
-                if (SonderoptionMarker().IsMatch(tabellenZeilen[i]))
-                    naechsteIstSonderoption = true; // freistehender Marker → gilt für die nächste Position
+                if (SonderUeberschrift().IsMatch(tabellenZeilen[i]))
+                    naechsteIstSonderoption = true; // freistehende Sonder-/Special-Überschrift → gilt für die nächste Position
                 i++;
                 continue;
             }
@@ -549,14 +558,14 @@ public static partial class AuftragsinformationParser
         List<string> rohZeilen, bool nummerIstInline)
     {
         if (nummerIstInline)
-            return (false, rohZeilen.Any(z => SonderoptionMarker().IsMatch(z)));
+            return (false, rohZeilen.Any(z => SonderUeberschrift().IsMatch(z)));
 
         var vor = false;
         var nach = false;
         var nummerGefunden = false;
         foreach (var zeile in rohZeilen)
         {
-            var markerTreffer = SonderoptionMarker().Match(zeile);
+            var markerTreffer = SonderUeberschrift().Match(zeile);
 
             if (nummerGefunden)
             {
@@ -565,7 +574,7 @@ public static partial class AuftragsinformationParser
                 continue;
             }
 
-            var ohneMarker = markerTreffer.Success ? SonderoptionMarker().Replace(zeile, "").Trim() : zeile;
+            var ohneMarker = markerTreffer.Success ? SonderUeberschrift().Replace(zeile, "").Trim() : zeile;
             var (nummer, _) = ZerlegeMerkmalsnummer(ohneMarker);
 
             if (nummer is null)

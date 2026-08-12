@@ -42,6 +42,9 @@ public static partial class MaximalstuecklisteTxtParser
     [GeneratedRegex(@"^\S+\s+\d+\s+\d+\s+\d+$|^\S+\s*/\s*\d+\s+\S+\s+\d+$")]
     private static partial Regex WurzelToken();
 
+    [GeneratedRegex(@"^\S+\s*/\s*\d+\s+(\S+)\s+\d+$")]
+    private static partial Regex AuftragsWurzelToken();
+
     public static RohPosition Parse(string inhalt)
     {
         var zeilen = inhalt.Replace("\r\n", "\n").Split('\n');
@@ -71,7 +74,9 @@ public static partial class MaximalstuecklisteTxtParser
             }
 
             // Wurzelzeile: Format "<Artikelnummer> 0001 1 01", keine "<Pos> <Typ>"-Struktur.
-            var artikelnummer = istWurzelzeile ? token.Split(' ')[0] : ExtrahiereArtikelnummer(token);
+            var artikelnummer = istWurzelzeile
+                ? ExtrahiereWurzelArtikelnummer(token)
+                : ExtrahiereArtikelnummer(token);
             var position = new RohPosition(
                 artikelnummer,
                 SpalteOderLeer(felder, KurztextSpalte).Trim(),
@@ -106,7 +111,11 @@ public static partial class MaximalstuecklisteTxtParser
         spalte < felder.Length ? felder[spalte] : "";
 
     private static bool TryParseMenge(string roh, out decimal menge) =>
-        decimal.TryParse(roh.Trim().Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out menge);
+        decimal.TryParse(
+            roh.Trim(),
+            NumberStyles.Number,
+            CultureInfo.GetCultureInfo("de-DE"),
+            out menge);
 
     private static string ExtrahiereArtikelnummer(string token)
     {
@@ -114,5 +123,13 @@ public static partial class MaximalstuecklisteTxtParser
         if (!match.Success)
             return token;
         return match.Groups[2].Success ? match.Groups[2].Value : match.Groups[1].Value;
+    }
+
+    private static string ExtrahiereWurzelArtikelnummer(string token)
+    {
+        var auftragsWurzel = AuftragsWurzelToken().Match(token);
+        return auftragsWurzel.Success
+            ? auftragsWurzel.Groups[1].Value
+            : token.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
     }
 }

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Illig_AI_Platform.Shared.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260806133517_AddVersionsKommentar")]
-    partial class AddVersionsKommentar
+    [Migration("20260810141326_AddKundenPartneradressen")]
+    partial class AddKundenPartneradressen
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -592,6 +592,53 @@ namespace Illig_AI_Platform.Shared.Migrations
                     b.HasIndex("NormalisierterName", "NormalisierteAdresse");
 
                     b.ToTable("Kunden");
+                });
+
+            modelBuilder.Entity("Illig_AI_Platform.Shared.Kunden.KundenPartneradresse", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Hauptkundennummer")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("ImportiertAm")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Land")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Ort")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("PartnerId")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Partnerrolle")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Plz")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Strasse")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hauptkundennummer", "Partnerrolle")
+                        .IsUnique();
+
+                    b.ToTable("KundenPartneradressen");
                 });
 
             modelBuilder.Entity("Illig_AI_Platform.Shared.Kunden.KundenQuelle", b =>

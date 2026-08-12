@@ -49,6 +49,40 @@
   margin-bottom: 0.5rem;
 }
 
+.su-suche-card {
+  margin-bottom: 1rem;
+}
+
+.su-suche-titel {
+  margin: 0 0 0.5rem;
+}
+
+.su-suche-hinweis {
+  margin: 0 0 1rem;
+  color: var(--text-muted, #6c757d);
+  font-size: 0.9rem;
+}
+
+.su-suche-zeile {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.su-suche-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #ced4da);
+  border-radius: 0.375rem;
+  font-size: 1rem;
+}
+
+.su-suche-kein-treffer {
+  margin: 0.75rem 0 0;
+  color: var(--bs-warning-text-emphasis, #664d03);
+}
+
 @media (min-width: 901px) {
   .sm-stuecklisten-merkmale-page {
     display: flex;

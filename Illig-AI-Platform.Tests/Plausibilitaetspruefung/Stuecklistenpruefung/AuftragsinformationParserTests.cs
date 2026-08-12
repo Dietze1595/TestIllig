@@ -530,6 +530,62 @@ public class AuftragsinformationParserTests
         Assert.DoesNotContain(ergebnis.Merkmale, m => m.Position is "40/330" or "40/340" or "40/350");
     }
 
+    // Sprachpositionen: Eine Überschrift mit "Sonder…" (z. B. "Bedienerführung-Sondersprache:")
+    // kennzeichnet die folgende Position als Sonderoption; eine reine "…-Varianten:"-Überschrift
+    // (Standard-/Variantensprache) NICHT. Wörtlich nach dem Schluss des Referenzdokuments.
+    private const string SprachenMitUndOhneSonder = """
+        Pos.
+        Vertriebsmerkmale
+        Bedienerführung-Sondersprache:
+        40/520
+        000645 Bedienerführung in Polnisch Dokumentation-Sondersprache:
+        40/540
+        000662 Dokumentation in Polnisch Anzahl: 1 ST
+        Schaltplan-Varianten:
+        40/550
+        9046052 Schaltpläne in Englisch
+        """;
+
+    [Fact]
+    public void Parse_ErkenntSondersprache_AlsSonderoption_AberStandardspracheNicht()
+    {
+        var ergebnis = AuftragsinformationParser.Parse(SprachenMitUndOhneSonder);
+
+        // "Sondersprache" → Sonderoption (Überschrift davor bzw. als Nachsatz der Vorzeile).
+        Assert.Equal("000645", Assert.Single(ergebnis.Sonderoptionen, m => m.Position == "40/520").Merkmalsnummer);
+        Assert.Equal("000662", Assert.Single(ergebnis.Sonderoptionen, m => m.Position == "40/540").Merkmalsnummer);
+
+        // "Schaltplan-Varianten:" (kein "Sonder") → normales Merkmal.
+        Assert.Equal("9046052", Assert.Single(ergebnis.Merkmale, m => m.Position == "40/550").Merkmalsnummer);
+
+        Assert.DoesNotContain(ergebnis.Merkmale, m => m.Position is "40/520" or "40/540");
+        Assert.DoesNotContain(ergebnis.Sonderoptionen, m => m.Position == "40/550");
+    }
+
+    [Fact]
+    public void Parse_ErkenntSonderoptionAuchInEnglischerAuftragsinformation()
+    {
+        // Englischsprachige Auftragsinformation: "Special language" statt "Sondersprache",
+        // "…-Variants" statt "…-Varianten". Nur die "Special…"-Überschrift markiert eine Sonderoption.
+        const string englisch = """
+            Pos.
+            Vertriebsmerkmale
+            Documentation-Special language:
+            40/540
+            000662 Documentation in Polish
+            Circuit diagram-Variants:
+            40/550
+            9046052 Circuit diagrams in English
+            """;
+
+        var ergebnis = AuftragsinformationParser.Parse(englisch);
+
+        Assert.Equal("000662", Assert.Single(ergebnis.Sonderoptionen, m => m.Position == "40/540").Merkmalsnummer);
+        Assert.Equal("9046052", Assert.Single(ergebnis.Merkmale, m => m.Position == "40/550").Merkmalsnummer);
+        Assert.DoesNotContain(ergebnis.Merkmale, m => m.Position == "40/540");
+        Assert.DoesNotContain(ergebnis.Sonderoptionen, m => m.Position == "40/550");
+    }
+
     [Fact]
     public void Parse_ExtrahiertMerkmalsnummerAusZeileMitNachgestelltemText()
     {
@@ -1374,11 +1430,9 @@ public class AuftragsinformationParserTests
             ("40/390", "019875"),
             ("40/400", "9020016"),
             ("40/410", "020000"),
-            // Ab hier folgt nach dem letzten markierten Sonderoptionen-Block (40/500) wieder
-            // Normales: Sondersprachen, Schaltplan, Versand, Montage/Inbetriebnahme. Diese haben
-            // KEINEN eigenen "Sonderoption:"-Marker und gehören daher zu den normalen Merkmalen.
-            ("40/520", "000645"),
-            ("40/540", "000662"),
+            // Nach dem letzten markierten Sonderoptionen-Block (40/500) folgt wieder Normales:
+            // Schaltplan (Standard-/Variantensprache), Versand, Montage/Inbetriebnahme. 40/520 und
+            // 40/540 stehen dagegen unter "…-Sondersprache:" und zählen daher zu den Sonderoptionen.
             ("40/550", "9046052"),
             ("40/560", "009900"),
             ("100", "9195770"),
@@ -1404,11 +1458,11 @@ public class AuftragsinformationParserTests
     {
         var ergebnis = AuftragsinformationParser.Parse(VollstaendigesDokument);
 
-        // Jede Sonderoption hat einen eigenen "Sonderoption:"-Marker (one-shot, nicht klebrig):
-        // 40/420 wird durch den freistehenden Marker nach 40/410 markiert, 40/430 durch den
-        // Nachsatz-Marker von 40/420, 40/440–40/500 jeweils durch den Marker direkt vor ihrer
-        // Nummer. Danach (40/520 ff.) folgen wieder normale Merkmale ohne Marker — diese gehören
-        // NICHT hierher.
+        // Jede Sonderoption ist über eine Sonder-/Special-Überschrift markiert (one-shot, nicht
+        // klebrig): 40/420 durch den freistehenden Marker nach 40/410, 40/430 durch den
+        // Nachsatz-Marker von 40/420, 40/440–40/500 jeweils durch "Sonderoption:" direkt vor ihrer
+        // Nummer, 40/520/40/540 durch "…-Sondersprache:". Die Schaltplan-/Versand-/Montage-
+        // Positionen danach tragen KEINE Sonder-Überschrift und bleiben normale Merkmale.
         var erwarteteSonderoptionen = new (string Position, string Merkmalsnummer)[]
         {
             ("40/420", "023771"),
@@ -1420,6 +1474,8 @@ public class AuftragsinformationParserTests
             ("40/480", "025984"),
             ("40/490", "020679"),
             ("40/500", "024872"),
+            ("40/520", "000645"),
+            ("40/540", "000662"),
         };
 
         foreach (var (position, merkmalsnummer) in erwarteteSonderoptionen)

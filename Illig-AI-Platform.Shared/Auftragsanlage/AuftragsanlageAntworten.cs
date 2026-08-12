@@ -57,10 +57,6 @@ public record AngebotsCheckliste(
         if (string.IsNullOrWhiteSpace(zahlungsplan))
             return false;
 
-        // Check for proforma payment plan (e.g. Total amount payable against Proforma Invoice, net)
-        if (System.Text.RegularExpressions.Regex.IsMatch(zahlungsplan, @"(?i)\b(?:payable\s+against\s+pro\s*forma|zahlbar\s+gegen\s+pro\s*forma)\b"))
-            return true;
-
         var prozente = System.Text.RegularExpressions.Regex.Matches(zahlungsplan, @"(?<!\d)(\d{1,3})\s*%")
             .Select(m => int.Parse(m.Groups[1].Value))
             .ToArray();
@@ -184,13 +180,11 @@ public record BestaetigungVergleichAntwort(
     int? BestaetigungId = null,
     IReadOnlyList<int>? VorhandeneVersionen = null);
 
-/// <summary>Gespeicherter Innendienst-Abgleich für die Wiederherstellung aus der Historie.</summary>
 public record BestaetigungDetailAntwort(
     int Id,
     string Dateiname,
     BestaetigungVergleichAntwort Vergleich);
 
-/// <summary>Ein Eintrag der Vertriebs-Angebots-Historie (Listen-Projektion).</summary>
 public record AngebotUebersicht(
     int Id,
     string Angebotsnummer,

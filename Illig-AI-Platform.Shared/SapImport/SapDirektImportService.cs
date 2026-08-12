@@ -1,4 +1,5 @@
 using Illig_AI_Platform.Shared.Data;
+using Illig_AI_Platform.Shared.Kunden;
 using Illig_AI_Platform.Shared.Lieferantenassistent;
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Illig_AI_Platform.Shared.SapImport;
 
 /// <summary>
-/// Materialisiert die vier SAP-Push-Verträge direkt in den jeweiligen Fachtabellen.
+/// Materialisiert die SAP-Push-Verträge direkt in den jeweiligen Fachtabellen.
 /// Ein Rohdaten-Staging ist bewusst nicht Bestandteil dieses Imports.
 /// </summary>
 public sealed class SapDirektImportService(AppDbContext db, ILogger<SapDirektImportService> logger)
@@ -232,6 +233,33 @@ public sealed class SapDirektImportService(AppDbContext db, ILogger<SapDirektImp
         }, cancellationToken);
     }
 
+    public Task<SapDirektImportErgebnis> ImportiereKundenAdressenAsync(
+        KundenAdressenPush push,
+        CancellationToken cancellationToken = default)
+    {
+        var adressen = ErzeugeKundenPartneradressen(push);
+
+        return InTransaktionAsync(async () =>
+        {
+            var importiertAm = DateTime.UtcNow;
+            var hauptkundennummern = adressen.Select(adresse => adresse.Hauptkundennummer).Distinct().ToList();
+            var vorhandene = await db.KundenPartneradressen
+                .Where(adresse => hauptkundennummern.Contains(adresse.Hauptkundennummer))
+                .ToListAsync(cancellationToken);
+
+            db.KundenPartneradressen.RemoveRange(vorhandene);
+            foreach (var adresse in adressen)
+                adresse.ImportiertAm = importiertAm;
+            db.KundenPartneradressen.AddRange(adressen);
+            await db.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation(
+                "SAP-Kunden-Partneradressen: {Anzahl} Adressen importiert, {Ersetzt} ersetzt.",
+                adressen.Count, vorhandene.Count);
+            return new SapDirektImportErgebnis(adressen.Count, vorhandene.Count, importiertAm);
+        }, cancellationToken);
+    }
+
     private static List<Dispositionsposition> ErzeugeDispositionspositionen(OffeneBestellungenPush push)
     {
         var fehler = new List<string>();
@@ -354,6 +382,59 @@ public sealed class SapDirektImportService(AppDbContext db, ILogger<SapDirektImp
 
         WirfBeiFehlern(fehler);
         return (lieferanten, kontakte);
+    }
+
+    private static readonly string[] BekanntePartnerrollen =
+        ["Auftraggeber", "Rechnungsempfänger", "Regulierer", "Vertretung", "Warenempfänger", "Endkunde"];
+
+    private static List<KundenPartneradresse> ErzeugeKundenPartneradressen(KundenAdressenPush push)
+    {
+        var fehler = new List<string>();
+        if (push.Kunden.Count == 0)
+            fehler.Add("kunden darf nicht leer sein.");
+
+        var ergebnis = new List<KundenPartneradresse>();
+        foreach (var gruppe in push.Kunden)
+        {
+            if (string.IsNullOrWhiteSpace(gruppe.Hauptkundennummer))
+                fehler.Add("hauptkundennummer fehlt.");
+            if (gruppe.Adressen.Count == 0)
+                fehler.Add($"Kunde '{gruppe.Hauptkundennummer}' hat keine adressen.");
+
+            var rollenInGruppe = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var adresse in gruppe.Adressen)
+            {
+                if (!BekanntePartnerrollen.Contains(adresse.Partnerrolle))
+                    fehler.Add($"partnerrolle '{adresse.Partnerrolle}' ist unbekannt.");
+                else if (!rollenInGruppe.Add(adresse.Partnerrolle))
+                    fehler.Add($"partnerrolle '{adresse.Partnerrolle}' kommt bei Kunde '{gruppe.Hauptkundennummer}' mehrfach vor.");
+
+                if (string.IsNullOrWhiteSpace(adresse.PartnerId))
+                    fehler.Add($"partnerId für Rolle '{adresse.Partnerrolle}' bei Kunde '{gruppe.Hauptkundennummer}' fehlt.");
+                if (string.IsNullOrWhiteSpace(adresse.Name))
+                    fehler.Add($"name für Rolle '{adresse.Partnerrolle}' bei Kunde '{gruppe.Hauptkundennummer}' fehlt.");
+
+                ergebnis.Add(new KundenPartneradresse
+                {
+                    Hauptkundennummer = gruppe.Hauptkundennummer,
+                    Partnerrolle = adresse.Partnerrolle,
+                    PartnerId = adresse.PartnerId,
+                    Name = adresse.Name,
+                    Strasse = adresse.Strasse,
+                    Plz = adresse.Plz,
+                    Ort = adresse.Ort,
+                    Land = adresse.Land
+                });
+            }
+        }
+
+        foreach (var doppelteHauptkundennummer in push.Kunden
+            .GroupBy(gruppe => gruppe.Hauptkundennummer)
+            .Where(group => group.Count() > 1))
+            fehler.Add($"hauptkundennummer '{doppelteHauptkundennummer.Key}' kommt mehrfach vor.");
+
+        WirfBeiFehlern(fehler);
+        return ergebnis;
     }
 
     private static void ValidiereStueckliste(StuecklistenPush push)

@@ -15,6 +15,8 @@ namespace Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
 /// </summary>
 public class StuecklistenImportService(AppDbContext db, ILogger<StuecklistenImportService> logger)
 {
+    private readonly record struct PfadVorkommenSchluessel(string Pfad, int Vorkommen);
+
     public async Task ImportierenAsync(
         string maschinentypSchluessel, string kopfmaterial, RohPosition wurzel, List<MatrixZeile> matrixZeilen)
     {
@@ -45,15 +47,34 @@ public class StuecklistenImportService(AppDbContext db, ILogger<StuecklistenImpo
         db.MaschinentypStuecklisten.Add(stueckliste);
         await db.SaveChangesAsync();
 
-        // Derselbe Pfad kann in der echten Matrix mehrfach mit unterschiedlichen Bedingungen
-        // auftauchen (verifiziert an der echten Datei, z. B. "9237831" auf zwei Zeilen) — dann
-        // reicht irgendeine der Bedingungen zur Aufnahme, daher ODER-Verknüpfung statt Kollision.
+        // RDM75 liefert für doppelte Pfade eine Vorkommensnummer, damit jede Matrixzeile genau
+        // ihrem Baumknoten zugeordnet wird. Parser ohne Vorkommensnummer behalten die bisherige
+        // pfadbasierte ODER-Verknüpfung und damit ihr bestehendes Importverhalten.
         var bedingungenNachPfad = matrixZeilen
+            .Where(z => z.PfadVorkommen is null)
             .GroupBy(z => string.Join('/', z.Pfad))
-            .ToDictionary(g => g.Key, g => g.Count() == 1 ? g.First().Bedingung : string.Join(" / ", g.Select(z => $"({z.Bedingung})")));
+            .ToDictionary(g => g.Key, VerbindeBedingungen);
+        var bedingungenNachPfadVorkommen = matrixZeilen
+            .Where(z => z.PfadVorkommen is not null)
+            .GroupBy(z => new PfadVorkommenSchluessel(
+                string.Join('/', z.Pfad),
+                z.PfadVorkommen!.Value))
+            .ToDictionary(g => g.Key, VerbindeBedingungen);
         var zugeordnetePfade = new HashSet<string>();
+        var zugeordnetePfadVorkommen = new HashSet<PfadVorkommenSchluessel>();
+        var naechstesVorkommenNachPfad = new Dictionary<string, int>();
 
-        EinfuegenRekursiv(wurzel, [], null, stueckliste.Id, bedingungenNachPfad, zugeordnetePfade, 0);
+        EinfuegenRekursiv(
+            wurzel,
+            [],
+            null,
+            stueckliste.Id,
+            bedingungenNachPfad,
+            bedingungenNachPfadVorkommen,
+            zugeordnetePfade,
+            zugeordnetePfadVorkommen,
+            naechstesVorkommenNachPfad,
+            0);
         await db.SaveChangesAsync();
 
         await transaction.CommitAsync();
@@ -61,7 +82,10 @@ public class StuecklistenImportService(AppDbContext db, ILogger<StuecklistenImpo
         foreach (var zeile in matrixZeilen)
         {
             var pfad = string.Join('/', zeile.Pfad);
-            if (!zugeordnetePfade.Contains(pfad))
+            var wurdeZugeordnet = zeile.PfadVorkommen is int vorkommen
+                ? zugeordnetePfadVorkommen.Contains(new PfadVorkommenSchluessel(pfad, vorkommen))
+                : zugeordnetePfade.Contains(pfad);
+            if (!wurdeZugeordnet)
             {
                 logger.LogWarning(
                     "Umsetzungsmatrix-Bedingung ohne passende Position in der Maximalstückliste " +
@@ -73,12 +97,24 @@ public class StuecklistenImportService(AppDbContext db, ILogger<StuecklistenImpo
 
     private void EinfuegenRekursiv(
         RohPosition knoten, List<string> pfadBisher, int? parentId, int stuecklisteId,
-        Dictionary<string, string> bedingungenNachPfad, HashSet<string> zugeordnetePfade, int reihenfolge)
+        Dictionary<string, string> bedingungenNachPfad,
+        Dictionary<PfadVorkommenSchluessel, string> bedingungenNachPfadVorkommen,
+        HashSet<string> zugeordnetePfade,
+        HashSet<PfadVorkommenSchluessel> zugeordnetePfadVorkommen,
+        Dictionary<string, int> naechstesVorkommenNachPfad,
+        int reihenfolge)
     {
         var pfad = new List<string>(pfadBisher) { knoten.Artikelnummer };
         var pfadSchluessel = string.Join('/', pfad);
-        var bedingung = bedingungenNachPfad.GetValueOrDefault(pfadSchluessel);
-        if (bedingung is not null)
+        var vorkommen = naechstesVorkommenNachPfad.GetValueOrDefault(pfadSchluessel);
+        naechstesVorkommenNachPfad[pfadSchluessel] = vorkommen + 1;
+        var pfadVorkommenSchluessel = new PfadVorkommenSchluessel(pfadSchluessel, vorkommen);
+        var bedingungNachVorkommen = bedingungenNachPfadVorkommen.GetValueOrDefault(pfadVorkommenSchluessel);
+        var bedingungNachPfad = bedingungenNachPfad.GetValueOrDefault(pfadSchluessel);
+        var bedingung = bedingungNachVorkommen ?? bedingungNachPfad;
+        if (bedingungNachVorkommen is not null)
+            zugeordnetePfadVorkommen.Add(pfadVorkommenSchluessel);
+        else if (bedingungNachPfad is not null)
             zugeordnetePfade.Add(pfadSchluessel);
 
         var position = new MaximalstuecklistenPosition
@@ -98,6 +134,24 @@ public class StuecklistenImportService(AppDbContext db, ILogger<StuecklistenImpo
         db.SaveChanges(); // Id wird für die Kinder als ParentId gebraucht.
 
         for (var i = 0; i < knoten.Kinder.Count; i++)
-            EinfuegenRekursiv(knoten.Kinder[i], pfad, position.Id, stuecklisteId, bedingungenNachPfad, zugeordnetePfade, i);
+            EinfuegenRekursiv(
+                knoten.Kinder[i],
+                pfad,
+                position.Id,
+                stuecklisteId,
+                bedingungenNachPfad,
+                bedingungenNachPfadVorkommen,
+                zugeordnetePfade,
+                zugeordnetePfadVorkommen,
+                naechstesVorkommenNachPfad,
+                i);
+    }
+
+    private static string VerbindeBedingungen(IEnumerable<MatrixZeile> zeilen)
+    {
+        var liste = zeilen.ToList();
+        return liste.Count == 1
+            ? liste[0].Bedingung
+            : string.Join(" / ", liste.Select(z => $"({z.Bedingung})"));
     }
 }

@@ -11,7 +11,6 @@ public class Angebot
     public int? KundeId { get; set; }
     public string Angebotsnummer { get; set; } = "";
     public int Version { get; set; }
-    public string? VersionsKommentar { get; set; }
     public string? Kundenname { get; set; }
     public string? Kundenadresse { get; set; }
     public string? Lieferadresse { get; set; }
@@ -46,6 +45,10 @@ public class Angebot
     public string? VerkaeuferKommentar { get; set; }
     public string? LieferterminKommentar { get; set; }
     public string? GueltigkeitsdatumKommentar { get; set; }
+    // Pflicht-Begründung des Vertriebs, warum eine zusätzliche Version angelegt wurde. Nur beim
+    // Anlegen einer neuen Version (KonfliktStrategie.NeueVersion) gesetzt; null bei der Erstanlage
+    // (Version 1) und beim Überschreiben. Wird im Innendienst beim Versionswechsel angezeigt.
+    public string? VersionsKommentar { get; set; }
     public string Dateiname { get; set; } = "";
     public string BlobPfad { get; set; } = "";
     public DateTime HochgeladenAm { get; set; }

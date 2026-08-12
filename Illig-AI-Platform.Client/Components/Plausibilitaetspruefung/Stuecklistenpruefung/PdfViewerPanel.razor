@@ -1,3 +1,6 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
 <div class="su-review__pdf @(Eingeklappt ? "su-review__pdf--eingeklappt" : "")">
     @if (!Eingeklappt)
     {
@@ -18,13 +21,20 @@
     {
         <button type="button" class="su-review__pdf-toggle" @onclick="() => OnToggle.InvokeAsync()">◂ PDF anzeigen</button>
     }
-    @if (DataUrl is not null)
+    @if (_objektUrl is not null)
     {
         <iframe title="Auftragsinformation" src="@ViewerUrl"></iframe>
     }
-    else
+    else if (DataUrl is null)
     {
         <p class="su-review__empty">Dokument nicht verfügbar.</p>
+    }
+    @if (Busy && !Eingeklappt)
+    {
+        <div class="su-review__pdf-laden" role="status" aria-live="polite">
+            <span class="su-review__pdf-laden-kreis" aria-hidden="true"></span>
+            <span>Dokument wird geladen…</span>
+        </div>
     }
 </div>
 
@@ -38,12 +48,71 @@
     [Parameter]
     public string? DokumentName { get; set; }
 
+    /// <summary>PDF als Base64-"data:"-URL. Wird intern in eine Blob-Object-URL umgewandelt,
+    /// weil große data:-URLs vom Browser-PDF-Viewer im iframe nicht mehr geladen werden.</summary>
     [Parameter]
     public string? DataUrl { get; set; }
 
     [Parameter]
     public RenderFragment? Tabs { get; set; }
 
+    /// <summary>Zeigt ein Lade-Overlay über dem PDF-Bereich (z. B. während des Versionswechsels).</summary>
+    [Parameter]
+    public bool Busy { get; set; }
+
+    // Aktuelle Object-URL fürs iframe und die zuletzt verarbeitete DataUrl (Änderungserkennung,
+    // damit nicht bei jedem Render neu umgewandelt wird). _selbstErzeugt = true, wenn diese
+    // Komponente die Object-URL aus einer data:-URL erzeugt hat und sie daher selbst freigeben
+    // muss; bei einer bereits fertigen blob:-URL besitzt sie die aufrufende Seite.
+    private string? _objektUrl;
+    private string? _letzteDataUrl;
+    private bool _selbstErzeugt;
+
     // Toolbar ausblenden und Seite auf die Panel-Breite einpassen (Adobe PDF-Open-Parameter).
-    private string? ViewerUrl => DataUrl is null ? null : $"{DataUrl}#toolbar=0&view=FitH";
+    private string? ViewerUrl => _objektUrl is null ? null : $"{_objektUrl}#toolbar=0&view=FitH";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (DataUrl == _letzteDataUrl)
+            return;
+
+        _letzteDataUrl = DataUrl;
+        await EigeneObjektUrlFreigebenAsync();
+
+        if (string.IsNullOrEmpty(DataUrl))
+            _objektUrl = null;
+        else if (DataUrl.StartsWith("blob:", StringComparison.Ordinal))
+            // Bereits von der Seite vorbereitete Object-URL — direkt anzeigen (die Seite gibt sie frei).
+            _objektUrl = DataUrl;
+        else
+        {
+            // Große Base64-data:-URLs rendern nicht im iframe — in eine Blob-Object-URL umwandeln.
+            _objektUrl = await JS.InvokeAsync<string?>("pdfObjectUrl.toObjectUrl", DataUrl);
+            _selbstErzeugt = true;
+        }
+    }
+
+    private async Task EigeneObjektUrlFreigebenAsync()
+    {
+        if (!_selbstErzeugt || _objektUrl is null)
+        {
+            _objektUrl = null;
+            _selbstErzeugt = false;
+            return;
+        }
+
+        var alt = _objektUrl;
+        _objektUrl = null;
+        _selbstErzeugt = false;
+        try
+        {
+            await JS.InvokeVoidAsync("pdfObjectUrl.revoke", alt);
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            // Seite/Circuit bereits weg — die Object-URL wird ohnehin mit dem Dokument freigegeben.
+        }
+    }
+
+    public async ValueTask DisposeAsync() => await EigeneObjektUrlFreigebenAsync();
 }

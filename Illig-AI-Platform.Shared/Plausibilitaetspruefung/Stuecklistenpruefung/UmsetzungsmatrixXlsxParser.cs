@@ -2,7 +2,10 @@ using ClosedXML.Excel;
 
 namespace Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
 
-public record MatrixZeile(IReadOnlyList<string> Pfad, string Bedingung);
+public record MatrixZeile(
+    IReadOnlyList<string> Pfad,
+    string Bedingung,
+    int? PfadVorkommen = null);
 
 /// <summary>
 /// Parst eine Umsetzungsmatrix-Arbeitsmappe. Hierarchie: Tiefe k hat die Artikelnummer in
@@ -27,6 +30,7 @@ public static class UmsetzungsmatrixXlsxParser
         var kombinationsSpalte = FindeKombinationsSpalte(ws, letzteSpalte);
 
         var pfadStapel = new List<(int Tiefe, string Artikelnummer)>();
+        var naechstesVorkommenNachPfad = new Dictionary<string, int>();
         var ergebnis = new List<MatrixZeile>();
 
         var letzteZeile = ws.LastRowUsed()!.RowNumber();
@@ -42,9 +46,14 @@ public static class UmsetzungsmatrixXlsxParser
                 pfadStapel.RemoveAt(pfadStapel.Count - 1);
             pfadStapel.Add((tiefe.Value, artikelnummer));
 
+            var pfad = pfadStapel.Select(p => p.Artikelnummer).ToList();
+            var pfadSchluessel = string.Join('/', pfad);
+            var pfadVorkommen = naechstesVorkommenNachPfad.GetValueOrDefault(pfadSchluessel);
+            naechstesVorkommenNachPfad[pfadSchluessel] = pfadVorkommen + 1;
+
             var bedingung = ErmittleBedingung(ws, zeile, letzteSpalte, kombinationsSpalte);
             if (bedingung is not null)
-                ergebnis.Add(new MatrixZeile([.. pfadStapel.Select(p => p.Artikelnummer)], bedingung));
+                ergebnis.Add(new MatrixZeile(pfad, bedingung, pfadVorkommen));
         }
 
         return ergebnis;
@@ -77,20 +86,32 @@ public static class UmsetzungsmatrixXlsxParser
     {
         // Bis letzteSpalte (nicht bis kombinationsSpalte) laufen — sonst wird die Bedingung nie
         // gefunden, wenn keine Kombinationsspalte existiert (kombinationsSpalte == -1).
+        var teilbedingungen = new List<string>();
         for (var spalte = ErsteVariantenSpalte; spalte <= letzteSpalte; spalte++)
         {
             if (spalte == kombinationsSpalte)
                 continue;
 
-            var wert = ws.Cell(zeile, spalte).GetString().Trim();
+            var wert = ws.Cell(zeile, spalte).GetFormattedString().Trim();
             if (wert.Length == 0)
                 continue;
 
             if (wert.Contains("siehe Komb.", StringComparison.OrdinalIgnoreCase))
-                return kombinationsSpalte > 0 ? ws.Cell(zeile, kombinationsSpalte).GetString().Trim() : wert;
+                return kombinationsSpalte > 0
+                    ? ws.Cell(zeile, kombinationsSpalte).GetFormattedString().Trim()
+                    : wert;
 
-            return wert;
+            teilbedingungen.Add(wert);
         }
-        return null;
+
+        // Mehrere gefüllte Varianten-Spalten (ohne "siehe Komb.") gehören per UND zusammen, z. B.
+        // Zeile 222: Formluft-Variante (Z) UND NICHT Kondenswasser (AI). Früher wurde nur die erste
+        // Spalte übernommen und die restlichen Bedingungen stillschweigend verworfen.
+        return teilbedingungen.Count switch
+        {
+            0 => null,
+            1 => teilbedingungen[0],
+            _ => string.Join(" U ", teilbedingungen.Select(t => $"({t})"))
+        };
     }
 }

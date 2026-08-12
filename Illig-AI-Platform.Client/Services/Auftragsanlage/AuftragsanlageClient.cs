@@ -1,7 +1,7 @@
+using Illig_AI_Platform.Client.Models.Auftragsanlage;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Illig_AI_Platform.Client.Models.Auftragsanlage;
 
 namespace Illig_AI_Platform.Client.Services.Auftragsanlage;
 
@@ -44,7 +44,7 @@ public class AuftragsanlageClient(HttpClient http)
         content.Add(new StringContent(JsonSerializer.Serialize(daten, JsonWeb)), "datenJson");
         if (konfliktStrategie is not null)
             content.Add(new StringContent(konfliktStrategie), "konfliktStrategie");
-        if (versionsKommentar is not null)
+        if (!string.IsNullOrWhiteSpace(versionsKommentar))
             content.Add(new StringContent(versionsKommentar), "versionsKommentar");
 
         var response = await http.PostAsync("api/v1/auftragsanlage/vertrieb/angebot/speichern", content);

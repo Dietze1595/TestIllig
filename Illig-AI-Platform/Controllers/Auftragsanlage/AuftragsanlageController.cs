@@ -1,10 +1,10 @@
-using System.Text.Json;
 using Asp.Versioning;
 using Illig_AI_Platform.Services;
 using Illig_AI_Platform.Shared.Auftragsanlage;
 using Illig_AI_Platform.Shared.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace Illig_AI_Platform.Controllers.Auftragsanlage;
 
@@ -94,7 +94,8 @@ public class AuftragsanlageController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<AngebotSpeichernAntwort>> AngebotSpeichern(
-        [FromForm] IFormFile datei, [FromForm] string datenJson, [FromForm] string? konfliktStrategie, [FromForm] string? versionsKommentar = null)
+        [FromForm] IFormFile datei, [FromForm] string datenJson, [FromForm] string? konfliktStrategie,
+        [FromForm] string? versionsKommentar = null)
     {
         var validierungsFehler = ValidiereDatei(datei);
         if (validierungsFehler is not null)
@@ -132,7 +133,8 @@ public class AuftragsanlageController(
         {
             using var puffer = await InPufferLesenAsync(datei);
             var ergebnis = await angebotsService.SpeichernAsync(
-                daten, datei.FileName, puffer, strategie, vertriebsbedingungen, User.GetUserId(), versionsKommentar);
+                daten, datei.FileName, puffer, strategie, vertriebsbedingungen, User.GetUserId(),
+                versionsKommentar);
 
             if (ergebnis.Konflikt)
                 return Ok(new AngebotSpeichernAntwort(
@@ -331,8 +333,8 @@ public class AuftragsanlageController(
 
             puffer.Position = 0;
             var bestaetigungId = await angebotsService.BestaetigungSpeichernAsync(angebot.Id, daten, datei.FileName, puffer, vergleich, User.GetUserId());
-
             var angebotStatus = await angebotsService.ErstelleAngebotStatusAsync(angebot);
+
             var vorhandeneVersionen = await angebotsService.VorhandeneVersionenAsync(angebot.Angebotsnummer);
 
             return Ok(new BestaetigungVergleichAntwort(

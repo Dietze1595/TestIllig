@@ -5,6 +5,26 @@
     position: relative;
 }
 
+/* Pflicht-Begründung auf der Rückfrage-Karte „Als neue Version ablegen". */
+.aa-neueversion-grund {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 1rem 0;
+    max-width: 32rem;
+}
+
+.aa-neueversion-grund label {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.aa-neueversion-grund__hinweis {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #57666d;
+}
+
 .su-main {
     box-sizing: border-box;
     min-width: 0;
@@ -470,7 +490,7 @@
 .aa-adressvergleich {
     display: grid;
     gap: .2rem;
-    font-size: .84rem;
+    font-size: 16px;
     font-weight: 500;
     line-height: 1.35;
 }

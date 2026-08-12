@@ -163,20 +163,6 @@ public static class VertriebsbedingungenParser
                 LeerZuNull(normalisiert[..prozentStart.Index]),
                 LeerZuNull(normalisiert[prozentStart.Index..]));
 
-        // Check for proforma payment plan (e.g. Total amount payable against Proforma Invoice, net)
-        var proformaMatch = Regex.Match(normalisiert, @"(?i)\b(?:(?:total\s+amount\s+)?payable\s+against|(?:gesamtbetrag\s+)?zahlbar\s+gegen)\s+pro\s*forma(?:\s*(?:invoice|rechnung))?\b");
-        if (proformaMatch.Success)
-        {
-            var splitIndex = proformaMatch.Index;
-            if (splitIndex == 0)
-            {
-                return (normalisiert, normalisiert);
-            }
-            return (
-                LeerZuNull(normalisiert[..splitIndex]),
-                LeerZuNull(normalisiert[splitIndex..]));
-        }
-
         // Fallback für seltene Ratenpläne mit absoluten Beträgen statt Prozenten.
         var zeilen = normalisiert.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var betragStart = Array.FindIndex(zeilen, 1,
@@ -185,6 +171,19 @@ public static class VertriebsbedingungenParser
             return (
                 LeerZuNull(string.Join(Environment.NewLine, zeilen[..betragStart])),
                 LeerZuNull(string.Join(Environment.NewLine, zeilen[betragStart..])));
+
+        // Manche Angebote drücken den Ratenplan rein textuell aus — Vollzahlung gegen
+        // Proforma-Rechnung bzw. Vorkasse — ohne Prozent oder Betrag. Auch dann steht in
+        // Zeile 1 das Zahlungsziel; die Planzeile beginnt darunter (daher Suche ab Index 1).
+        var planTextStart = Array.FindIndex(zeilen, 1,
+            zeile => Regex.IsMatch(
+                zeile,
+                @"\b(?:total\s+amount\s+payable|payable\s+against|against\s+proforma|zahlbar\s+gegen|gegen\s+proforma|vorkasse|vorauszahlung)\b",
+                RegexOptions.IgnoreCase));
+        if (planTextStart >= 0)
+            return (
+                LeerZuNull(string.Join(Environment.NewLine, zeilen[..planTextStart])),
+                LeerZuNull(string.Join(Environment.NewLine, zeilen[planTextStart..])));
 
         return (normalisiert, null);
     }

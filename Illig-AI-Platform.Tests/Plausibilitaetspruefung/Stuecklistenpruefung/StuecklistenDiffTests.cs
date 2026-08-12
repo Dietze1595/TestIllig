@@ -97,6 +97,55 @@ public class StuecklistenDiffTests
     }
 
     [Fact]
+    public void Vergleiche_PaartErsetztesTeilNachBezeichnung_UndVergleichtUnterbaumWeiter()
+    {
+        // Gleicher Slot "Gehäuse", andere Artikelnummer (Maximalstückliste-Soll 9223375 vs SAP-Ist
+        // 9317922). Das darunterliegende Schweissteil ist in beiden identisch und muss als
+        // Übereinstimmung erkannt werden — nicht wegen des Eltern-Mismatchs pauschal als "fehlt".
+        var unser = Knoten("M1", "Maschine", 1, "ST",
+            Knoten("9223375", "Gehäuse_RDM75K/76K", 1, "ST",
+                Knoten("9223288", "Gehäuse_Schweissteil_RDM75K_76K", 1, "ST")));
+        var sap = Roh("M1", "Maschine", 1, "ST",
+            Roh("9317922", "Gehäuse_RDM75Kc_RDML75b", 1, "ST",
+                Roh("9223288", "Gehäuse_Schweissteil_RDM75K_76K", 1, "ST")));
+
+        var ergebnis = StuecklistenDiff.Vergleiche(unser, sap);
+
+        var gehaeuse = Assert.Single(ergebnis.Wurzel.Kinder);
+        Assert.Equal("9223375", gehaeuse.Artikelnummer);
+        Assert.Equal(VergleichsStatus.Abweichung, gehaeuse.Status);
+        Assert.Contains("Anderes Teil", gehaeuse.Hinweis);
+        Assert.Contains("9317922", gehaeuse.Hinweis);
+
+        var schweissteil = Assert.Single(gehaeuse.Kinder);
+        Assert.Equal("9223288", schweissteil.Artikelnummer);
+        Assert.Equal(VergleichsStatus.Uebereinstimmung, schweissteil.Status);
+
+        // Kein doppeltes "Nur in SAP" mehr für den getauschten Gehäuse-Zweig.
+        Assert.Empty(ergebnis.NurInSap);
+    }
+
+    [Fact]
+    public void Vergleiche_PaartNichtVerwandteTeileNicht_BleibtFehltUndNurInSap()
+    {
+        // Unterschiedliche Bezeichnungen (kein gemeinsames führendes Wort) → NICHT paaren,
+        // sondern wie bisher getrennt als "fehlt" bzw. "nur in SAP" melden.
+        var unser = Knoten("M1", "Maschine", 1, "ST",
+            Knoten("X1", "Vakuumpumpe", 1, "ST"));
+        var sap = Roh("M1", "Maschine", 1, "ST",
+            Roh("Y1", "Steuerung", 1, "ST"));
+
+        var ergebnis = StuecklistenDiff.Vergleiche(unser, sap);
+
+        var kind = Assert.Single(ergebnis.Wurzel.Kinder);
+        Assert.Equal("X1", kind.Artikelnummer);
+        Assert.Equal(VergleichsStatus.NurBeiUns, kind.Status);
+
+        var nurSap = Assert.Single(ergebnis.NurInSap);
+        Assert.Equal("Y1", nurSap.Artikelnummer);
+    }
+
+    [Fact]
     public void Vergleiche_SummiertMenge_BeiDoppelterGeschwisterArtikelnummerInSap()
     {
         var unser = Knoten("A1", "Teil A", 1, "ST",

@@ -24,6 +24,7 @@ public class SapImportAuthIntegrationTests : IClassFixture<WebApplicationFactory
 {
     private const string ConfiguredApiKey = "integration-test-key";
     private const string RequestUri = "/api/v1/sap-import/plausibilitaetspruefung/stuecklisten";
+    private const string KundenPartneradressenUri = "/api/v1/sap-import/kunden/partneradressen";
 
     private static readonly string[] OverriddenEnvVars =
         ["KeyVaults__General", "Db__ConnectionString", "SapIntegration__ApiKey", "ApplicationInsights__ConnectionString"];
@@ -105,6 +106,26 @@ public class SapImportAuthIntegrationTests : IClassFixture<WebApplicationFactory
                 nodeId = "root", parentNodeId = (string?)null, position = (string?)null,
                 type = "ASSEMBLY", materialNumber = "ART-1", description = "Schraube",
                 quantity = 4, unit = "ST"
+            }
+        }
+    };
+
+    private static object GueltigeKundenAdressen() => new
+    {
+        kunden = new[]
+        {
+            new
+            {
+                hauptkundennummer = "717216",
+                adressen = new[]
+                {
+                    new { partnerrolle = "Auftraggeber", partnerId = "717216", name = "Malico General Trading", strasse = "PO Box No. 18257, Office 1660", plz = (string?)null, ort = "Dubai", land = "AE" },
+                    new { partnerrolle = "Rechnungsempfänger", partnerId = "717216", name = "Malico General Trading", strasse = "PO Box No. 18257, Office 1660", plz = (string?)null, ort = "Dubai", land = "AE" },
+                    new { partnerrolle = "Regulierer", partnerId = "717216", name = "Malico General Trading", strasse = "PO Box No. 18257, Office 1660", plz = (string?)null, ort = "Dubai", land = "AE" },
+                    new { partnerrolle = "Vertretung", partnerId = "2222", name = "ILLIG Packaging solution", strasse = "Robert Bosch Straße 10", plz = (string?)"74081", ort = "Heilbronn", land = "DE" },
+                    new { partnerrolle = "Warenempfänger", partnerId = "717220", name = "Al Sulaymania for the Pro", strasse = "Hurr region, Lamalliye Industrial", plz = (string?)null, ort = "Karbala Governorate", land = "IQ" },
+                    new { partnerrolle = "Endkunde", partnerId = "717220", name = "Al Sulaymania for the Pro", strasse = "Hurr region, Lamalliye Industrial", plz = (string?)null, ort = "Karbala Governorate", land = "IQ" }
+                }
             }
         }
     };
@@ -199,6 +220,7 @@ public class SapImportAuthIntegrationTests : IClassFixture<WebApplicationFactory
         Assert.Contains("/api/v1/sap-import/plausibilitaetspruefung/maximalstuecklisten", json);
         Assert.Contains("/api/v1/sap-import/lieferantenassistent/dispositionsliste", json);
         Assert.Contains("/api/v1/sap-import/lieferantenassistent/lieferanten-kreditoren-stammdaten", json);
+        Assert.Contains("/api/v1/sap-import/kunden/partneradressen", json);
         // Für den Kunden bewusst nur Dispositionsliste + Stammdaten sichtbar — die übrigen
         // Lieferantenassistent-Endpunkte wurden entfernt und dürfen nicht im Swagger auftauchen.
         Assert.DoesNotContain("/api/v1/sap-import/lieferantenassistent/einkaeufergruppen", json);
@@ -211,6 +233,7 @@ public class SapImportAuthIntegrationTests : IClassFixture<WebApplicationFactory
         // "Plausibilit" statt "Plausibilitätsprüfung", falls der Serializer Umlaute escapt.
         Assert.Contains("Plausibilit", json);
         Assert.Contains("Lieferantenassistent", json);
+        Assert.Contains("Kunden", json);
         Assert.DoesNotContain("SapStaging", json);
         Assert.DoesNotContain("SapImport", json);
 
@@ -273,5 +296,35 @@ public class SapImportAuthIntegrationTests : IClassFixture<WebApplicationFactory
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Contains(db.StuecklistenPositionen, position =>
             position.Auftragsnummer == "A100" && position.NodeId == "root");
+    }
+
+    [Fact]
+    public async Task PostKundenPartneradressen_ReturnsUnauthorized_WhenApiKeyHeaderMissing()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(KundenPartneradressenUri, GueltigeKundenAdressen());
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostKundenPartneradressen_ReturnsOkAndPersists_WhenApiKeyCorrect()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", ConfiguredApiKey);
+
+        var response = await client.PostAsJsonAsync(KundenPartneradressenUri, GueltigeKundenAdressen());
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected 200 OK, got {response.StatusCode}: {responseBody}");
+        var body = await response.Content.ReadFromJsonAsync<SapDirektImportErgebnis>();
+        Assert.NotNull(body);
+        Assert.Equal(6, body!.ZeilenAnzahl);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Contains(db.KundenPartneradressen, adresse =>
+            adresse.Hauptkundennummer == "717216" && adresse.Partnerrolle == "Vertretung" && adresse.PartnerId == "2222");
     }
 }

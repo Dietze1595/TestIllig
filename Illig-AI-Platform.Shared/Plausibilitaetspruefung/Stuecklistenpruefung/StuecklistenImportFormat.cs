@@ -21,5 +21,11 @@ public enum StuecklistenImportFormat
     /// Format der Leitmaschine RDM 76Kb: .txt wie RDM75 (17/18/22), aber .xlsx eigen —
     /// Varianten ab Spalte 13, Kopf in Zeile 3, durchgestrichene Alt-Nummern in der Hierarchie.
     /// </summary>
-    Rdm76Kb
+    Rdm76Kb,
+
+    /// <summary>
+    /// Eigenständiges RDK80k-Format: .txt mit Wert-Spalten 19/20/24 und .xlsx mit
+    /// RDK80-/RDKP72-Abschnitten sowie Hierarchie in L–Q.
+    /// </summary>
+    Rdk80k
 }

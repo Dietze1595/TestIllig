@@ -100,6 +100,70 @@ public class StuecklistenAufbauServiceTests
         Assert.Empty(folieneinlauf.Kinder);
     }
 
+    private static async Task<AppDbContext> DbMitKabelvariantenAsync()
+    {
+        var db = CreateDb();
+        var stueckliste = new MaschinentypStueckliste { MaschinentypSchluessel = "RDM 75Kc", Kopfmaterial = "9209307" };
+        db.MaschinentypStuecklisten.Add(stueckliste);
+        await db.SaveChangesAsync();
+
+        var wurzel = new MaximalstuecklistenPosition
+        {
+            MaschinentypStuecklisteId = stueckliste.Id, Artikelnummer = "9209307", Bezeichnung = "RDM 75Kc", Menge = 1, Einheit = "ST"
+        };
+        db.MaximalstuecklistenPositionen.Add(wurzel);
+        await db.SaveChangesAsync();
+
+        // Kabelsatz (bedingungslos, trägt selbst "RDM54-76Kc" im Namen) -> muss erhalten bleiben.
+        var kabelsatz = new MaximalstuecklistenPosition
+        {
+            MaschinentypStuecklisteId = stueckliste.Id, ParentId = wurzel.Id,
+            Artikelnummer = "9281756", Bezeichnung = "Kabelsatz_RDM54-76Kc_Untertisch", Menge = 1, Einheit = "ST"
+        };
+        db.MaximalstuecklistenPositionen.Add(kabelsatz);
+        await db.SaveChangesAsync();
+
+        // Zwei bedingungslose Basis-Kabel als Grundmaschinen-Varianten desselben Teils.
+        db.MaximalstuecklistenPositionen.AddRange(
+            new MaximalstuecklistenPosition
+            {
+                MaschinentypStuecklisteId = stueckliste.Id, ParentId = kabelsatz.Id,
+                Artikelnummer = "9281770", Bezeichnung = "Kabel_Basis_RDM54Kc_Untertisch", Menge = 1, Einheit = "ST"
+            },
+            new MaximalstuecklistenPosition
+            {
+                MaschinentypStuecklisteId = stueckliste.Id, ParentId = kabelsatz.Id,
+                Artikelnummer = "9308223", Bezeichnung = "Kabel_Basis_RDM75K/Kc_Untertisch", Menge = 1, Einheit = "ST"
+            });
+        await db.SaveChangesAsync();
+
+        return db;
+    }
+
+    [Fact]
+    public async Task Aufbauen_LaesstFremdeGrundmaschinenVarianteWeg()
+    {
+        await using var db = await DbMitKabelvariantenAsync();
+        var service = new StuecklistenAufbauService(db);
+
+        var baum = await service.AufbauenAsync("RDM 75Kc", []);
+
+        var kabelsatz = baum!.Kinder.Single(k => k.Artikelnummer == "9281756");
+        Assert.DoesNotContain(kabelsatz.Kinder, k => k.Artikelnummer == "9281770");
+    }
+
+    [Fact]
+    public async Task Aufbauen_BehaeltPassendeGrundmaschinenVarianteUndElternKabelsatz()
+    {
+        await using var db = await DbMitKabelvariantenAsync();
+        var service = new StuecklistenAufbauService(db);
+
+        var baum = await service.AufbauenAsync("RDM 75Kc", []);
+
+        var kabelsatz = baum!.Kinder.Single(k => k.Artikelnummer == "9281756");
+        Assert.Contains(kabelsatz.Kinder, k => k.Artikelnummer == "9308223");
+    }
+
     [Fact]
     public async Task Aufbauen_LiefertNull_WennMaschinentypUnbekannt()
     {

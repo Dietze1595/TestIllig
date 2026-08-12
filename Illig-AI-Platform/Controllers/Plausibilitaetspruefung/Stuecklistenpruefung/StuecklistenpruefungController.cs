@@ -94,6 +94,44 @@ public class StuecklistenpruefungController(
         }
     }
 
+    [HttpGet("suche")]
+    [ProducesResponseType(typeof(VerlaufDetail), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<VerlaufDetail>> Suche([FromQuery] string auftragsnummer)
+    {
+        if (User.GetUserId() is not Guid userId)
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(auftragsnummer))
+            return NotFound();
+
+        try
+        {
+            var detail = await verlaufService.SucheNachAuftragsnummerAsync(auftragsnummer);
+            if (detail is null)
+                return NotFound();
+
+            var matrixVerfuegbarkeit =
+                await aufbauService.UmsetzungsmatrixVerfuegbarkeitAsync(
+                    detail.Maschinentyp,
+                    HttpContext.RequestAborted);
+            detail = detail with
+            {
+                UmsetzungsmatrixVorhanden = matrixVerfuegbarkeit.FuerMaschinentypVorhanden,
+                VerfuegbareUmsetzungsmatrizen =
+                    matrixVerfuegbarkeit.VorhandeneMaschinentypSchluessel
+            };
+            return Ok(detail);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Fehler bei der Auftragsnummer-Suche {Auftragsnummer}.", auftragsnummer);
+            return StatusCode(500, "Die Suche ist fehlgeschlagen. Bitte versuche es erneut.");
+        }
+    }
+
     [HttpGet("verlauf")]
     [ProducesResponseType(typeof(IReadOnlyList<VerlaufEintragUebersicht>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -120,8 +158,7 @@ public class StuecklistenpruefungController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<VerlaufDetail>> VerlaufDetail(int id)
-    {
+    public async Task<ActionResult<VerlaufDetail>> VerlaufDetail(int id)    {
         if (User.GetUserId() is not Guid userId)
             return Unauthorized();
 
@@ -324,7 +361,9 @@ public class StuecklistenpruefungController(
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<VergleichsErgebnis>> Vergleichen(
-        [FromForm] IFormFile sapDatei, [FromForm] string unsereStuecklisteJson)
+        [FromForm] IFormFile sapDatei,
+        [FromForm] string unsereStuecklisteJson,
+        [FromForm] string maschinentyp)
     {
         if (sapDatei is null || sapDatei.Length == 0)
             return BadRequest("Keine SAP-Datei hochgeladen.");
@@ -334,11 +373,14 @@ public class StuecklistenpruefungController(
         if (string.IsNullOrWhiteSpace(unsereStuecklisteJson))
             return BadRequest("Eigene Stückliste fehlt.");
 
+        if (!StuecklistenImportFormatErmittlung.TryErmitteln(maschinentyp, out var importFormat))
+            return BadRequest($"Nicht unterstützter Maschinentyp '{maschinentyp}'.");
+
         try
         {
             await using var stream = sapDatei.OpenReadStream();
             using var reader = new StreamReader(stream, Encoding.GetEncoding("ISO-8859-1"));
-            var sapWurzel = MaximalstuecklisteTxtParser.Parse(await reader.ReadToEndAsync());
+            var sapWurzel = MaximalstuecklisteParser.Parse(await reader.ReadToEndAsync(), importFormat);
 
             var unsereWurzel = JsonSerializer.Deserialize<StuecklistenKnoten>(unsereStuecklisteJson)
                 ?? throw new InvalidOperationException("Stückliste ist leer.");

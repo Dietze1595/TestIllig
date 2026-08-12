@@ -7,7 +7,15 @@
     <div class="su-comparison-head">
         <div>
             <h3>Vergleichsergebnis</h3>
-            <p>Positionen über den Status-Filter im Tabellenkopf eingrenzen</p>
+            <p>Nach Artikelnummer/Bezeichnung suchen oder über den Status-Filter im Tabellenkopf eingrenzen</p>
+        </div>
+        <div class="su-comparison-search">
+            <input type="search"
+                   class="su-comparison-search__input"
+                   placeholder="Artikelnummer suchen…"
+                   aria-label="Nach Artikelnummer oder Bezeichnung suchen"
+                   value="@_suchtext"
+                   @oninput="SuchtextGeaendert" />
         </div>
     </div>
 
@@ -29,8 +37,8 @@
                 <tr>
                     <th>Artikelnummer</th>
                     <th>Bezeichnung</th>
-                    <th>Unsere Menge</th>
-                    <th>SAP-Menge</th>
+                    <th>Soll-Menge</th>
+                    <th>Ist-Menge (SAP)</th>
                     <th class="su-comparison-status-th">
                         <SpaltenFilterDropdown Titel="Status" Optionen="_statusFilterOptionen"
                                                Ausgewaehlt="_ausgewaehlteStatus"
@@ -43,7 +51,7 @@
                 @if (_sichtbareZeilen.Count == 0)
                 {
                     <tr>
-                        <td colspan="6" class="su-comparison-empty-cell">Keine Positionen mit dem gewählten Status.</td>
+                        <td colspan="6" class="su-comparison-empty-cell">Keine passenden Positionen.</td>
                     </tr>
                 }
                 else
@@ -67,7 +75,7 @@
 
     @if (ZeigeSapAbschnitt)
     {
-        @if (NurInSap is { Count: > 0 })
+        @if (GefilterteNurInSap.Count > 0)
         {
             <section class="su-comparison-sap" aria-labelledby="su-comparison-sap-title">
                 <h3 id="su-comparison-sap-title">Nur in SAP vorhanden</h3>
@@ -81,7 +89,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var position in NurInSap)
+                            @foreach (var position in GefilterteNurInSap)
                             {
                                 <tr>
                                     <td>@position.Pfad</td>
@@ -125,6 +133,7 @@
     private static string NurInSapLabel => VergleichsAnzeigeHelfer.StatusText(VergleichsStatus.NurInSap);
 
     private readonly HashSet<string> _ausgewaehlteStatus = [];
+    private string _suchtext = "";
     private VergleichsKnotenAnsicht? _letzterBaum;
     private List<VergleichsZeileAnsicht> _sichtbareZeilen = [];
     private Dictionary<VergleichsKnotenAnsicht, string> _breadcrumbNachKnoten = [];
@@ -137,22 +146,51 @@
     private bool ZeigeSapAbschnitt =>
         _ausgewaehlteStatus.Count == 0 || _ausgewaehlteStatus.Contains(NurInSapLabel);
 
-    // Ohne Auswahl kein Filter (interaktiver Baum). Sonst: Knoten sichtbar, wenn er oder ein
-    // Nachfahre einen der gewählten Baum-Status trägt. Sind nur "Nur in SAP" (oder nichts
-    // Baum-relevantes) gewählt, ist die Status-Menge leer und der Baum bleibt leer.
+    // "Nur in SAP"-Positionen zusätzlich per Suchtext (Artikelnummer/Bezeichnung/Pfad) eingrenzen.
+    private IReadOnlyList<VergleichsPosition> GefilterteNurInSap
+    {
+        get
+        {
+            if (NurInSap is null)
+                return [];
+            var suchtext = _suchtext.Trim();
+            if (suchtext.Length == 0)
+                return NurInSap;
+            return NurInSap.Where(p =>
+                p.Artikelnummer.Contains(suchtext, StringComparison.OrdinalIgnoreCase)
+                || p.Bezeichnung.Contains(suchtext, StringComparison.OrdinalIgnoreCase)
+                || p.Pfad.Contains(suchtext, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+    }
+
+    // Ohne Filter/Suche kein Baum-Filter (interaktiver Baum). Sonst ist ein Knoten sichtbar, wenn er
+    // oder ein Nachfahre den gewählten Status UND (falls gesucht wird) den Suchtext trägt.
     private Func<VergleichsKnotenAnsicht, bool>? AktiverBaumFilter
     {
         get
         {
-            if (_ausgewaehlteStatus.Count == 0)
+            var suchtext = _suchtext.Trim();
+            var hatSuche = suchtext.Length > 0;
+            var hatStatus = _ausgewaehlteStatus.Count > 0;
+            if (!hatSuche && !hatStatus)
                 return null;
 
-            var baumStatus = _statusReihenfolge
-                .Where(s => s.Status != VergleichsStatus.NurInSap && _ausgewaehlteStatus.Contains(s.Label))
-                .Select(s => s.Status)
-                .ToHashSet();
-            return knoten => knoten.EnthaeltStatus(baumStatus);
+            var baumStatus = hatStatus
+                ? _statusReihenfolge
+                    .Where(s => s.Status != VergleichsStatus.NurInSap && _ausgewaehlteStatus.Contains(s.Label))
+                    .Select(s => s.Status)
+                    .ToHashSet()
+                : null;
+            return knoten =>
+                (baumStatus is null || knoten.EnthaeltStatus(baumStatus))
+                && (!hatSuche || knoten.EnthaeltText(suchtext));
         }
+    }
+
+    private void SuchtextGeaendert(ChangeEventArgs e)
+    {
+        _suchtext = e.Value?.ToString() ?? "";
+        ZeilenNeuBerechnen();
     }
 
     protected override void OnParametersSet()
@@ -161,6 +199,7 @@
         {
             _letzterBaum = Baum;
             _ausgewaehlteStatus.Clear();
+            _suchtext = "";
             ZeilenNeuBerechnen();
         }
     }
@@ -171,9 +210,12 @@
     // fehlende Teilbäume eingeklappt; der Nutzer klappt bei Bedarf selbst auf.
     private void ZeilenNeuBerechnen()
     {
+        // Bei aktiver Suche alle passenden Knoten entlang des gefilterten Pfades aufklappen, damit
+        // Treffer auch in sonst eingeklappten Ästen sichtbar werden.
+        var suchAktiv = _suchtext.Trim().Length > 0;
         _sichtbareZeilen = Baum is null
             ? []
-            : VergleichsKnotenAnsicht.SichtbareZeilen(Baum, 0, AktiverBaumFilter, false).ToList();
+            : VergleichsKnotenAnsicht.SichtbareZeilen(Baum, 0, AktiverBaumFilter, suchAktiv).ToList();
         StickyPfadeVorberechnen();
         _ = _virtualize?.RefreshDataAsync();
     }
