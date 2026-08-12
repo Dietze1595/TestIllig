@@ -242,7 +242,7 @@
             {
                 aktuellerPfadText = string.Join(
                     " › ",
-                    gruppenPfad.Select(pfadZeile => pfadZeile.Knoten.Knoten.Bezeichnung));
+                    gruppenPfad.Select(pfadZeile => pfadZeile.Knoten.Knoten.Artikelnummer));
                 pfadMussNeuGebautWerden = false;
             }
 
@@ -280,10 +280,10 @@
             return "";
 
         var elternPfad = BreadcrumbFuer(zeile);
-        var bezeichnung = zeile.Knoten.Knoten.Bezeichnung;
+        var artikelnummer = zeile.Knoten.Knoten.Artikelnummer;
         return string.IsNullOrWhiteSpace(elternPfad)
-            ? bezeichnung
-            : $"{elternPfad} › {bezeichnung}";
+            ? artikelnummer
+            : $"{elternPfad} › {artikelnummer}";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
