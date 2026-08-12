@@ -94,43 +94,45 @@
                         </div>
                     </div>
 
-                    @if (_aktuellsteMerkmalsnummern.Count > 0)
-                    {
-                        <div class="sm-results-legend" role="note">
-                            <span class="sm-results-legend__marker" aria-hidden="true"></span>
-                            <span>
-                                <strong>Grüne Merkmalsnummer:</strong>
-                                Dies ist die aktuellste Stückliste, in der das jeweilige Merkmal zuletzt vorkam.
-                            </span>
-                        </div>
-                    }
+                    <div class="sm-reference-comparison-card__scroll">
+                        @if (_aktuellsteMerkmalsnummern.Count > 0)
+                        {
+                            <div class="sm-results-legend" role="note">
+                                <span class="sm-results-legend__marker" aria-hidden="true"></span>
+                                <span>
+                                    <strong>Grüne Merkmalsnummer:</strong>
+                                    Dies ist die aktuellste Stückliste, in der das jeweilige Merkmal zuletzt vorkam.
+                                </span>
+                            </div>
+                        }
 
-                    @if (_vergleichsMerkmalsnummern.Count > 0)
-                    {
-                        <div class="sm-comparison" aria-label="Vergleich der Sondermerkmale">
-                            <MerkmalsGruppe Titel="In beiden Aufträgen"
-                                             Beschreibung="Diese Sondermerkmale sind in Ihrer Auftragsinformation und im Referenzauftrag enthalten."
-                                             CssModifier="match"
-                                             AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
-                                             Merkmale="GemeinsameMerkmale" />
+                        @if (_vergleichsMerkmalsnummern.Count > 0)
+                        {
+                            <div class="sm-comparison" aria-label="Vergleich der Sondermerkmale">
+                                <MerkmalsGruppe Titel="In beiden Aufträgen"
+                                                 Beschreibung="Diese Sondermerkmale sind in Ihrer Auftragsinformation und im Referenzauftrag enthalten."
+                                                 CssModifier="match"
+                                                 AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
+                                                 Merkmale="GemeinsameMerkmale" />
 
-                            <MerkmalsGruppe Titel="Nur im Referenzauftrag"
-                                             Beschreibung="Diese zusätzlichen Sondermerkmale enthält der Referenzauftrag, Ihre Auswahl jedoch nicht."
-                                             CssModifier="additional"
-                                             AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
-                                             Merkmale="ZusaetzlicheMerkmale" />
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="sm-comparison" aria-label="Sondermerkmale des Referenzauftrags">
-                            <MerkmalsGruppe Titel="Merkmale im Referenzauftrag"
-                                             Beschreibung="Alle Sondermerkmale der ausgewählten Referenzstückliste."
-                                             CssModifier="additional"
-                                             AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
-                                             Merkmale="_detail.Merkmale" />
-                        </div>
-                    }
+                                <MerkmalsGruppe Titel="Nur im Referenzauftrag"
+                                                 Beschreibung="Diese zusätzlichen Sondermerkmale enthält der Referenzauftrag, Ihre Auswahl jedoch nicht."
+                                                 CssModifier="additional"
+                                                 AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
+                                                 Merkmale="ZusaetzlicheMerkmale" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="sm-comparison" aria-label="Sondermerkmale des Referenzauftrags">
+                                <MerkmalsGruppe Titel="Merkmale im Referenzauftrag"
+                                                 Beschreibung="Alle Sondermerkmale der ausgewählten Referenzstückliste."
+                                                 CssModifier="additional"
+                                                 AktuellsteMerkmalsnummern="_aktuellsteMerkmalsnummern"
+                                                 Merkmale="_detail.Merkmale" />
+                            </div>
+                        }
+                    </div>
                 </section>
             }
         </RoleGuard>

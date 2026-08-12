@@ -48,11 +48,30 @@
     }
 
     .sm-auftragsdetails-page .sm-wizard-content {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .sm-reference-result-card {
+        flex: 0 0 auto;
+    }
+
+    .sm-reference-comparison-card {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .sm-reference-comparison-card__scroll {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-gutter: stable;
+        padding-right: .5rem;
     }
 }
 
