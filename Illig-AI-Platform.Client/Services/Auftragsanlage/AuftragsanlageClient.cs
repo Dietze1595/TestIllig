@@ -136,6 +136,13 @@ public class AuftragsanlageClient(HttpClient http)
         return await response.Content.ReadAsByteArrayAsync();
     }
 
+    public async Task<DashboardStatsAntwort> GetDashboardStatsAsync(int jahr)
+    {
+        var response = await http.GetAsync($"api/v1/auftragsanlage/dashboard/stats?jahr={jahr}");
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<DashboardStatsAntwort>())!;
+    }
+
     public async Task<List<AngebotUebersicht>> GetAngeboteAsync(bool nurMeine)
     {
         var response = await http.GetAsync($"api/v1/auftragsanlage/vertrieb/angebote?nurMeine={nurMeine.ToString().ToLowerInvariant()}");

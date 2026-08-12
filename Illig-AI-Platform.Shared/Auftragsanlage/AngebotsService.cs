@@ -546,6 +546,77 @@ public class AngebotsService(
             vergleich.SonstigeAbweichungen, angebotStatus, bestaetigung.Id, vorhandeneVersionen);
     }
 
+    public async Task<DashboardStatsAntwort> GetDashboardStatsAsync(int jahr, CancellationToken cancellationToken = default)
+    {
+        var angeboteJahre = await db.Angebote.Select(a => a.HochgeladenAm.Year).Distinct().ToListAsync(cancellationToken);
+        var bestaetigungenJahre = await db.Auftragsbestaetigungen.Select(b => b.HochgeladenAm.Year).Distinct().ToListAsync(cancellationToken);
+        var jahre = angeboteJahre.Union(bestaetigungenJahre).Distinct().OrderByDescending(y => y).ToList();
+
+        if (!jahre.Contains(DateTime.UtcNow.Year))
+        {
+            jahre.Insert(0, DateTime.UtcNow.Year);
+        }
+
+        var monatswerte = new List<MonatsStatistik>();
+        var jahreswerte = new List<JahresStatistik>();
+        int totalAngebote = 0;
+        int totalBestellungen = 0;
+
+        if (jahr > 0)
+        {
+            var angeboteMonatsGruppen = await db.Angebote
+                .Where(a => a.HochgeladenAm.Year == jahr)
+                .GroupBy(a => a.HochgeladenAm.Month)
+                .Select(g => new { Monat = g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken);
+
+            var bestaetigungenMonatsGruppen = await db.Auftragsbestaetigungen
+                .Where(b => b.HochgeladenAm.Year == jahr)
+                .GroupBy(b => b.HochgeladenAm.Month)
+                .Select(g => new { Monat = g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken);
+
+            for (int m = 1; m <= 12; m++)
+            {
+                var angCount = angeboteMonatsGruppen.FirstOrDefault(g => g.Monat == m)?.Count ?? 0;
+                var bestCount = bestaetigungenMonatsGruppen.FirstOrDefault(g => g.Monat == m)?.Count ?? 0;
+                monatswerte.Add(new MonatsStatistik(m, angCount, bestCount));
+            }
+
+            totalAngebote = await db.Angebote.CountAsync(a => a.HochgeladenAm.Year == jahr, cancellationToken);
+            totalBestellungen = await db.Auftragsbestaetigungen.CountAsync(b => b.HochgeladenAm.Year == jahr, cancellationToken);
+        }
+        else
+        {
+            // All years
+            var angeboteJahresGruppen = await db.Angebote
+                .GroupBy(a => a.HochgeladenAm.Year)
+                .Select(g => new { Jahr = g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken);
+
+            var bestaetigungenJahresGruppen = await db.Auftragsbestaetigungen
+                .GroupBy(b => b.HochgeladenAm.Year)
+                .Select(g => new { Jahr = g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken);
+
+            // Populate year-by-year counts
+            var allStatsJahre = jahre.OrderBy(y => y).ToList();
+            foreach (var j in allStatsJahre)
+            {
+                var angCount = angeboteJahresGruppen.FirstOrDefault(g => g.Jahr == j)?.Count ?? 0;
+                var bestCount = bestaetigungenJahresGruppen.FirstOrDefault(g => g.Jahr == j)?.Count ?? 0;
+                jahreswerte.Add(new JahresStatistik(j, angCount, bestCount));
+            }
+
+            totalAngebote = await db.Angebote.CountAsync(cancellationToken);
+            totalBestellungen = await db.Auftragsbestaetigungen.CountAsync(cancellationToken);
+        }
+
+        double konversionsrate = totalAngebote > 0 ? (double)totalBestellungen / totalAngebote * 100 : 0;
+
+        return new DashboardStatsAntwort(jahre, monatswerte, jahreswerte, totalAngebote, totalBestellungen, konversionsrate);
+    }
+
     private async Task LoescheBlobStillAsync(string blobPfad, CancellationToken cancellationToken)
     {
         try

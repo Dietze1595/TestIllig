@@ -16,6 +16,7 @@ public static class AppRoutes
     public const string Auftragsanlage = "/auftragsanlage";
     public const string AuftragsanlageVertrieb = "/auftragsanlage/vertrieb";
     public const string AuftragsanlageInnendienst = "/auftragsanlage/innendienst";
+    public const string AuftragsanlageDashboard = "/auftragsanlage/dashboard";
     public const string Lieferantenassistent = "/lieferantenassistent";
     public const string IlligGpt = "/illig-gpt";
     public const string Kunden = "/illig-gpt/kunden";

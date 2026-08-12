@@ -1,0 +1,399 @@
+@page "/auftragsanlage/dashboard"
+@inject NavigationManager Nav
+@inject UserProfileState ProfileState
+@inject AuftragsanlageClient Client
+
+<PageTitle>Dashboard — Auftragsanlage</PageTitle>
+
+<div class="sm-page">
+    <RoleGuard Roles="@(new[] { AppClientRoles.OrderCreationSales, AppClientRoles.OrderCreationBackoffice, AppClientRoles.Admin })">
+        <div class="dashboard-header-container">
+            <SeitenKopf Titel="Dashboard — Auftragsanlage" Lead="Auswertung der hochgeladenen Angebote und eingegangenen Bestellungen." />
+            <button class="btn btn-secondary back-btn" @onclick="Zurueck">
+                ← Zurück
+            </button>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="loading-state">
+                <span class="spinner-border text-primary" role="status"></span>
+                <p>Daten werden geladen...</p>
+            </div>
+        }
+        else if (_error is not null)
+        {
+            <div class="alert alert-danger" role="alert">
+                @_error
+            </div>
+        }
+        else
+        {
+            <!-- Filters -->
+            <div class="sm-card filter-card">
+                <div class="filter-row">
+                    <label for="yearSelect" class="filter-label">Zeitraum (Jahr):</label>
+                    <select id="yearSelect" class="form-select filter-select" value="@_selectedYear" @onchange="OnYearChanged">
+                        <option value="0">Alle Jahre (Gesamtübersicht)</option>
+                        @foreach (var j in _stats.Jahre)
+                        {
+                            <option value="@j">@j</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card kpi-offers">
+                    <div class="kpi-icon-wrap">
+                        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                            <polyline points="10 9 9 9 8 9" />
+                        </svg>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-title">Angebote hochgeladen</span>
+                        <span class="kpi-value">@_stats.TotalAngebote</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card kpi-orders">
+                    <div class="kpi-icon-wrap">
+                        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-title">Bestellungen eingegangen</span>
+                        <span class="kpi-value">@_stats.TotalBestellungen</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card kpi-rate">
+                    <div class="kpi-icon-wrap">
+                        <svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-title">Erfolgsquote (Konversionsrate)</span>
+                        <span class="kpi-value">@($"{_stats.Konversionsrate:F1}%")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bar graph section -->
+            <div class="sm-card chart-card">
+                <h3>@(_selectedYear > 0 ? $"Entwicklung im Jahr {_selectedYear}" : "Entwicklung über alle Jahre")</h3>
+                <div class="chart-container">
+                    @if (_selectedYear > 0)
+                    {
+                        <!-- Render monthly bar chart -->
+                        @if (_stats.Monatswerte == null || !_stats.Monatswerte.Any())
+                        {
+                            <p class="text-muted">Keine monatlichen Daten verfügbar.</p>
+                        }
+                        else
+                        {
+                            <div class="svg-chart-wrapper">
+                                <svg class="bar-chart" viewBox="0 0 800 350" width="100%" height="350">
+                                    <!-- Y axis grid lines -->
+                                    @for (int i = 0; i <= 4; i++)
+                                    {
+                                        var val = GetYLabelValue(i);
+                                        var y = 20 + i * 65;
+                                        <line x1="60" y1="@y" x2="760" y2="@y" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4,4" />
+                                        <g><text x="50" y="@(y + 4)" text-anchor="end" class="chart-label y-label">@val</text></g>
+                                    }
+
+                                    <!-- Monthly columns -->
+                                    @for (int idx = 0; idx < 12; idx++)
+                                    {
+                                        var mStat = _stats.Monatswerte[idx];
+                                        var xGroup = 70 + idx * 56;
+
+                                        var hAng = CalculateBarHeight(mStat.AngeboteCount);
+                                        var hBest = CalculateBarHeight(mStat.BestellungenCount);
+
+                                        var yAng = 280 - hAng;
+                                        var yBest = 280 - hBest;
+
+                                        <!-- Offer bar (Primary #1: #00457b) -->
+                                        <rect x="@xGroup" y="@yAng" width="18" height="@hAng" fill="#00457b" rx="2">
+                                            <title>Angebote: @mStat.AngeboteCount</title>
+                                        </rect>
+                                        @if (mStat.AngeboteCount > 0)
+                                        {
+                                            <g><text x="@(xGroup + 9)" y="@(yAng - 5)" text-anchor="middle" class="bar-value offer-val">@mStat.AngeboteCount</text></g>
+                                        }
+
+                                        <!-- Order bar (Primary #2: #9bc832) -->
+                                        <rect x="@(xGroup + 20)" y="@yBest" width="18" height="@hBest" fill="#9bc832" rx="2">
+                                            <title>Bestellungen: @mStat.BestellungenCount</title>
+                                        </rect>
+                                        @if (mStat.BestellungenCount > 0)
+                                        {
+                                            <g><text x="@(xGroup + 29)" y="@(yBest - 5)" text-anchor="middle" class="bar-value order-val">@mStat.BestellungenCount</text></g>
+                                        }
+
+                                        <!-- Month Label -->
+                                        <g><text x="@(xGroup + 19)" y="300" text-anchor="middle" class="chart-label x-label">@GetMonthName(mStat.Monat)</text></g>
+                                    }
+
+                                    <!-- Bottom baseline -->
+                                    <line x1="60" y1="280" x2="760" y2="280" stroke="#888" stroke-width="1.5" />
+                                </svg>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <!-- Render yearly bar chart -->
+                        @if (_stats.Jahreswerte == null || !_stats.Jahreswerte.Any())
+                        {
+                            <p class="text-muted">Keine jährlichen Daten verfügbar.</p>
+                        }
+                        else
+                        {
+                            <div class="svg-chart-wrapper">
+                                <svg class="bar-chart" viewBox="0 0 800 350" width="100%" height="350">
+                                    <!-- Y axis grid lines -->
+                                    @for (int i = 0; i <= 4; i++)
+                                    {
+                                        var val = GetYLabelValue(i);
+                                        var y = 20 + i * 65;
+                                        <line x1="60" y1="@y" x2="760" y2="@y" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4,4" />
+                                        <g><text x="50" y="@(y + 4)" text-anchor="end" class="chart-label y-label">@val</text></g>
+                                    }
+
+                                    <!-- Yearly columns -->
+                                    @{
+                                        var jCount = _stats.Jahreswerte.Count;
+                                        var step = jCount > 0 ? Math.Min(680 / jCount, 120) : 100;
+                                    }
+                                    @for (int idx = 0; idx < jCount; idx++)
+                                    {
+                                        var jStat = _stats.Jahreswerte[idx];
+                                        var xGroup = 100 + idx * step;
+
+                                        var hAng = CalculateBarHeight(jStat.AngeboteCount);
+                                        var hBest = CalculateBarHeight(jStat.BestellungenCount);
+
+                                        var yAng = 280 - hAng;
+                                        var yBest = 280 - hBest;
+
+                                        <!-- Offer bar (Primary #1: #00457b) -->
+                                        <rect x="@xGroup" y="@yAng" width="28" height="@hAng" fill="#00457b" rx="3">
+                                            <title>Angebote: @jStat.AngeboteCount</title>
+                                        </rect>
+                                        @if (jStat.AngeboteCount > 0)
+                                        {
+                                            <g><text x="@(xGroup + 14)" y="@(yAng - 5)" text-anchor="middle" class="bar-value offer-val">@jStat.AngeboteCount</text></g>
+                                        }
+
+                                        <!-- Order bar (Primary #2: #9bc832) -->
+                                        <rect x="@(xGroup + 32)" y="@yBest" width="28" height="@hBest" fill="#9bc832" rx="3">
+                                            <title>Bestellungen: @jStat.BestellungenCount</title>
+                                        </rect>
+                                        @if (jStat.BestellungenCount > 0)
+                                        {
+                                            <g><text x="@(xGroup + 46)" y="@(yBest - 5)" text-anchor="middle" class="bar-value order-val">@jStat.BestellungenCount</text></g>
+                                        }
+
+                                        <!-- Year Label -->
+                                        <g><text x="@(xGroup + 30)" y="300" text-anchor="middle" class="chart-label x-label font-weight-bold">@jStat.Jahr</text></g>
+                                    }
+
+                                    <!-- Bottom baseline -->
+                                    <line x1="60" y1="280" x2="760" y2="280" stroke="#888" stroke-width="1.5" />
+                                </svg>
+                            </div>
+                        }
+                    }
+
+                    <!-- Legend -->
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <span class="legend-color offer-color"></span>
+                            <span class="legend-text">Angebote geschrieben</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color order-color"></span>
+                            <span class="legend-text">Bestellungen erhalten</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Table Card -->
+            <div class="sm-card table-card">
+                <h3>Detaildaten</h3>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>@(_selectedYear > 0 ? "Monat" : "Jahr")</th>
+                                <th class="text-end">Angebote</th>
+                                <th class="text-end">Bestellungen</th>
+                                <th class="text-end">Erfolgsquote</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (_selectedYear > 0)
+                            {
+                                @foreach (var mStat in _stats.Monatswerte)
+                                {
+                                    var rate = mStat.AngeboteCount > 0 ? (double)mStat.BestellungenCount / mStat.AngeboteCount * 100 : 0;
+                                    <tr>
+                                        <td>@GetMonthFullName(mStat.Monat)</td>
+                                        <td class="text-end font-monospace">@mStat.AngeboteCount</td>
+                                        <td class="text-end font-monospace">@mStat.BestellungenCount</td>
+                                        <td class="text-end font-monospace">@(mStat.AngeboteCount > 0 ? $"{rate:F1}%" : "—")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                @foreach (var jStat in _stats.Jahreswerte)
+                                {
+                                    var rate = jStat.AngeboteCount > 0 ? (double)jStat.BestellungenCount / jStat.AngeboteCount * 100 : 0;
+                                    <tr>
+                                        <td class="fw-bold">@jStat.Jahr</td>
+                                        <td class="text-end font-monospace">@jStat.AngeboteCount</td>
+                                        <td class="text-end font-monospace">@jStat.BestellungenCount</td>
+                                        <td class="text-end font-monospace">@(jStat.AngeboteCount > 0 ? $"{rate:F1}%" : "—")</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </RoleGuard>
+</div>
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private int _selectedYear;
+    private DashboardStatsAntwort _stats = new([], [], [], 0, 0, 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedYear = DateTime.UtcNow.Year;
+        await LoadStatsAsync();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _stats = await Client.GetDashboardStatsAsync(_selectedYear);
+        }
+        catch (Exception ex)
+        {
+            _error = "Fehler beim Laden der Dashboard-Statistiken: " + ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnYearChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var year))
+        {
+            _selectedYear = year;
+            await LoadStatsAsync();
+        }
+    }
+
+    private void Zurueck()
+    {
+        Nav.NavigateTo(AppRoutes.Auftragsanlage);
+    }
+
+    private double GetMaxVal()
+    {
+        if (_selectedYear > 0)
+        {
+            if (_stats.Monatswerte == null || !_stats.Monatswerte.Any()) return 10;
+            var maxAng = _stats.Monatswerte!.Max(m => m.AngeboteCount);
+            var maxBest = _stats.Monatswerte!.Max(m => m.BestellungenCount);
+            return Math.Max(10, Math.Max(maxAng, maxBest));
+        }
+        else
+        {
+            if (_stats.Jahreswerte == null || !_stats.Jahreswerte.Any()) return 10;
+            var maxAng = _stats.Jahreswerte!.Max(j => j.AngeboteCount);
+            var maxBest = _stats.Jahreswerte!.Max(j => j.BestellungenCount);
+            return Math.Max(10, Math.Max(maxAng, maxBest));
+        }
+    }
+
+    private int GetYLabelValue(int stepIdx)
+    {
+        var max = GetMaxVal();
+        var val = (max * (4 - stepIdx)) / 4.0;
+        return (int)Math.Ceiling(val);
+    }
+
+    private double CalculateBarHeight(int value)
+    {
+        if (value <= 0) return 0;
+        var max = GetMaxVal();
+        var pct = value / max;
+        return Math.Min(260, pct * 260);
+    }
+
+    private string GetMonthName(int m)
+    {
+        return m switch
+        {
+            1 => "Jan",
+            2 => "Feb",
+            3 => "Mär",
+            4 => "Apr",
+            5 => "Mai",
+            6 => "Jun",
+            7 => "Jul",
+            8 => "Aug",
+            9 => "Sep",
+            10 => "Okt",
+            11 => "Nov",
+            12 => "Dez",
+            _ => ""
+        };
+    }
+
+    private string GetMonthFullName(int m)
+    {
+        return m switch
+        {
+            1 => "Januar",
+            2 => "Februar",
+            3 => "März",
+            4 => "April",
+            5 => "Mai",
+            6 => "Juni",
+            7 => "Juli",
+            8 => "August",
+            9 => "September",
+            10 => "Oktober",
+            11 => "November",
+            12 => "Dezember",
+            _ => ""
+        };
+    }
+}

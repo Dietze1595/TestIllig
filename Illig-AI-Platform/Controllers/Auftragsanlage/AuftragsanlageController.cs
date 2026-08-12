@@ -218,6 +218,25 @@ public class AuftragsanlageController(
         return Ok(new AngebotFreigabeAntwort(angebot.FreigegebenAm!.Value));
     }
 
+    [HttpGet("dashboard/stats")]
+    [Authorize(Roles = AppRoles.OrderCreation + "," + AppRoles.Admin)]
+    [ProducesResponseType(typeof(DashboardStatsAntwort), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<DashboardStatsAntwort>> GetDashboardStats([FromQuery] int jahr)
+    {
+        try
+        {
+            var stats = await angebotsService.GetDashboardStatsAsync(jahr, HttpContext.RequestAborted);
+            return Ok(stats);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Fehler beim Laden der Dashboard-Statistiken für das Jahr {Jahr}.", jahr);
+            return StatusCode(500, "Die Statistiken konnten nicht geladen werden. Bitte versuche es erneut.");
+        }
+    }
+
     [HttpGet("vertrieb/angebote")]
     [Authorize(Roles = AppRoles.OrderCreationSales)]
     [ProducesResponseType(typeof(IReadOnlyList<AngebotUebersicht>), StatusCodes.Status200OK)]
