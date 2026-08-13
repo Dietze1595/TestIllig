@@ -137,7 +137,7 @@ public sealed class DatenbankSondermerkmalService(
 
             try
             {
-                var stream = await sharePointClient.OeffnenAsync(neuester.SharePointDriveId!, neuester.SharePointItemId!, cancellationToken);
+                var stream = await sharePointClient.OeffnenAsync(neuester.WebUrl!, cancellationToken);
                 return new ReferenzDokument(neuester.Dateiname, stream);
             }
             catch (Exception)

@@ -28,7 +28,6 @@ public interface ISharePointDokumentClient
         CancellationToken cancellationToken = default);
 
     Task<Stream> OeffnenAsync(
-        string driveId,
-        string itemId,
+        string webUrl,
         CancellationToken cancellationToken = default);
 }

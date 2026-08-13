@@ -99,12 +99,21 @@ public sealed class GraphSharePointDokumentClient(
             OptionalString(json.RootElement, "@odata.deltaLink"));
     }
 
+    private static string UrlToSharingToken(string url)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(url);
+        var base64 = Convert.ToBase64String(bytes);
+        return "u!" + base64.TrimEnd('=')
+            .Replace('/', '_')
+            .Replace('+', '-');
+    }
+
     public async Task<Stream> OeffnenAsync(
-        string driveId,
-        string itemId,
+        string webUrl,
         CancellationToken cancellationToken = default)
     {
-        var url = $"https://graph.microsoft.com/v1.0/drives/{Uri.EscapeDataString(driveId)}/items/{Uri.EscapeDataString(itemId)}/content";
+        var token = UrlToSharingToken(webUrl);
+        var url = $"https://graph.microsoft.com/v1.0/shares/{token}/driveItem/content";
         using var response = await SendenAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
 

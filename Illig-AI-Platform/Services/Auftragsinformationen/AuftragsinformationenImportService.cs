@@ -203,7 +203,7 @@ public sealed class AuftragsinformationenImportService(
 
         try
         {
-            await using var inhalt = await sharePoint.OeffnenAsync(eintrag.DriveId, eintrag.ItemId, cancellationToken);
+            await using var inhalt = await sharePoint.OeffnenAsync(eintrag.WebUrl, cancellationToken);
             var ergebnis = await analyse.AnalyzeAsync(inhalt, cancellationToken);
 
             if (!ergebnis.IstAuftragsinformation)

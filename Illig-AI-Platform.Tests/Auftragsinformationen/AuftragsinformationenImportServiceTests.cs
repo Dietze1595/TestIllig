@@ -141,8 +141,7 @@ public class AuftragsinformationenImportServiceTests
         }
 
         public Task<Stream> OeffnenAsync(
-            string driveId,
-            string itemId,
+            string webUrl,
             CancellationToken cancellationToken = default)
         {
             OpenCount++;

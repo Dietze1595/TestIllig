@@ -33,8 +33,7 @@ public class DatenbankSondermerkmalServiceTests
 
     private sealed class FakeSharePointDokumentClient : Illig_AI_Platform.Services.Auftragsinformationen.ISharePointDokumentClient
     {
-        public string? GeoeffneteDriveId { get; private set; }
-        public string? GeoeffneteItemId { get; private set; }
+        public string? GeoeffneteWebUrl { get; private set; }
 
         public Task<Illig_AI_Platform.Services.Auftragsinformationen.SharePointQuelle> QuelleAufloesenAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
@@ -46,12 +45,10 @@ public class DatenbankSondermerkmalServiceTests
             throw new NotSupportedException();
 
         public Task<Stream> OeffnenAsync(
-            string driveId,
-            string itemId,
+            string webUrl,
             CancellationToken cancellationToken = default)
         {
-            GeoeffneteDriveId = driveId;
-            GeoeffneteItemId = itemId;
+            GeoeffneteWebUrl = webUrl;
             return Task.FromResult<Stream>(new MemoryStream("sharepoint-pdf"u8.ToArray()));
         }
     }
@@ -461,6 +458,7 @@ public class DatenbankSondermerkmalServiceTests
             UserProfileId = Guid.NewGuid(),
             Quelle = AuftragsdokumentQuelle.SharePoint,
             Dateiname = "sharepoint-doc.pdf",
+            WebUrl = "https://example.test/sharepoint.pdf",
             SharePointDriveId = "drive-id-123",
             SharePointItemId = "item-id-456",
             Auftragsnummer = "4500012345",
@@ -479,8 +477,7 @@ public class DatenbankSondermerkmalServiceTests
 
         Assert.NotNull(result);
         Assert.Equal("sharepoint-doc.pdf", result!.Dateiname);
-        Assert.Equal("drive-id-123", sharePointClient.GeoeffneteDriveId);
-        Assert.Equal("item-id-456", sharePointClient.GeoeffneteItemId);
+        Assert.Equal("https://example.test/sharepoint.pdf", sharePointClient.GeoeffneteWebUrl);
         using var reader = new StreamReader(result.Inhalt);
         var content = await reader.ReadToEndAsync();
         Assert.Equal("sharepoint-pdf", content);

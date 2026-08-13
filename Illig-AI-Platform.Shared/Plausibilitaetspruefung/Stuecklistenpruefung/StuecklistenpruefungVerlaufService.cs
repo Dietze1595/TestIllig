@@ -377,7 +377,7 @@ public class StuecklistenpruefungVerlaufService(
 
             try
             {
-                var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
+                var spStream = await sharePointClient.OeffnenAsync(eintrag.WebUrl!, cancellationToken);
                 return (eintrag.Dateiname, spStream);
             }
             catch (Exception)
@@ -406,7 +406,7 @@ public class StuecklistenpruefungVerlaufService(
 
             try
             {
-                var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
+                var spStream = await sharePointClient.OeffnenAsync(eintrag.WebUrl!, cancellationToken);
                 return (eintrag.Dateiname, spStream);
             }
             catch (Exception)

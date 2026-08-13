@@ -31,6 +31,8 @@ public class StuecklistenpruefungVerlaufServiceTests
 
     private class FakeSharePointDokumentClient : Illig_AI_Platform.Services.Auftragsinformationen.ISharePointDokumentClient
     {
+        public string? GeoeffneteWebUrl { get; private set; }
+
         public Task<Illig_AI_Platform.Services.Auftragsinformationen.SharePointQuelle> QuelleAufloesenAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
@@ -41,10 +43,10 @@ public class StuecklistenpruefungVerlaufServiceTests
             throw new NotSupportedException();
 
         public Task<Stream> OeffnenAsync(
-            string driveId,
-            string itemId,
+            string webUrl,
             CancellationToken cancellationToken = default)
         {
+            GeoeffneteWebUrl = webUrl;
             return Task.FromResult<Stream>(new MemoryStream([7, 8, 9]));
         }
     }
@@ -632,6 +634,7 @@ public class StuecklistenpruefungVerlaufServiceTests
         {
             Quelle = AuftragsdokumentQuelle.SharePoint,
             Dateiname = "sp-test.pdf",
+            WebUrl = "https://example.test/sp-test.pdf",
             Auftragsnummer = "11055894 / 40",
             Kundennummer = "717220",
             Maschinentyp = "RDM 75Kc",
@@ -650,6 +653,7 @@ public class StuecklistenpruefungVerlaufServiceTests
 
         Assert.NotNull(doc);
         Assert.Equal("sp-test.pdf", doc!.Value.Dateiname);
+        Assert.Equal("https://example.test/sp-test.pdf", sharePointClient.GeoeffneteWebUrl);
         using var ms = new MemoryStream();
         await doc.Value.Inhalt.CopyToAsync(ms);
         Assert.Equal([7, 8, 9], ms.ToArray());
