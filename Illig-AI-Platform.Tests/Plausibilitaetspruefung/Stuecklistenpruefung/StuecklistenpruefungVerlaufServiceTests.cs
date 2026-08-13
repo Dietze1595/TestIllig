@@ -29,6 +29,26 @@ public class StuecklistenpruefungVerlaufServiceTests
         }
     }
 
+    private class FakeSharePointDokumentClient : Illig_AI_Platform.Services.Auftragsinformationen.ISharePointDokumentClient
+    {
+        public Task<Illig_AI_Platform.Services.Auftragsinformationen.SharePointQuelle> QuelleAufloesenAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Illig_AI_Platform.Services.Auftragsinformationen.SharePointAenderungsseite> AenderungsseiteAsync(
+            Illig_AI_Platform.Services.Auftragsinformationen.SharePointQuelle quelle,
+            string? fortsetzungsUrl,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Stream> OeffnenAsync(
+            string driveId,
+            string itemId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<Stream>(new MemoryStream([7, 8, 9]));
+        }
+    }
+
     private static AppDbContext NeueDb() =>
         new(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
@@ -602,5 +622,36 @@ public class StuecklistenpruefungVerlaufServiceTests
         Assert.NotNull(detail);
         Assert.Equal(AuftragsdokumentQuelle.SharePoint, detail!.Quelle);
         Assert.Equal("sharepoint.pdf", detail.Dateiname);
+    }
+
+    [Fact]
+    public async Task DokumentAsync_LiefertSharePointDokument_WennQuelleSharePointIst()
+    {
+        var db = NeueDb();
+        var eintrag = new StuecklistenpruefungVerlaufEintrag
+        {
+            Quelle = AuftragsdokumentQuelle.SharePoint,
+            Dateiname = "sp-test.pdf",
+            Auftragsnummer = "11055894 / 40",
+            Kundennummer = "717220",
+            Maschinentyp = "RDM 75Kc",
+            SharePointDriveId = "drive-1",
+            SharePointItemId = "item-1",
+            AnalyseStatus = AuftragsdokumentAnalyseStatus.Erfolgreich,
+            ErstelltAm = DateTime.UtcNow,
+        };
+        db.StuecklistenpruefungVerlaufEintraege.Add(eintrag);
+        await db.SaveChangesAsync();
+
+        var sharePointClient = new FakeSharePointDokumentClient();
+        var service = new StuecklistenpruefungVerlaufService(db, new FakeBlobStorageService(), sharePointClient: sharePointClient);
+
+        var doc = await service.DokumentAsync(eintrag.Id);
+
+        Assert.NotNull(doc);
+        Assert.Equal("sp-test.pdf", doc!.Value.Dateiname);
+        using var ms = new MemoryStream();
+        await doc.Value.Inhalt.CopyToAsync(ms);
+        Assert.Equal([7, 8, 9], ms.ToArray());
     }
 }

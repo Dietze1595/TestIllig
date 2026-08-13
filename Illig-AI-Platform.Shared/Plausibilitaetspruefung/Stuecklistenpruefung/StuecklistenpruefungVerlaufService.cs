@@ -1,6 +1,7 @@
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung;
 using Illig_AI_Platform.Shared.Data;
 using Illig_AI_Platform.Shared.Kunden;
+using Illig_AI_Platform.Services.Auftragsinformationen;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -11,7 +12,8 @@ public class StuecklistenpruefungVerlaufService(
     AppDbContext db,
     IBlobStorageService blobStorage,
     KundenstammService? kundenstamm = null,
-    ILogger<StuecklistenpruefungVerlaufService>? logger = null)
+    ILogger<StuecklistenpruefungVerlaufService>? logger = null,
+    ISharePointDokumentClient? sharePointClient = null)
 {
     public async Task<int> SpeichernAsync(
         Guid userProfileId, string dateiname, Stream pdfInhalt, DokumentAnalyseErgebnis ergebnis,
@@ -367,6 +369,15 @@ public class StuecklistenpruefungVerlaufService(
         if (eintrag is null)
             return null;
 
+        if (eintrag.Quelle == AuftragsdokumentQuelle.SharePoint)
+        {
+            if (sharePointClient is null)
+                throw new InvalidOperationException("SharePointClient ist für Referenzdokumente nicht konfiguriert.");
+
+            var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
+            return (eintrag.Dateiname, spStream);
+        }
+
         var stream = await blobStorage.OpenReadAsync(eintrag.BlobPfad, cancellationToken);
         return (eintrag.Dateiname, stream);
     }
@@ -379,6 +390,15 @@ public class StuecklistenpruefungVerlaufService(
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         if (eintrag is null)
             return null;
+
+        if (eintrag.Quelle == AuftragsdokumentQuelle.SharePoint)
+        {
+            if (sharePointClient is null)
+                throw new InvalidOperationException("SharePointClient ist für Referenzdokumente nicht konfiguriert.");
+
+            var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
+            return (eintrag.Dateiname, spStream);
+        }
 
         var stream = await blobStorage.OpenReadAsync(eintrag.BlobPfad, cancellationToken);
         return (eintrag.Dateiname, stream);
