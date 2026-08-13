@@ -357,7 +357,8 @@ public class StuecklistenpruefungVerlaufService(
             string.IsNullOrWhiteSpace(eintrag.VergleichsErgebnisJson)
                 ? null
                 : JsonSerializer.Deserialize<VergleichsErgebnis>(eintrag.VergleichsErgebnisJson),
-            eintrag.SapDateiname);
+            eintrag.SapDateiname,
+            WebUrl: eintrag.WebUrl);
     }
 
     public async Task<(string Dateiname, Stream Inhalt)?> DokumentAsync(

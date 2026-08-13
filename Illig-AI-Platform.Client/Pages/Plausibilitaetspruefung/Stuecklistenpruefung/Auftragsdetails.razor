@@ -237,6 +237,11 @@
                         _dokumentName = dokument.Dateiname;
                         _pdfDataUrl = $"data:application/pdf;base64,{Convert.ToBase64String(dokument.Inhalt)}";
                     }
+                    else if (!string.IsNullOrWhiteSpace(_detail.WebUrl))
+                    {
+                        _dokumentName = $"{Auftragsnummer}.pdf";
+                        _pdfDataUrl = _detail.WebUrl;
+                    }
                 }
             }
         }

@@ -707,7 +707,9 @@
             _ausgeklappteBeschreibungen.Clear();
             _merkmale = [.. detail.Merkmale];
             _sonderoptionen = [.. detail.Sonderoptionen];
-            _pdfDataUrl = pdfBytes is null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _pdfDataUrl = pdfBytes is null
+                ? (!string.IsNullOrWhiteSpace(detail.WebUrl) ? detail.WebUrl : null)
+                : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
             _dokumentName = detail.Dateiname;
             _sapDateiname = detail.SapDateiname;
 
@@ -785,7 +787,9 @@
             _ausgeklappteBeschreibungen.Clear();
             _merkmale = [.. detail.Merkmale];
             _sonderoptionen = [.. detail.Sonderoptionen];
-            _pdfDataUrl = pdfBytes is null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _pdfDataUrl = pdfBytes is null
+                ? (!string.IsNullOrWhiteSpace(detail.WebUrl) ? detail.WebUrl : null)
+                : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
             _dokumentName = eintrag.Dateiname;
             _geoeffneterVerlaufId = eintrag.Id;
             _geoeffneteSharePointId = null;
@@ -841,7 +845,9 @@
             _merkmale = [.. detail.Merkmale];
             _sonderoptionen = [.. detail.Sonderoptionen];
             _ausgeklappteBeschreibungen.Clear();
-            _pdfDataUrl = pdfBytes is null ? null : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+            _pdfDataUrl = pdfBytes is null
+                ? (!string.IsNullOrWhiteSpace(detail.WebUrl) ? detail.WebUrl : null)
+                : $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
             _dokumentName = detail.Dateiname;
             _geoeffneteSharePointId = eintrag.Id;
             _geoeffneterVerlaufId = null;

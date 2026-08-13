@@ -84,6 +84,8 @@
         else if (DataUrl.StartsWith("blob:", StringComparison.Ordinal))
             // Bereits von der Seite vorbereitete Object-URL — direkt anzeigen (die Seite gibt sie frei).
             _objektUrl = DataUrl;
+        else if (DataUrl.StartsWith("http://", StringComparison.Ordinal) || DataUrl.StartsWith("https://", StringComparison.Ordinal))
+            _objektUrl = DataUrl;
         else
         {
             // Große Base64-data:-URLs rendern nicht im iframe — in eine Blob-Object-URL umwandeln.

@@ -77,7 +77,8 @@ public record VerlaufDetail(
     VergleichsErgebnis? VergleichsErgebnis,
     string? SapDateiname,
     bool UmsetzungsmatrixVorhanden = false,
-    IReadOnlyList<string>? VerfuegbareUmsetzungsmatrizen = null);
+    IReadOnlyList<string>? VerfuegbareUmsetzungsmatrizen = null,
+    string? WebUrl = null);
 
 public record StuecklistenKnoten(
     string Artikelnummer,

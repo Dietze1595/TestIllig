@@ -35,7 +35,8 @@ public record StuecklisteDetail(
     string Maschinentyp,
     DateOnly Abschlussdatum,
     string? Kundenname,
-    IReadOnlyList<StuecklisteDetailMerkmal> Merkmale);
+    IReadOnlyList<StuecklisteDetailMerkmal> Merkmale,
+    string? WebUrl = null);
 
 public record ReferenzDokument(string Dateiname, byte[] Inhalt);
 

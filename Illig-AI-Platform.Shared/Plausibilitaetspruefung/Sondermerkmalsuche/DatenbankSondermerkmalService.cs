@@ -40,7 +40,8 @@ public sealed class DatenbankSondermerkmalService(
 
     private sealed record VereinigterAuftrag(
         string Auftragsnummer, string Maschinentyp, DateOnly Datum, string Kundennummer, string? Kundenname,
-        IReadOnlyList<(string Merkmalsnummer, string Beschreibung, string Position, string Quelle)> Sonderoptionen);
+        IReadOnlyList<(string Merkmalsnummer, string Beschreibung, string Position, string Quelle)> Sonderoptionen,
+        string? WebUrl);
 
     private async Task<VereinigterAuftrag?> LadeUndVereinigeAsync(string auftragsnummer)
     {
@@ -76,7 +77,7 @@ public sealed class DatenbankSondermerkmalService(
         var anzeigeAuftragsnummer = linie is null ? basis : $"{basis} / {linie}";
 
         return new VereinigterAuftrag(
-            anzeigeAuftragsnummer, neuester.Maschinentyp, datum, neuester.Kundennummer, neuester.Kundenname, vereinigteSonderoptionen);
+            anzeigeAuftragsnummer, neuester.Maschinentyp, datum, neuester.Kundennummer, neuester.Kundenname, vereinigteSonderoptionen, neuester.WebUrl);
     }
 
     public async Task<StuecklisteAnalyse?> AnalyzeAsync(string auftragsnummer)
@@ -109,7 +110,8 @@ public sealed class DatenbankSondermerkmalService(
             auftrag.Maschinentyp,
             auftrag.Datum,
             auftrag.Kundenname,
-            merkmale);
+            merkmale,
+            auftrag.WebUrl);
     }
 
     public async Task<ReferenzDokument?> GetDokumentAsync(
