@@ -31,6 +31,31 @@ public class DatenbankSondermerkmalServiceTests
             throw new NotSupportedException();
     }
 
+    private sealed class FakeSharePointDokumentClient : Illig_AI_Platform.Services.Auftragsinformationen.ISharePointDokumentClient
+    {
+        public string? GeoeffneteDriveId { get; private set; }
+        public string? GeoeffneteItemId { get; private set; }
+
+        public Task<Illig_AI_Platform.Services.Auftragsinformationen.SharePointQuelle> QuelleAufloesenAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Illig_AI_Platform.Services.Auftragsinformationen.SharePointAenderungsseite> AenderungsseiteAsync(
+            Illig_AI_Platform.Services.Auftragsinformationen.SharePointQuelle quelle,
+            string? fortsetzungsUrl,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Stream> OeffnenAsync(
+            string driveId,
+            string itemId,
+            CancellationToken cancellationToken = default)
+        {
+            GeoeffneteDriveId = driveId;
+            GeoeffneteItemId = itemId;
+            return Task.FromResult<Stream>(new MemoryStream("sharepoint-pdf"u8.ToArray()));
+        }
+    }
+
     private static AppDbContext NeueDb() =>
         new(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
@@ -425,6 +450,40 @@ public class DatenbankSondermerkmalServiceTests
         Assert.NotNull(result);
         Assert.Equal("zweiter-upload.pdf", result!.Dateiname);
         Assert.Equal("blob/zweiter-upload.pdf", blobStorage.GeoeffneterBlobPfad);
+    }
+
+    [Fact]
+    public async Task GetDokumentAsync_LiefertSharePointDokument_WennQuelleSharePointIst()
+    {
+        var db = NeueDb();
+        var eintrag = new StuecklistenpruefungVerlaufEintrag
+        {
+            UserProfileId = Guid.NewGuid(),
+            Quelle = AuftragsdokumentQuelle.SharePoint,
+            Dateiname = "sharepoint-doc.pdf",
+            SharePointDriveId = "drive-id-123",
+            SharePointItemId = "item-id-456",
+            Auftragsnummer = "4500012345",
+            Kundennummer = "708555",
+            Datum = new DateOnly(2025, 5, 21),
+            Maschinentyp = "RDK 80k",
+            ErstelltAm = new DateTime(2026, 1, 5),
+        };
+        db.StuecklistenpruefungVerlaufEintraege.Add(eintrag);
+        await db.SaveChangesAsync();
+
+        var sharePointClient = new FakeSharePointDokumentClient();
+        var service = new DatenbankSondermerkmalService(db, sharePointClient: sharePointClient);
+
+        var result = await service.GetDokumentAsync("4500012345");
+
+        Assert.NotNull(result);
+        Assert.Equal("sharepoint-doc.pdf", result!.Dateiname);
+        Assert.Equal("drive-id-123", sharePointClient.GeoeffneteDriveId);
+        Assert.Equal("item-id-456", sharePointClient.GeoeffneteItemId);
+        using var reader = new StreamReader(result.Inhalt);
+        var content = await reader.ReadToEndAsync();
+        Assert.Equal("sharepoint-pdf", content);
     }
 
     [Fact]

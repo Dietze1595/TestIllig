@@ -343,7 +343,7 @@ public class StuecklistenpruefungPdfDesignTests
         Assert.Contains("Nur in SAP vorhanden", component);
         Assert.Contains("AktiverBaumFilter", component);
         Assert.Contains("SichtbareZeilen", component);
-        Assert.Contains("Keine Positionen mit dem gewählten Status.", component);
+        Assert.Contains("Keine passenden Positionen.", component);
         Assert.Contains("Keine zusätzlichen Positionen in SAP vorhanden.", component);
         Assert.Contains("data-tree-depth=\"@Zeile.Tiefe\"", row);
         Assert.Contains("data-tree-group=\"@Zeile.HatSichtbareKinder", row);

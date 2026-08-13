@@ -1,6 +1,7 @@
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung;
 using Illig_AI_Platform.Shared.Data;
 using Illig_AI_Platform.Shared.Plausibilitaetspruefung.Stuecklistenpruefung;
+using Illig_AI_Platform.Services.Auftragsinformationen;
 using Microsoft.EntityFrameworkCore;
 
 namespace Illig_AI_Platform.Shared.Plausibilitaetspruefung.Sondermerkmalsuche;
@@ -13,7 +14,8 @@ namespace Illig_AI_Platform.Shared.Plausibilitaetspruefung.Sondermerkmalsuche;
 /// </summary>
 public sealed class DatenbankSondermerkmalService(
     AppDbContext db,
-    IBlobStorageService? blobStorage = null) : ISondermerkmalService
+    IBlobStorageService? blobStorage = null,
+    ISharePointDokumentClient? sharePointClient = null) : ISondermerkmalService
 {
     private static string Normalize(string s) => s.Trim();
 
@@ -125,6 +127,15 @@ public sealed class DatenbankSondermerkmalService(
         var neuester = eintraege.FirstOrDefault();
         if (neuester is null)
             return null;
+
+        if (neuester.Quelle == AuftragsdokumentQuelle.SharePoint)
+        {
+            if (sharePointClient is null)
+                throw new InvalidOperationException("SharePointClient ist für Referenzdokumente nicht konfiguriert.");
+
+            var stream = await sharePointClient.OeffnenAsync(neuester.SharePointDriveId!, neuester.SharePointItemId!, cancellationToken);
+            return new ReferenzDokument(neuester.Dateiname, stream);
+        }
 
         if (blobStorage is null)
             throw new InvalidOperationException("BlobStorage ist für Referenzdokumente nicht konfiguriert.");
