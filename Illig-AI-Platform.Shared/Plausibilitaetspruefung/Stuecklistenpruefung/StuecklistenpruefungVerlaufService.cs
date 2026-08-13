@@ -375,8 +375,15 @@ public class StuecklistenpruefungVerlaufService(
             if (sharePointClient is null)
                 throw new InvalidOperationException("SharePointClient ist für Referenzdokumente nicht konfiguriert.");
 
-            var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
-            return (eintrag.Dateiname, spStream);
+            try
+            {
+                var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
+                return (eintrag.Dateiname, spStream);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         var stream = await blobStorage.OpenReadAsync(eintrag.BlobPfad, cancellationToken);
@@ -397,8 +404,15 @@ public class StuecklistenpruefungVerlaufService(
             if (sharePointClient is null)
                 throw new InvalidOperationException("SharePointClient ist für Referenzdokumente nicht konfiguriert.");
 
-            var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
-            return (eintrag.Dateiname, spStream);
+            try
+            {
+                var spStream = await sharePointClient.OeffnenAsync(eintrag.SharePointDriveId!, eintrag.SharePointItemId!, cancellationToken);
+                return (eintrag.Dateiname, spStream);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         var stream = await blobStorage.OpenReadAsync(eintrag.BlobPfad, cancellationToken);

@@ -60,8 +60,15 @@ public sealed class AuftragsdokumentService(
         if (dokument is null)
             return null;
 
-        var inhalt = await sharePoint.OeffnenAsync(
-            dokument.SharePointDriveId!, dokument.SharePointItemId!, cancellationToken);
-        return (dokument.Dateiname, inhalt);
+        try
+        {
+            var inhalt = await sharePoint.OeffnenAsync(
+                dokument.SharePointDriveId!, dokument.SharePointItemId!, cancellationToken);
+            return (dokument.Dateiname, inhalt);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 }

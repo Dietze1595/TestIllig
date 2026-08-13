@@ -135,8 +135,15 @@ public sealed class DatenbankSondermerkmalService(
             if (sharePointClient is null)
                 throw new InvalidOperationException("SharePointClient ist für Referenzdokumente nicht konfiguriert.");
 
-            var stream = await sharePointClient.OeffnenAsync(neuester.SharePointDriveId!, neuester.SharePointItemId!, cancellationToken);
-            return new ReferenzDokument(neuester.Dateiname, stream);
+            try
+            {
+                var stream = await sharePointClient.OeffnenAsync(neuester.SharePointDriveId!, neuester.SharePointItemId!, cancellationToken);
+                return new ReferenzDokument(neuester.Dateiname, stream);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         if (blobStorage is null)
